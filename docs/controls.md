@@ -35,9 +35,9 @@ The log names the layout in effect (`input: gamepad layout ...`); the menu shows
 Esc is unbound in the game; it opens the settings menu and releases the mouse cursor (see Mouse camera), unless the PC
 scheme runs (`TOTK_KBM_SCHEME`, docs/kbm-port.md): `Esc` is the game's pause menu there and `F1` opens this menu. Z and X duplicate ZL and ZR so menu pages turn with two neighbouring keys; the menu tabs (L, R) are Q and R. The mouse wheel is unbound. The bindings are the tables of `input_map` in `runtime/input_map.c`: the keys (platform-neutral key ids) and one gamepad table per layout (gamepad inputs by position); `runtime/input_win.c` translates Win32 virtual keys and SDL buttons.
 
-## Xbox button prompts
+## Button prompts
 
-`TOTK_PROMPTS` (`prompts`, the *Button prompts* row on the Controls tab, read at start) picks the controller whose buttons the game's prompts show: `nintendo` (default) keeps the game's own, `xbox` shows an Xbox controller's.
+`TOTK_PROMPTS` (`prompts`, the *Button prompts* row on the Controls tab, read at start) picks the buttons the game's prompts show: `nintendo` (default) keeps the game's own, `xbox` shows an Xbox controller's, `keyboard` the PC scheme's keys as keycaps.
 
 - L, R, ZL, ZR, Plus and Minus become LB, RB, LT, RT, Menu and View, and the d-pad prompts a cross with an arrow for each direction meant. The letters on the keys are cut out in the game's own text font.
 - A, B, X and Y name the label of the button the pad layout presses, so each prompt names the button to press. `pad_layout = nintendo` plays an Xbox pad by position: the right button, labelled B, does Switch A (interact, confirm), and the bottom one, labelled A, does Switch B (run, cancel), so the prompts swap A with B and X with Y. `xbox` and `auto` put Switch A on the button labelled A, and the letters stay.
@@ -49,6 +49,12 @@ scheme runs (`TOTK_KBM_SCHEME`, docs/kbm-port.md): `Esc` is the game's pause men
 | ZL, ZR | LT, RT | LT, RT |
 | Plus, Minus | Menu, View | Menu, View |
 | D-pad | cross | cross |
+
+With `prompts = keyboard` the game's own font carries the PC scheme's on-foot keys instead of the pad buttons (A is
+E, B is shift, X is space, Y is the left mouse button, L is Tab, R is G, ZL is the right mouse button, ZR is F, Plus is
+Esc, Minus is the map, the d-pad is the arrows). It needs `romfs-patches-keyboard` next to `romfs-index.bin`, written by
+`tools/make_romfs_patches.py --prompts keyboard` (Kenney's CC0 "Input Prompts"). The legend is the on-foot key: a menu's
+"back" prompt shows B's shift, whose key there is the right mouse button.
 
 The action prompt (`DoCommand_00`) shows its button in a diamond whose shape gives the face buttons' positions as on a Switch, with the other three letters around it. With `nintendo` its letters are swapped with the rest and every one names the button in that place. With `xbox` and `auto` the letters are right but the diamond keeps the Switch positions: A shows on its right, while the button labelled A is at the bottom. The sticks keep the Switch icons, and so do prompts drawn as fixed images (some tutorial animations).
 

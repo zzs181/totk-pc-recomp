@@ -17,14 +17,18 @@ cover the screen and the HUD moves to the screen's corners (wider) or its top an
 loads that overlay from romfs-patches-<w>x<h> when the game resolution is that size (runtime/romfs.c overlay_init);
 the camera's side of it is the patch set aspect (recomp/patches-v121.txt, patches-v143.txt).
 
---prompts xbox | xbox-label: the same overlay with Xbox button icons in the game's prompts, for prompts = xbox
-(runtime/romfs.c overlay_init loads romfs-patches-xbox or romfs-patches-xbox-label in place of romfs-patches). Drawn
-from the game's own files on the player's machine, nothing added (tools/button_icons.py, which needs fontTools):
+--prompts xbox | xbox-label | keyboard: the same overlay with other button icons in the game's prompts, for prompts =
+xbox or keyboard (runtime/romfs.c overlay_init loads romfs-patches-xbox, romfs-patches-xbox-label or
+romfs-patches-keyboard in place of romfs-patches). Drawn from the game's own files on the player's machine, nothing
+added (tools/button_icons.py, which needs fontTools):
 - both: L, R, ZL, ZR, Plus, Minus and the d-pad become LB, RB, LT, RT, Menu, View and a cross in the button font
   (scft/External.bfotf, the same font in each Font/Font*.Nin_NX_NVN.bfarc.zs), and L and ZL in the button guide's images
   (Nt_KeyTexL_00 and Nt_KeyTexZL_00 of timg/__Combined.bntx in the Common archive). The fonts grow, so the overlay also
   carries the resource size table (System/Resource/ResourceSizeTable.Product.<n>...rsizetable.zs) with their entries
   raised by as much.
+- keyboard: every button becomes a keycap with the key the PC scheme puts on it (docs/kbm-port.md): E, shift, space,
+  the mouse's left and right buttons, Tab, G, F, I, M and the d-pad's arrows, in the button font and in the button
+  guide's two images. The face buttons are not swapped: a keyboard has no pad layout.
 - xbox, for pad_layout = nintendo. That layout plays an Xbox pad by position: the button that does Switch A is
   labelled B, so the face buttons' prompts are swapped to name the labels, A with B and X with Y:
   - the action prompt (blyt/DoCommand_00.bflyt) draws the letter images Nt_KeyTexA/B/X/Y_00 of timg/__Combined.bntx in
@@ -58,9 +62,10 @@ ap.add_argument('--romfs', type=Path, help='default build/extracted/<version>/ro
 ap.add_argument('--out', type=Path,
                 help='default build/<version>/romfs-patches (romfs-patches-<style> with --prompts)')
 ap.add_argument('--aspect', help='<w>x<h> of a game resolution of another shape than 16:9: also lay the UI out for it')
-ap.add_argument('--prompts', choices=('xbox', 'xbox-label'),
-                help='Xbox button icons in the prompts: xbox for pad_layout = nintendo (A shown as B, X as Y), '
-                     'xbox-label for pad_layout = xbox or auto (the face buttons keep their letters)')
+ap.add_argument('--prompts', choices=('xbox', 'xbox-label', 'keyboard'),
+                help='other button icons in the prompts: xbox for pad_layout = nintendo (A shown as B, X as Y), '
+                     'xbox-label for pad_layout = xbox or auto (the face buttons keep their letters), keyboard for the '
+                     'PC scheme\'s keys as keycaps (docs/kbm-port.md)')
 ap.add_argument('--xbox-prompts', dest='prompts', action='store_const', const='xbox', help='the same as --prompts xbox')
 args = ap.parse_args()
 args.romfs = args.romfs or root / 'build/extracted' / args.version / 'romfs'
@@ -295,10 +300,13 @@ if args.prompts:
         return data
     archives = {path: unpack(path) for path in FONTS}
     text = sarc_members(archives[icons.TEXT_ARCHIVE])
-    missing = [name for name in icons.TEXT_FONTS if name not in text]
-    assert not missing, f'no {", ".join(missing)} in {icons.TEXT_ARCHIVE}'
-    drawn = icons.xbox_icons(icons.text_glyphs(archives[icons.TEXT_ARCHIVE][slice(*text[name])]
-                                               for name in icons.TEXT_FONTS))
+    if args.prompts == 'keyboard':   # Kenney's icons bring their own legends: no text font is read
+        drawn = icons.keyboard_icons()
+    else:
+        missing = [name for name in icons.TEXT_FONTS if name not in text]
+        assert not missing, f'no {", ".join(missing)} in {icons.TEXT_ARCHIVE}'
+        glyphs = icons.text_glyphs(archives[icons.TEXT_ARCHIVE][slice(*text[name])] for name in icons.TEXT_FONTS)
+        drawn = icons.xbox_icons(glyphs)
     bntx = members['timg/__Combined.bntx'][0]
     letters = {}
     if by_position:

@@ -100,8 +100,9 @@ world rows and their group fallbacks apply there. `TOTK_SCREEN_CTX` and `TOTK_SC
 2. **The camera veneer**, the direct mouse look: this patch includes it as the `mousedirect` set
    (`recomp/patches-v143.txt`, docs/mousedirect.md), which adds the mouse to the 1.4.3 PlayerCamera's processed stick
    after the dead zone and curve.
-3. **Keyboard keycap prompts**: not part of this patch. The game's own prompts remain; `prompts = keyboard` and the
-   Kenney keycap set are left out.
+3. **Keyboard keycap prompts**: included as `prompts = keyboard`, which redraws the game's prompts with the PC scheme's
+   keys (Kenney's CC0 "Input Prompts"; `tools/make_romfs_patches.py --prompts keyboard`). The game reads its fonts once,
+   so this takes a restart after the folder is written.
 4. **Motion mechanics**: a narrow mouse-to-six-axis feed is included (`TOTK_MOUSE_MOTION_KEY`, default `k`): holding the
    key feeds the mouse to the virtual controller's six-axis for the gyro shrines, with the camera paused. The full
    mouse gyro aiming path is not part of this patch.
