@@ -59,9 +59,8 @@ const char *kbm_scheme_bind(int scope, const char *action);   // the override's 
 // The context the caller pushed (KBM_SC_*); KBM_SC_WORLD until it pushes another.
 void kbm_scheme_set_ctx(int scope);
 int kbm_scheme_ctx(void);
-// A context for a screen the host menu owns: KBM_SC_PAUSE while the in-game menu is open, KBM_SC_WORLD otherwise.
-// The game's own screens (title, dialogue, map) need the game hook the port does not have yet.
-int kbm_scheme_host_ctx(int menu_open);
+// The context for a frame comes from runtime/screen_watch.c (screen_watch_ctx): the game's own screen, PAUSE while the
+// F1 menu is open, WORLD otherwise.
 const char *kbm_scheme_scope_name(int scope);
 
 // One poll: down[key] != 0 for the keys held, now_ms a monotonic millisecond clock (the same one every poll).

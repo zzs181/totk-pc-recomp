@@ -445,8 +445,6 @@ void kbm_scheme_set_ctx(int scope) {
 
 int kbm_scheme_ctx(void) { return g_ctx; }
 
-int kbm_scheme_host_ctx(int menu_open) { return menu_open ? KBM_SC_PAUSE : KBM_SC_WORLD; }
-
 const char *kbm_scheme_scope_name(int scope) {
     if (scope < 0 || scope >= KBM_SC_COUNT) return "?";
     return g_scope_names[scope] ? g_scope_names[scope] : "?";
