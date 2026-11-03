@@ -957,7 +957,7 @@ static uint64_t g_flick_until;
 
 static void poll_merged(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx, int32_t *ry) {
     uint64_t b = 0;
-    uint64_t pad = 0;      // the gamepad's own bits: 0.3.1's host chords are read from these under the PC scheme
+    uint64_t pad_bits = 0; // the gamepad's own bits: the host chords are read from these under the PC scheme
     int32_t sl[2] = {0, 0}, sr[2] = {0, 0};
     int scheme = 0;
     plat_mutex_lock(&lock);
@@ -966,7 +966,7 @@ static void poll_merged(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx
         binds_refresh();
         if (state == 1) {
             pad_read(&b, sl, sr);
-            pad = b;
+            pad_bits = b;
         }
         if (ikb_foreground()) {
             frame_clock();
@@ -1027,7 +1027,7 @@ static void poll_merged(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx
                 pick(&sr[0], &sr[1], k[0], k[1]);
             }
             input_toggles(&key_bits, sl, menu_open);
-            b = pad | key_bits;
+            b = pad_bits | key_bits;
             // L is the ability wheel: the mouse then pushes a stick that stays (mouse_camera), not a velocity sample.
             mouse_camera(k, (int)((b >> B_ZR) & 1), (int)((b >> B_L) & 1));
             pick(&sr[0], &sr[1], k[0], k[1]);
@@ -1045,7 +1045,7 @@ static void poll_merged(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx
     int32_t st[4] = {sl[0], sl[1], sr[0], sr[1]};
     // 0.3.1's chords are its own keys' (Tab is Plus, M is Minus, Ctrl and V the stick clicks). The scheme's keyboard is
     // not that table -- M is the map and Esc the pause menu there -- so its keys never form them: the pad still does.
-    uint64_t chords = scheme ? pad : ~0ull;
+    uint64_t chords = scheme ? pad_bits : ~0ull;
     int toggle = input_menu_gate(&combo_held, menu_is_open(), &b, st, chords);
     static int overlay_held;   // L3+R3 step the performance overlay (F10)
     int overlay = input_overlay_gate(&overlay_held, &b, chords);

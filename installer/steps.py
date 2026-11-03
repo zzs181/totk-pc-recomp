@@ -961,13 +961,13 @@ class Prepare(Step):
                                   dest / f'romfs-patches-{size}', '--aspect', size])
             if code:
                 raise InstallError('prepare.romfs_patches_failed', code=code, log=str(log))
-        # The same with Xbox button icons in the prompts, for prompts = xbox (make_romfs_patches.py --prompts):
-        # romfs-patches-xbox for the Nintendo pad layout, romfs-patches-xbox-label for xbox and auto (runtime/input_map.c
-        # input_prompts_folder). Both are written on every install, so the menu choices work without another run of
-        # the setup. Optional: when one fails, the game keeps the Switch prompts with that layout and the menu says the
-        # files are missing, so the setup warns once and goes on.
+        # The same with other button icons in the prompts (make_romfs_patches.py --prompts): romfs-patches-xbox for the
+        # Nintendo pad layout, romfs-patches-xbox-label for xbox and auto (runtime/input_map.c input_prompts_folder), and
+        # romfs-patches-keyboard for prompts = keyboard. All three are written on every install, so the menu choices
+        # work without another run of the setup. Optional: when one fails, the game keeps the Switch prompts and the
+        # menu says the files are missing, so the setup warns once and goes on.
         failed = None
-        for style in ('xbox', 'xbox-label'):
+        for style, shown in (('xbox', 'Xbox'), ('xbox-label', 'Xbox (labels)'), ('keyboard', 'keyboard')):
             out = dest / f'romfs-patches-{style}'
             remove(out)
             code, log = run_tool(ctx, f'prepare-{style}', layout.tools / 'make_romfs_patches.py',
@@ -975,9 +975,9 @@ class Prepare(Step):
                                   '--prompts', style])
             if code:
                 remove(out)
-                failed = failed or (code, log)
+                failed = failed or (shown, code, log)
         if failed:
-            rep.warning('warn.xbox_prompts_failed', code=failed[0], log=str(failed[1]))
+            rep.warning('warn.prompts_failed', style=failed[0], code=failed[1], log=str(failed[2]))
 
         shader_list = layout.shader_list
         if not shader_list:

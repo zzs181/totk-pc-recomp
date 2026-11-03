@@ -1,9 +1,10 @@
 # The PC keyboard and mouse scheme
 
-> This patch applies on top of commit `7f38eb6` (PC controls and F1 rows). It includes the game-screen watcher
-> (`screen_watch.c`, 1.4.3) and the menu pointer (PR #605), but not the mouse gyro; the screen watcher selects the
-> game's menu/quick-menu/map/camera/scope contexts and AIM from ZR, while the player's stance (climb, air, glide, swim,
-> horse, vehicle) is still not read. The keyboard keycap prompt set is included (`prompts = keyboard`).
+> Branch state: the scheme, the game-screen watcher (`screen_watch.c`, 1.4.3), the menu pointer (PR #605), the mouse
+> gyro (`TOTK_MOUSE_MOTION_KEY`, `runtime/input.c`) and the keyboard keycap prompt set (`prompts = keyboard`) are in.
+> The watcher names the game's screen (title, saves, pause, map, quick menu, Autobuild, camera, scope, shop, recipe,
+> choice, dialogue, options, loading) and ZR selects `AIM`; the player's stance (climb, air, glide, swim, horse,
+> vehicle) is not read, so those rows still fall back to `GAMEPLAY`.
 
 
 A port of [Weeping of the Empire](https://github.com/daniel-madrid-07/weeping-of-the-empire)'s controls (MIT, v0.1.8.2):
@@ -32,8 +33,11 @@ the six-axis, the mouse camera, the walk scale of the flat table) is untouched.
 - The kinds `runtime/kbm_scheme.c` implements: `H` held, `P` press (70 ms), `T` tap or hold (250 ms, then the paired
   row is held), `M` macro, `O` menu operation, `E` claimed elsewhere, `X` no key here, `G` virtual key.
 - The walk row: `Alt` scales the left stick to 45 %, `KBM_WALK_SCALE`.
-- The contexts the host can tell on its own: `WORLD` (on foot) and `PAUSE` (while the F1 menu is open). The other 26
-  scopes with rows are in the table and are selected as soon as something pushes the context (next section).
+- The contexts the host can tell: the game's screen from `runtime/screen_watch.c` (`TITLE`, `SAVES`, `PAUSE`, `MAP`,
+  `QUICKMENU`, `CONSTRUCT`, `CAMERA`, `SCOPE`, `SHOP`, `RECIPE`, `CHOICE`, `DIALOGUE`, `OPTIONS`, `LOADING`, `MENUS`),
+  `AIM` from a held ZR, `PAUSE` for the F1 menu while it is open, and `WORLD` otherwise. The stance scopes (`CLIMB`,
+  `AIR`, `GLIDE`, `SWIM`, `HORSE`, `VEHICLE`) and `CUTSCENE`/`TRANSITION` are in the table but nothing reads the
+  player's state yet, so their rows fall back to `GAMEPLAY`.
 
 ## What is approximated, and how
 

@@ -308,13 +308,12 @@
 # menu_cursor_log = 0
 # The PC scheme (Weeping of the Empire's context table) in place of the flat table above: 0 off, 1 on. The Keyboard &
 # mouse tab (F1) edits every action's key, globally or per context, and the wheel switches materials while the throw
-# key is held. Off, the
-# Controls tab and the bind_ lines are the layout (docs/controls.md). On, the keyboard and the mouse follow
-# docs/kbm-port.md's table of (context, action) rows; the Controls tab and bind_ do nothing then, and the gamepad, its
-# layout, the mouse camera and every other input setting are unchanged. Live: the next poll switches and the log says
-# which path ran ("input: PC scheme on: 255 rows, 0 unknown keys, Esc is the game's menu key"). Esc is the game's pause
-# menu then, and in a menu one level back, as in the scheme's own rows; the settings menu is F1's and Esc no longer
-# releases the mouse cursor while this is on.
+# key is held. Off, the Controls tab and the bind_ lines are the layout (docs/controls.md). On, the keyboard and the
+# mouse follow docs/kbm-port.md's table of (context, action) rows; the Controls tab and bind_ do nothing then, and the
+# gamepad, its layout, the mouse camera and every other input setting are unchanged. Live: the next poll switches and
+# the log says which path ran ("input: PC scheme on: 255 rows, 0 unknown keys, Esc is the game's menu key"). Esc is the
+# game's pause menu in the world and its back row on the game's own screens (runtime/screen_watch.c); the settings menu
+# is F1's and Esc no longer releases the mouse cursor while this is on.
 # kbm_scheme = 0
 # The keyboard's sticks are all or nothing, so the game only sees a full tilt from them; while this key is held the
 # keyboard-driven stick values shrink and the keyboard can walk instead of run. Key names as in the bind_ lines below,
