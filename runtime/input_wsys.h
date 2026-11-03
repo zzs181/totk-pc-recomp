@@ -9,6 +9,7 @@ int ikb_down(int key);                        // key id (input_map.h KEY_*) held
 int ikb_escape(void);                         // Esc held (no key id: it belongs to the menu)
 int ikb_captured(void);                       // the cursor is captured for the mouse camera
 void ikb_mouse_take(int32_t *dx, int32_t *dy);   // raw mouse motion since the last call, in counts
+int ikb_wheel_take(void);                     // wheel notches since the last call: > 0 up, < 0 down, 0 none
 void ikb_cursor_update(void);                 // what input_cursor_allowed says may have changed
 void ikb_menu_closed(void);                   // the menu closed: a capture that Esc gave up comes back
 

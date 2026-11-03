@@ -250,6 +250,13 @@
 # rstick_deadzone = 8
 # Mouse camera sensitivity (0 to 10; 0 = no mouse camera and no cursor capture).
 # mouse_sens = 1
+# Mouse sensitivity while ZR (the bow) is held: 1 = unchanged, 0.1 to 3. 0.7-0.8 calms a drawn bow.
+# mouse_aim_scale = 1
+# The mouse as motion aim: off, aim (while ZR is held) or always. The mouse turns a virtual controller and the right
+# stick stays still while it is on; a gamepad with motion sensors keeps the six-axis.
+# mouse_gyro = off
+# Motion aim speed, 0.05 to 4.
+# mouse_gyro_speed = 1
 # The keyboard's sticks are all or nothing, so the game only sees a full tilt from them; while this key is held the
 # keyboard-driven stick values shrink and the keyboard can walk instead of run. Key names as in the bind_ lines below,
 # none turns it off. 0.2 to 0.9, the default holds for anything else. Only the keyboard is scaled: the mouse camera and
@@ -270,6 +277,7 @@
 #   key names: a-z 0-9 f2-f7 f9 f12 num0-num9 space tab enter backspace lshift rshift lctrl rctrl lalt capslock insert
 #   delete home end pageup pagedown up down left right num_add num_sub num_mul num_div num_decimal minus equals
 #   lbracket rbracket semicolon apostrophe comma period slash backslash grave mouse_l mouse_r mouse_m mouse_x1 mouse_x2
+#   mouse_wheel_up mouse_wheel_down (a notch becomes one short press, like a tap)
 # Defaults (pad_layout = nintendo): A = pad:east, key:E. B = pad:south, key:lshift. X = pad:north, key:space.
 # Y = pad:west, key:mouse_l. A pad that reports A/B and X/Y swapped (some GuliKit models): set pad_layout = xbox, or
 # swap them back here (keyboard keys stay):
@@ -277,6 +285,9 @@
 # bind_B = pad:east, key:lshift
 # bind_X = pad:west, key:space
 # bind_Y = pad:north, key:mouse_l
+# A wheel notch binds like a key; for example, D-pad up/down on the wheel:
+# bind_UP = key:2, key:mouse_wheel_up, pad:dpad_up
+# bind_DOWN = key:4, key:mouse_wheel_down, pad:dpad_down
 
 [mods]
 # Folder with the player's mods, one subfolder per mod (<name>/romfs, <name>/exefs, <name>/cheats). Default: mods next

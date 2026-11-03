@@ -57,7 +57,8 @@ static const char *const key_names[KEY_COUNT] = {   // each group starts at its 
     [KEY_NUM0] = "num0", "num1", "num2", "num3", "num4", "num5", "num6", "num7", "num8", "num9",
     [KEY_NUM_ADD] = "num_add", "num_sub", "num_mul", "num_div", "num_decimal",
     [KEY_MINUS] = "minus", "equals", "lbracket", "rbracket", "semicolon", "apostrophe", "comma", "period", "slash",
-    "backslash", "grave"};
+    "backslash", "grave",
+    [KEY_WHEEL_UP] = "mouse_wheel_up", "mouse_wheel_down"};
 
 const char *input_action_name(int action) { return action >= 0 && action < ACTION_COUNT ? action_names[action] : NULL; }
 const char *input_key_name(int key) { return key > KEY_NONE && key < KEY_COUNT ? key_names[key] : NULL; }

@@ -83,6 +83,7 @@ uint32_t input_key_char(int key) {
 
 // ---- mouse camera: raw motion accumulated by the window thread, one stick sample per presented frame
 static volatile LONG mouse_dx, mouse_dy;   // raw counts since the last frame sample
+static volatile LONG wheel_notches;        // wheel notches since the last poll
 static volatile LONG cur_captured;         // cursor hidden and confined to the client area
 static volatile LONG cur_active;           // WM_ACTIVATEAPP: the window's application is active
 // Bits: CUR_REL, Esc or activation by a click on the title bar or border: until a client click; CUR_ESC, set with CUR_REL
@@ -126,12 +127,37 @@ void input_cursor_suspend(int on) {
     cursor_update(gfx_window_handle());
 }
 
+// Windows can drop the cursor clip (another program, a display change, a remote session). While the mouse camera holds
+// the pointer, put the clip back and keep the pointer near the client centre: the camera reads relative motion, so a
+// pointer that drifts off the window only hurts the settings menu and multi-monitor safety.
+static DWORD WINAPI cursor_keeper(void *arg) {
+    (void)arg;
+    for (;;) {
+        Sleep(4);
+        if (!InterlockedCompareExchange(&cur_captured, 1, 1)) continue;
+        HWND h = gfx_window_handle();
+        if (!h || GetForegroundWindow() != h || IsIconic(h)) continue;
+        RECT r;
+        POINT tl = {0, 0};
+        if (!GetClientRect(h, &r) || !ClientToScreen(h, &tl)) continue;
+        RECT clip = {tl.x, tl.y, tl.x + r.right, tl.y + r.bottom}, cur;
+        if (!GetClipCursor(&cur) || cur.left != clip.left || cur.top != clip.top || cur.right != clip.right ||
+            cur.bottom != clip.bottom)
+            ClipCursor(&clip);
+        POINT p;
+        int cx = tl.x + r.right / 2, cy = tl.y + r.bottom / 2;
+        if (GetCursorPos(&p) && (abs(p.x - cx) > r.right / 4 || abs(p.y - cy) > r.bottom / 4)) SetCursorPos(cx, cy);
+    }
+    return 0;
+}
+
 // Window procedure hook (gfx_window_win.c calls it first). Returns 1 with *res set when the message is fully handled.
 int input_window_msg(HWND h, UINT m, WPARAM w, LPARAM l, LRESULT *res) {
     switch (m) {
     case WM_CREATE: {
         RAWINPUTDEVICE rid = {.usUsagePage = 1, .usUsage = 2, .dwFlags = 0, .hwndTarget = h};   // generic mouse
         if (!RegisterRawInputDevices(&rid, 1, sizeof rid)) rt_log("input: raw mouse registration failed (%lu)", GetLastError());
+        CreateThread(NULL, 0, cursor_keeper, NULL, 0, NULL);
         break;
     }
     case WM_INPUT: {
@@ -144,6 +170,12 @@ int input_window_msg(HWND h, UINT m, WPARAM w, LPARAM l, LRESULT *res) {
         }
         break;   // DefWindowProc must see WM_INPUT for cleanup
     }
+    case WM_MOUSEWHEEL:
+        if (cur_active) {
+            int notches = GET_WHEEL_DELTA_WPARAM(w) / WHEEL_DELTA;
+            if (notches) InterlockedAdd(&wheel_notches, notches);
+        }
+        break;   // not consumed: the settings menu's ImGui still gets it
     case WM_SETCURSOR:
         if (cur_captured && LOWORD(l) == HTCLIENT) { SetCursor(NULL); *res = TRUE; return 1; }
         break;
@@ -182,6 +214,8 @@ int input_window_msg(HWND h, UINT m, WPARAM w, LPARAM l, LRESULT *res) {
 }
 
 static int key_down(int vk) { return (GetAsyncKeyState(vk) & 0x8000) != 0; }
+
+int ikb_wheel_take(void) { return (int)InterlockedExchange(&wheel_notches, 0); }
 
 int input_flight_key(void) {
     HWND w = gfx_window_handle();

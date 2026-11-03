@@ -235,6 +235,73 @@ static float mouse_sens_get(void) {
     return mouse_sens;
 }
 
+// TOTK_MOUSE_AIM_SCALE: the mouse camera's sensitivity while ZR (the bow) is held, 1 = unchanged.
+static float mouse_aim_scale = -1;
+static unsigned mouse_aim_seen;
+static float mouse_aim_get(void) {
+    unsigned ver = cfg_version();
+    if (mouse_aim_scale >= 0 && ver == mouse_aim_seen) return mouse_aim_scale;
+    mouse_aim_seen = ver;
+    double v = cfg_double("TOTK_MOUSE_AIM_SCALE");
+    if (!(v > 0)) v = 1;
+    mouse_aim_scale = (float)(v < 0.1 ? 0.1 : v > 3 ? 3 : v);
+    return mouse_aim_scale;
+}
+
+// TOTK_MOUSE_GYRO: off, aim (while ZR is held) or always. The mouse turns a virtual controller and the right stick is
+// left alone while it is on; a gamepad with motion sensors keeps the six-axis (the mouse does not fight it).
+enum { MOUSE_GYRO_OFF, MOUSE_GYRO_AIM, MOUSE_GYRO_ALWAYS };
+static int mouse_gyro_mode(void) {
+    const char *e = cfg_get("TOTK_MOUSE_GYRO");
+    if (!e || !*e || !strcasecmp(e, "off") || !strcmp(e, "0")) return MOUSE_GYRO_OFF;
+    if (!strcasecmp(e, "always") || !strcmp(e, "2")) return MOUSE_GYRO_ALWAYS;
+    return MOUSE_GYRO_AIM;
+}
+static double mouse_gyro_speed_get(void) {
+    double v = cfg_double("TOTK_MOUSE_GYRO_SPEED");
+    if (!(v > 0)) v = 1;
+    return v < 0.05 ? 0.05 : v > 4 ? 4 : v;
+}
+static int real_imu_live(void) {
+    return pad && SDL_GamepadConnected(pad) && SDL_GamepadHasSensor(pad, SDL_SENSOR_GYRO) &&
+           SDL_GamepadHasSensor(pad, SDL_SENSOR_ACCEL);
+}
+// The mouse’s own orientation: R holds the reference axes in controller coordinates, as Weeping of the Empire does
+// (MIT). A count turns the virtual controller by 0.002 rad; gravity is fed with the gyro so motion_fusion's tilt
+// correction agrees and the aim does not drift.
+static double mg_R[3][3];
+static int mg_live;
+static uint64_t mg_last_ns;
+static void mouse_gyro_stop(void) {
+    if (!mg_live) return;
+    mg_live = 0;
+    rt_log("input: mouse gyro off");
+}
+static void mouse_gyro_feed(int32_t dx, int32_t dy) {
+    uint64_t now = plat_now_ns();
+    double dt = mg_live && now > mg_last_ns ? (double)(now - mg_last_ns) / 1e9 : 0.004;
+    if (!(dt > 0) || dt > 0.05) dt = 0.004;
+    mg_last_ns = now;
+    if (!mg_live) {
+        memset(mg_R, 0, sizeof mg_R);
+        mg_R[0][0] = mg_R[1][1] = mg_R[2][2] = 1;
+        mg_live = 1;
+        rt_log("input: mouse gyro on (%.3f rad/count)", 0.002 * mouse_gyro_speed_get() * mouse_sens_get());
+    }
+    double k = 0.002 * mouse_gyro_speed_get() * mouse_sens_get();
+    double w[3] = {-dy * k / dt, 0, -dx * k / dt};   // right = yaw right (-z), down = pitch down (-x)
+    for (int r = 0; r < 3; r++) {   // fixed reference axes seen from the turning controller
+        double *v = mg_R[r];
+        double cr[3] = {w[1] * v[2] - w[2] * v[1], w[2] * v[0] - w[0] * v[2], w[0] * v[1] - w[1] * v[0]};
+        for (int i = 0; i < 3; i++) v[i] -= cr[i] * dt;
+        double n = sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+        if (n > 0)
+            for (int i = 0; i < 3; i++) v[i] /= n;
+    }
+    double acc[3] = {-mg_R[2][0], -mg_R[2][1], -mg_R[2][2]};   // gravity, read as -up (face up: z = -1 g)
+    motion_feed(motion_global(), acc, w, now);
+}
+
 
 // ---- walk key: the keyboard's stick samples scaled down while a key is held (TOTK_WALK_KEY, TOTK_WALK_SCALE)
 // A keyboard key is all or nothing, so every keyboard-driven stick sample is +/-32767 and the game only ever sees a
@@ -286,12 +353,26 @@ static void walk_get(void) {
 // the camera speed factor the game runs with (camera_speed.c, cam_speed_applied), which multiplies every right-stick
 // turn rate, so TOTK_MOUSE_SENS alone sets the mouse's speed; below 1 the sample stays within the stick's range, so the
 // mouse's top speed drops with the factor.
-static void mouse_camera(int32_t out[2]) {
+static void mouse_camera(int32_t out[2], int aim) {
     static uint64_t frame = ~0ull, t0;
     static int32_t held[2];
     uint64_t now = plat_now_ns();
     int32_t dx, dy;
-    if (!ikb_captured()) {
+    int cap = ikb_captured();
+    int gyro = mouse_gyro_mode();
+    // The gyro path replaces the right-stick sample while it is on: the mouse turns the virtual controller instead of
+    // deflecting the stick, so the game's own motion aiming does the rest. A pad with sensors keeps the six-axis.
+    if (cap && gyro != MOUSE_GYRO_OFF && mouse_sens_get() > 0 && input_motion_enabled() &&
+        (gyro == MOUSE_GYRO_ALWAYS || aim) && !real_imu_live()) {
+        ikb_mouse_take(&dx, &dy);
+        mouse_gyro_feed(dx, dy);
+        held[0] = held[1] = 0;
+        frame = ~0ull;
+        out[0] = out[1] = 0;
+        return;
+    }
+    if (mg_live) mouse_gyro_stop();
+    if (!cap) {
         ikb_mouse_take(&dx, &dy);
         held[0] = held[1] = 0;
         frame = ~0ull;
@@ -301,7 +382,8 @@ static void mouse_camera(int32_t out[2]) {
         if (fr != frame) {
             double dt = age < 0.004 ? 0.004 : age > 0.1 ? 0.1 : age;
             ikb_mouse_take(&dx, &dy);
-            input_mouse_stick(dx, dy, dt, mouse_sens_get(), held);
+            float sens = mouse_sens_get() * (aim ? mouse_aim_get() : 1.0f);
+            input_mouse_stick(dx, dy, dt, sens, held);
             frame = fr;
             t0 = now;
         } else if (age > 0.1) {
@@ -520,7 +602,30 @@ static void poll_merged(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx
                 if (!cap || mouse_ignore[k]) down[k] = 0;
             }
             was_captured = cap;
-            b |= input_map_buttons(down);
+            // A wheel notch is an event, not a held key: each notch becomes a short press (two polls). Not while the
+            // menu is open: the bind capture and ImGui read it there.
+            int wheel = menu_is_open() ? 0 : ikb_wheel_take();
+            if (!cap) wheel = 0;
+            static int wheel_hold[2];
+            if (wheel > 0) wheel_hold[0] = 2;
+            else if (wheel < 0) wheel_hold[1] = 2;
+            if (wheel_hold[0]) down[KEY_WHEEL_UP] = 1, wheel_hold[0]--;
+            if (wheel_hold[1]) down[KEY_WHEEL_DOWN] = 1, wheel_hold[1]--;
+            uint64_t kb = input_map_buttons(down);
+            // The game samples Npad slower than the window presents: a key or mouse button released between two
+            // samples keeps its bit for two more polls, so a quick tap is never lost at high frame rates.
+            static uint64_t kb_prev;
+            static uint8_t kb_pulse[16];
+            uint64_t released = kb_prev & ~kb;
+            for (int i = 0; i < 16; i++)
+                if (released & (1ull << i)) kb_pulse[i] = 2;
+            kb_prev = kb;
+            for (int i = 0; i < 16; i++)
+                if (kb_pulse[i]) {
+                    kb |= 1ull << i;
+                    kb_pulse[i]--;
+                }
+            b |= kb;
             int32_t k[2];
             walk_get();
             int walk = walk_key != KEY_NONE && down[walk_key];
@@ -530,8 +635,10 @@ static void poll_merged(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx
             input_map_stick(down, 1, k);
             if (walk) k[0] = (int32_t)(k[0] * walk_scale), k[1] = (int32_t)(k[1] * walk_scale);
             pick(&sr[0], &sr[1], k[0], k[1]);
-            mouse_camera(k);
+            mouse_camera(k, (int)((b >> B_ZR) & 1));
             pick(&sr[0], &sr[1], k[0], k[1]);
+        } else {
+            ikb_wheel_take();   // not queued while the window is behind others
         }
     }
     script_apply(&b, sl, sr);
@@ -572,6 +679,7 @@ void input_block(int on) {
 void input_menu(int open) {
     plat_xchg32(&g_menu, open ? 1 : 2);
     if (!open) ikb_menu_closed();   // the capture before Esc comes back
+    ikb_wheel_take();               // notches while the menu was open belong to it, not the game
     ikb_cursor_update();
 }
 
@@ -641,6 +749,8 @@ int input_capture(int reset, int *id) {
     int fg = ikb_foreground();
     for (int i = 1; i < KEY_COUNT; i++) k[i] = fg && ikb_down(i);
     int esc = fg && ikb_escape();
+    int wheel = ikb_wheel_take();   // a notch is an event, not a held key
+    if (!fg) wheel = 0;
     plat_mutex_lock(&lock);
     if (!state) start();
     if (state == 1) pad_physical(p);
@@ -648,6 +758,7 @@ int input_capture(int reset, int *id) {
     int got = INPUT_CAPTURE_NONE;
     if (!reset) {
         if (esc && !prev_esc) got = INPUT_CAPTURE_CANCEL;
+        if (!got && wheel) got = INPUT_CAPTURE_KEY, *id = wheel > 0 ? KEY_WHEEL_UP : KEY_WHEEL_DOWN;
         for (int i = 1; i < KEY_COUNT && !got; i++)
             if (k[i] && !prev_k[i]) got = INPUT_CAPTURE_KEY, *id = i;
         for (int i = 1; i < PAD_COUNT && !got; i++)
