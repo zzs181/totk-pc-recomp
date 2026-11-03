@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include "kbm_scheme.h"
+#include "cfg.h"
 #include "input_map.h"
 
 // ---- the vocabulary of the tables -------------------------------------------------------------
@@ -166,6 +167,18 @@ static int16_t g_active[KBM_SC_COUNT][KBM_ACTIONS_MAX];   // (scope, action) -> 
 
 static uint64_t g_pulse[KBM_ROWS_MAX];         // a P / O / M / tap row's bits run until this ms
 static uint32_t g_pulse_bits[KBM_ROWS_MAX];
+
+// TOTK_KBM_PULSE_MS: how long those bits stay pressed; 0 keeps them for the frame of the press only.
+static uint32_t pulse_ms(void) {
+    int ms = cfg_int("TOTK_KBM_PULSE_MS");
+    return ms < 0 ? 0 : ms > 200 ? 200 : (uint32_t)ms;
+}
+
+static void pulse_row(int r, uint32_t bits, uint64_t now_ms, uint32_t *out) {
+    uint32_t ms = pulse_ms();
+    if (ms) g_pulse[r] = now_ms + ms, g_pulse_bits[r] = bits;
+    else *out |= bits;
+}
 static uint64_t g_press[KBM_ROWS_MAX];         // a 'T' row's press
 static uint8_t g_hold[KBM_ROWS_MAX];           // ... and its held row is in effect
 static uint8_t g_was[KBM_ROWS_MAX];
@@ -278,6 +291,8 @@ static int key_from_name(const char *s, size_t n) {
 // "Esc, Mouse Right" -> the keys the game sees, in order; the first is the prompt's glyph.
 static void parse_keys(KbmRow *row) {
     const char *override = keys_for(row->action);
+    // TOTK_KBM_MATERIALS_KEY: the material action's key, for G + a key that is easier to reach than C.
+    if (!override && !strcmp(row->action, "materials")) override = cfg_value("TOTK_KBM_MATERIALS_KEY");
     const char *p = override ? override : row->keys;
     row->nkeys = 0;
     while (*p && row->nkeys < 4) {
@@ -436,18 +451,17 @@ void kbm_scheme_frame(const uint8_t down[KEY_COUNT], uint64_t now_ms, uint64_t *
             if (row->arg > 0 && row->arg < MAC_COUNT && g_macro_hold[row->arg]) {
                 if (held) out |= row->out;
             } else if (held && !was && row->out) {
-                g_pulse[r] = now_ms + KBM_PULSE_MS;
-                g_pulse_bits[r] = row->out;
+                pulse_row(r, row->out, now_ms, &out);
             }
             break;
         }
         case 'P':
-            if (held && !was && row->out) { g_pulse[r] = now_ms + KBM_PULSE_MS; g_pulse_bits[r] = row->out; }
+            if (held && !was && row->out) pulse_row(r, row->out, now_ms, &out);
             break;
         case 'O': {
             if (!held || was) break;
             uint32_t bits = op_bits(row);
-            if (bits) { g_pulse[r] = now_ms + KBM_PULSE_MS; g_pulse_bits[r] = bits; }
+            if (bits) pulse_row(r, bits, now_ms, &out);
             break;
         }
         case 'T':
@@ -462,7 +476,7 @@ void kbm_scheme_frame(const uint8_t down[KEY_COUNT], uint64_t now_ms, uint64_t *
                 if (!g_hold[r] && now_ms - g_press[r] < KBM_TAP_MS) {
                     uint32_t bits = row->out;
                     if (!bits && row->pair >= 0) bits = g_rows[row->pair].out;
-                    if (bits) { g_pulse[r] = now_ms + KBM_PULSE_MS; g_pulse_bits[r] = bits; }
+                    if (bits) pulse_row(r, bits, now_ms, &out);
                 }
                 g_hold[r] = 0;
             }

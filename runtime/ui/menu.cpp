@@ -827,6 +827,12 @@ static void tab_controls(float scale) {
                !restart && !strcmp(note, menu_text(UI_MENU_PROMPTS_CURRENT)));
     bool ask = restart && opt_button("##restart", UI_MENU_RESTART, UI_MENU_RESTART_DESC);
     opt_toggle("TOTK_KBM_SCHEME", UI_MENU_KBM_SCHEME, UI_MENU_KBM_SCHEME_DESC);
+    static const char *const mat_values[] = {"c", "z", "b", "n"};
+    static const char *const mat_names[] = {"C", "Z", "B", "N"};
+    opt_choice_list("TOTK_KBM_MATERIALS_KEY", UI_MENU_KBM_MATERIALS_KEY, mat_values, mat_names, 4,
+                    UI_MENU_KBM_MATERIALS_KEY_DESC);
+    opt_slider("TOTK_KBM_PULSE_MS", UI_MENU_KBM_PULSE, 0, 200, UI_MENU_KBM_PULSE_DESC, 10, "%.0f ms");
+    opt_slider("TOTK_WHEEL_STEP_MS", UI_MENU_WHEEL_STEP, 0, 200, UI_MENU_WHEEL_STEP_DESC, 10, "%.0f ms");
     opt_toggle("TOTK_MOTION", UI_MENU_MOTION, UI_MENU_MOTION_DESC);
     opt_slider("TOTK_RUMBLE_STRENGTH", UI_MENU_RUMBLE_STRENGTH, 0, 300, UI_MENU_RUMBLE_STRENGTH_DESC, 10, "%.0f %%");
     opt_slider("TOTK_RUMBLE_CURVE", UI_MENU_RUMBLE_CURVE, 0.2f, 1.5f, UI_MENU_RUMBLE_CURVE_DESC, 0.05f, "%.2f");
@@ -859,6 +865,7 @@ static void tab_controls(float scale) {
     opt_toggle("TOTK_SPRINT_TOGGLE", UI_MENU_SPRINT_TOGGLE, UI_MENU_SPRINT_TOGGLE_DESC);
     opt_toggle("TOTK_LOCK_TOGGLE", UI_MENU_LOCK_TOGGLE, UI_MENU_LOCK_TOGGLE_DESC);
     opt_toggle("TOTK_KEYSNAP", UI_MENU_KEYSNAP, UI_MENU_KEYSNAP_DESC);
+    opt_slider("TOTK_MOUSE_FLOOD", UI_MENU_MOUSE_FLOOD, 0, 100, UI_MENU_MOUSE_FLOOD_DESC, 1, "%.0f");
     binds_rows(scale);
     opt_end();
     binds_after_page();

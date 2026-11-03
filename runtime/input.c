@@ -886,8 +886,13 @@ static void input_toggles(uint64_t *keys, const int32_t sl[2], int menu_open) {
 // A wheel notch is an event, not a held key. Upstream holds it for 70 ms and then rests as long, one notch at a time,
 // so the game's own sampling sees separate steps and a quick scroll queues instead of merging into one press
 // (hle_hid.cpp, wheel_read). Two polls were too short for that: a notch at 144 fps lasted 14 ms, under one sample of a
-// 30 Hz menu, and two notches in one poll collapsed into one step.
-enum { WHEEL_STEP_MS = 70, WHEEL_QUEUE_MAX = 8 };
+// 30 Hz menu, and two notches in one poll collapsed into one step. TOTK_WHEEL_STEP_MS; 0 keeps a notch for one poll.
+enum { WHEEL_QUEUE_MAX = 8 };
+
+static uint32_t wheel_step_ms(void) {
+    int ms = cfg_int("TOTK_WHEEL_STEP_MS");
+    return ms < 0 ? 0 : ms > 200 ? 200 : (uint32_t)ms;
+}
 static struct {
     int up, down;      // notches waiting, by direction
     int dir;           // +1 up, -1 down: the notch being played
@@ -897,7 +902,7 @@ static struct {
 
 static void wheel_flush(void) { g_wheel.up = g_wheel.down = 0, g_wheel.phase = 0; }
 
-// The key this poll holds for the wheel: one notch of the queue at a time, WHEEL_STEP_MS down and WHEEL_STEP_MS up.
+// The key this poll holds for the wheel: one notch of the queue at a time, wheel_step_ms() down and as long up.
 // The menu's ImGui and the bind capture take the notches themselves, so the queue is dropped while either reads it.
 static void wheel_keys(int notches, int menu_open, int captured, uint8_t down[KEY_COUNT]) {
     if (menu_open || !captured) {
@@ -914,10 +919,11 @@ static void wheel_keys(int notches, int menu_open, int captured, uint8_t down[KE
         g_wheel.phase = 1;
         g_wheel.at = now;
     }
+    uint32_t step = wheel_step_ms();
     if (g_wheel.phase == 1) {
         down[g_wheel.dir > 0 ? KEY_WHEEL_UP : KEY_WHEEL_DOWN] = 1;
-        if (now - g_wheel.at >= WHEEL_STEP_MS) g_wheel.phase = 2, g_wheel.at = now;
-    } else if (g_wheel.phase == 2 && now - g_wheel.at >= WHEEL_STEP_MS) {
+        if (now - g_wheel.at >= step) g_wheel.phase = 2, g_wheel.at = now;
+    } else if (g_wheel.phase == 2 && now - g_wheel.at >= step) {
         g_wheel.phase = 0;
     }
 }

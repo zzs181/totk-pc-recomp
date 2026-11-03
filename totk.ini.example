@@ -269,18 +269,27 @@
 # Keep a released movement key held this many milliseconds (0 to 1000; 0 off), so a quick tap does not break walking
 # at high frame rates.
 # key_min_hold_ms = 150
+# How long a press-triggered PC-scheme action keeps its pad bits, in milliseconds (0 to 200; 0 keeps them for the frame
+# of the press only).
+# kbm_pulse_ms = 70
+# The press and the rest of each wheel notch, in milliseconds (0 to 200; 0 keeps a notch for one poll).
+# wheel_step_ms = 70
+# The PC scheme's key for the material action: c, z, b or n (default c). The throw key is held at the same time, so Z,
+# B or N is easier to reach than C.
+# kbm_materials_key = c
 # Tap the run key to keep running (it ends 300 ms after movement stops or on the next tap), and tap the shield/lock key
 # to keep it held until the next tap. The gamepad's own buttons are never latched.
 # sprint_toggle = 0
 # lock_toggle = 0
 # Read the keyboard from the window's messages instead of polling every key every poll (0 uses the old polling).
 # keysnap = 1
-# Troubleshooting: log the mouse camera's raw counts and stick every N ms; add N synthetic counts per poll to stress the
-# input path. Both are off when unset (camlog in ms, mouse_flood in counts).
+# Log the mouse camera's raw counts and stick every N ms; add N extra mouse counts per presented frame to stress a
+# high-report-rate mouse and the input path. Both are off when unset (camlog in ms, mouse_flood in counts).
 # camlog = 250
 # mouse_flood = 0
 # Override the PC scheme's keys by action, in every context: action=key,key|action=key (the keys are the names in the
-# bind_ lines, e.g. attack, bow_toggle, jump, interact). Empty keeps the upstream table.
+# bind_ lines, e.g. attack, bow_toggle, jump, interact). Empty keeps the upstream table; kbm_materials_key applies
+# unless this line gives materials its own key.
 # kbm_binds = attack=Mouse Left|bow_toggle=F|jump=Space
 # The PC scheme (Weeping of the Empire's context table) in place of the flat table above: 0 off, 1 on. Off, the
 # Controls tab and the bind_ lines are the layout (docs/controls.md). On, the keyboard and the mouse follow

@@ -254,6 +254,18 @@ static const char *const text_en[UI_TEXT_COUNT] = {
                                 "below. The Controls page does not edit the scheme; kbm_binds in totk.ini overrides its "
                                 "keys. With keyboard button prompts the keycaps show the scheme's keys whether this is "
                                 "on or off.",
+    [UI_MENU_KBM_MATERIALS_KEY] = "Material key",
+    [UI_MENU_KBM_MATERIALS_KEY_DESC] = "The scheme's key for the material action (C at first). Z, B or N is easier to "
+                                       "reach with the throw key held; it changes the scheme at once.",
+    [UI_MENU_KBM_PULSE] = "Tap pulse",
+    [UI_MENU_KBM_PULSE_DESC] = "How long a press-triggered action keeps its pad bits (the scheme's P, O, M and tap "
+                               "rows). 0 keeps them for the frame of the press only.",
+    [UI_MENU_WHEEL_STEP] = "Wheel step",
+    [UI_MENU_WHEEL_STEP_DESC] = "The press and the rest of each wheel notch, in milliseconds. 0 holds a notch for "
+                                "one poll only.",
+    [UI_MENU_MOUSE_FLOOD] = "Mouse count injection",
+    [UI_MENU_MOUSE_FLOOD_DESC] = "Extra mouse counts per presented frame, for stress-testing a high-report-rate "
+                                 "mouse and the input path. 0 is off.",
     [UI_MENU_KEY_MIN_HOLD] = "Movement key hold",
     [UI_MENU_KEY_MIN_HOLD_DESC] = "Keep a released movement key held this long (ms), so a quick tap does not break "
                                   "walking at high frame rates. 0 turns it off.",
@@ -711,6 +723,18 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
                                 "ниже. Вкладка «Управление» не меняет схему; kbm_binds в totk.ini переопределяет её "
                                 "клавиши. При подсказках-клавиатуре кейкапы показывают клавиши схемы независимо от "
                                 "того, включена она или нет.",
+    [UI_MENU_KBM_MATERIALS_KEY] = "Клавиша материалов",
+    [UI_MENU_KBM_MATERIALS_KEY_DESC] = "Клавиша действия «материалы» в схеме (сначала C). Z, B или N удобнее "
+                                       "нажимать, удерживая клавишу броска; схема меняется сразу.",
+    [UI_MENU_KBM_PULSE] = "Импульс нажатия",
+    [UI_MENU_KBM_PULSE_DESC] = "Сколько держатся биты действия, запущенного нажатием (строки P, O, M и tap схемы). "
+                               "0 — только кадр нажатия.",
+    [UI_MENU_WHEEL_STEP] = "Шаг колеса",
+    [UI_MENU_WHEEL_STEP_DESC] = "Нажатие и пауза каждого щелчка колеса, в миллисекундах. 0 — щелчок держится один "
+                                "опрос.",
+    [UI_MENU_MOUSE_FLOOD] = "Инъекция отсчётов мыши",
+    [UI_MENU_MOUSE_FLOOD_DESC] = "Лишние отсчёты мыши за кадр для проверки мыши с высокой частотой опроса и пути "
+                                 "ввода. 0 — выкл.",
     [UI_MENU_KEY_MIN_HOLD] = "Удержание клавиш движения",
     [UI_MENU_KEY_MIN_HOLD_DESC] = "Сколько миллисекунд отпущенная клавиша движения ещё считается нажатой, чтобы "
                                   "быстрое нажатие не рвало ходьбу при высокой частоте кадров. 0 — выкл.",
@@ -1094,6 +1118,19 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
                                 "planas abaixo. A aba Controles não edita o esquema; kbm_binds no totk.ini substitui "
                                 "suas teclas. Com os ícones de teclado, os keycaps mostram as teclas do esquema esteja "
                                 "ele ligado ou desligado.",
+    [UI_MENU_KBM_MATERIALS_KEY] = "Tecla de materiais",
+    [UI_MENU_KBM_MATERIALS_KEY_DESC] = "A tecla do esquema para a ação de materiais (C no início). Z, B ou N é mais "
+                                       "fácil de alcançar com a tecla de arremesso pressionada; o esquema muda na "
+                                       "hora.",
+    [UI_MENU_KBM_PULSE] = "Pulso do toque",
+    [UI_MENU_KBM_PULSE_DESC] = "Quanto tempo uma ação disparada por um toque mantém os bits do controle (as linhas P, "
+                               "O, M e tap do esquema). 0 mantém só o quadro do toque.",
+    [UI_MENU_WHEEL_STEP] = "Passo da roda",
+    [UI_MENU_WHEEL_STEP_DESC] = "O toque e a pausa de cada entalhe da roda, em milissegundos. 0 mantém o entalhe por "
+                                "uma única consulta.",
+    [UI_MENU_MOUSE_FLOOD] = "Injeção de contagem do mouse",
+    [UI_MENU_MOUSE_FLOOD_DESC] = "Contagens extras de mouse por quadro, para testar um mouse de alta taxa de "
+                                 "relatório e o caminho de entrada. 0 desliga.",
     [UI_MENU_KEY_MIN_HOLD] = "Retenção das teclas de movimento",
     [UI_MENU_KEY_MIN_HOLD_DESC] = "Mantém uma tecla de movimento solta pressionada por este tempo (ms), para que um "
                                   "toque rápido não quebre a caminhada em alta taxa de quadros. 0 desliga.",
@@ -1621,6 +1658,16 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
     [UI_MENU_KBM_SCHEME_DESC] = "按上下文表路由键盘和鼠标。关闭时使用下方的扁平键位。"
                                 "“操作”页不修改方案键位；totk.ini 的 kbm_binds 可覆盖方案按键。"
                                 "按键提示为“键盘”时，键帽始终显示方案键位；关闭本项只改变实际按键，不改变键帽。",
+    [UI_MENU_KBM_MATERIALS_KEY] = "换材料键",
+    [UI_MENU_KBM_MATERIALS_KEY_DESC] = "方案里“材料”动作的键（默认 C）。按住投掷键时，Z、B 或 N 更好按；"
+                                       "改动对方案立即生效。",
+    [UI_MENU_KBM_PULSE] = "点按脉冲",
+    [UI_MENU_KBM_PULSE_DESC] = "按键触发的动作保持手柄位的时长（方案里的 P、O、M 和 tap 行）。"
+                               "0 = 只在按下那一帧输出。",
+    [UI_MENU_WHEEL_STEP] = "滚轮节拍",
+    [UI_MENU_WHEEL_STEP_DESC] = "滚轮每格的按下与停顿毫秒数。0 = 每格只保持一次轮询（最小）。",
+    [UI_MENU_MOUSE_FLOOD] = "鼠标计数注入",
+    [UI_MENU_MOUSE_FLOOD_DESC] = "每帧额外注入的鼠标计数，用于高回报率鼠标与输入路径压测。0 = 关。",
     [UI_MENU_KEY_MIN_HOLD] = "移动键保持",
     [UI_MENU_KEY_MIN_HOLD_DESC] = "移动键松开后仍保持按下的毫秒数，避免高帧率下快速点按导致走路断续。"
                                   "0 表示关闭。",

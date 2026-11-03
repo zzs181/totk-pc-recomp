@@ -64,7 +64,7 @@ The prompts are part of the game's fonts, textures and messages, so they follow 
 The game reads its UI archive and fonts once at boot, so the prompts change at the next start, also after `pad_layout` changes between `nintendo` and the others (the menu's *Button prompts* row shows *in effect* when the loaded set matches the settings and *changes after restart* while it does not); the buttons change at once. Under that note the menu offers *Restart now*: after a confirmation it writes `totk.ini`, closes the game as *Quit game* does and starts the game again with the same command line, which waits until the old process is gone before it opens the log and the saves (`runtime/gfx_present.c`, `gfx_window_closed`; `plat_restart` and `plat_restart_wait` in `runtime/platform/win32.c` and `linux.c`). Progress since the last save is lost, as with *Quit game*; while the game writes a save, the confirmation waits. With `prompts = xbox` the game loads `romfs-patches-xbox` (`pad_layout = nintendo`) or `romfs-patches-xbox-label` (`xbox`, `auto`) next to `romfs-index.bin` in place of `romfs-patches` (`runtime/romfs.c`, `overlay_init`; `runtime/input_map.c`, `input_prompts_folder`): the same 60 fps patches, with the prompts drawn from the game's own files by `tools/make_romfs_patches.py --prompts xbox` or `--prompts xbox-label` (`tools/button_icons.py`, after MacNativeGames' `make_button_icons.py`), which the setup runs next to the plain one:
 
 - every prompt but the button guide in play is text in the button font, `scft/External.bfotf` in each `Font/Font*.Nin_NX_NVN.bfarc.zs`: glyphs U+E040 to U+E043 (A B X Y), U+E044 to U+E047 (L R ZL ZR), U+E04B and U+E04C (Plus, Minus), U+E049 and U+E060 to U+E065 (the d-pad). fontTools writes the font again, so the archives grow and the folder also carries the resource size table (`System/Resource/ResourceSizeTable.Product.<n>...rsizetable.zs`) with their entries raised by as much; without that the game stops at start.
-- the button guide in play draws L and ZL from the images `Nt_KeyTexL_00` and `Nt_KeyTexZL_00` of the Common archive's `timg/__Combined.bntx`, painted with the same icons. The action prompt draws its button from `Nt_KeyTexA/B/X/Y_00`, whose image data is swapped for `nintendo`, and the diamond's letters are text the game takes from `LayoutMsg/DoCommand_00.msbt` of each language's `Mals` archive (and the layout's own text panes behind it), swapped the same way.
+- the button guide in play draws L and ZL from the images `Nt_KeyTexL_00` and `Nt_KeyTexZL_00` of the Common archive's `timg/__Combined.bntx`, painted with the same icons. The action prompt draws its button from `Nt_KeyTexA/B/X/Y_00`, whose image data is swapped for `nintendo`, and the diamond's letters are text the game takes from `LayoutMsg/DoCommand_00.msbt` of each language's `Mals` archive (and the layout's own text panes behind it), swapped the same way. For `keyboard`, those four images are painted with the E, Shift, Space and left-mouse keycaps, and the one-letter diamond panes become `E`, `S`, `_` and `L`: the layout's `Normal_00` font has no keycap glyphs, so the three letters stay text.
 
 The Switch prompts stay, with a note under *Button prompts* and a `RomFS overlay: ...` line in the log, when the folder is missing (an install made by an older setup, or one where the setup could not prepare it and showed a warning; running the setup again on the install folder writes it), when it fails its check, with a game resolution of another shape than 16:9 (its own UI layout wins; 16:10 and 21:9), and when the `romfs_mods` folder replaces one of its files: `romfs-patches` then loads in its place, where two overlays replacing one file would stop the game. In a source build, `.venv-py314\Scripts\python tools\make_romfs_patches.py --version <ver> --prompts xbox` (and `--prompts xbox-label`) writes `build\<ver>\romfs-patches-xbox` (`-label`); it needs fontTools from `tools/requirements-py314.txt`. `--xbox-prompts` is the older name of `--prompts xbox`.
 
@@ -134,10 +134,19 @@ A gamepad with motion sensors keeps its own six-axis, so the key does nothing th
 ## Keyboard hold, toggles and keyboard snapshot
 
 `TOTK_KEY_MIN_HOLD_MS` (0 to 1000, default 150; 0 off) keeps a released movement key held for that long, so a quick tap
-does not break walking at high frame rates. `TOTK_SPRINT_TOGGLE=1` taps the run key to keep running (it ends 300 ms
-after movement stops or on the next tap), and `TOTK_LOCK_TOGGLE=1` taps the shield/lock key to keep it held until the
-next tap; the gamepad's own buttons are never latched. `TOTK_KEYSNAP=1` (default) reads the keyboard from the window's
-messages instead of polling every key every poll; `0` is the old polling path. All four are on the Controls tab.
+does not break walking at high frame rates. `TOTK_KBM_PULSE_MS` (0 to 200, default 70) is how long a press-triggered PC
+scheme action keeps its pad bits (`0` keeps them for the frame of the press only). `TOTK_WHEEL_STEP_MS` (0 to 200,
+default 70) is the press and the rest of each wheel notch (`0` keeps a notch for one poll). `TOTK_SPRINT_TOGGLE=1` taps
+the run key to keep running (it ends 300 ms after movement stops or on the next tap), and `TOTK_LOCK_TOGGLE=1` taps the
+shield/lock key to keep it held until the next tap; the gamepad's own buttons are never latched.
+`TOTK_KEYSNAP=1` (default) reads the keyboard from the window's messages instead of polling every key every poll; `0` is
+the old polling path. `TOTK_MOUSE_FLOOD` (0 to 100, default 0) adds that many mouse counts per presented frame, a
+stress test for a high-report-rate mouse and the input path. `TOTK_KBM_MATERIALS_KEY` (c, z, b or n; default c) is the
+PC scheme's material key, held with the throw key. All are on the Controls tab.
+
+The strips 1, 2 and 3 are the pad's own D-pad quick selects (weapons, shields, bows). While the bow is drawn the
+game's D-pad means bow and arrow switching instead, so put the bow away (tap `F`) before walking the strips. The
+scheme has `AIM` rows for that state, but the port has no player-stance hook yet, so it keeps the on-foot rows.
 
 ## Nintendo Switch 2 controllers
 

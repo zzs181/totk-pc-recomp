@@ -149,7 +149,8 @@ def bntx_swap(data, base, pairs):
 
 def bflyt_letters(data, base, end, swap):
     """Swap the text of the one-letter text panes T_<letter>_<n> (A, B, X or Y) in the BFLYT at data[base:end] by
-    swap (letter -> letter); the names of the panes changed. Same length (one UTF-16 letter and its terminator)."""
+    swap (letter -> letter or code point); the names of the panes changed. Same length (one UTF-16 letter and its
+    terminator)."""
     assert data[base:base + 4] == b'FLYT'
     pos, changed = base + struct.unpack_from('<H', data, base + 6)[0], []
     while pos + 8 <= end:
@@ -160,7 +161,8 @@ def bflyt_letters(data, base, end, swap):
             at = pos + struct.unpack_from('<I', data, pos + 0x64)[0]
             letter = data[at:at + 2].decode('utf-16-le') if length == 4 and at > pos else ''
             if letter in swap and re.fullmatch(r'T_[ABXY]_\d+', name):
-                data[at:at + 2] = swap[letter].encode('utf-16-le')
+                new = swap[letter]
+                data[at:at + 2] = new.to_bytes(2, 'little') if isinstance(new, int) else new.encode('utf-16-le')
                 changed.append(name)
         if not size:
             break
@@ -170,8 +172,8 @@ def bflyt_letters(data, base, end, swap):
 
 def msbt_letters(data, swap):
     """Swap the one-letter messages labelled T_<letter>_<n> (A, B, X or Y) in the UTF-16 MSBT data (a bytearray) by
-    swap; the labels changed. The game sets a layout's text panes from the messages of the same name in
-    Mals/<language>/LayoutMsg/<layout>.msbt, over the text stored in the layout."""
+    swap (letter -> letter or code point); the labels changed. The game sets a layout's text panes from the messages of
+    the same name in Mals/<language>/LayoutMsg/<layout>.msbt, over the text stored in the layout."""
     assert data[:8] == b'MsgStdBn' and data[0x0c] == 1, 'not a UTF-16 MSBT'
     sections, pos = {}, 0x20
     for _ in range(struct.unpack_from('<H', data, 0x0e)[0]):
@@ -193,7 +195,8 @@ def msbt_letters(data, swap):
         at, length = base + offsets[i], offsets[i + 1] - offsets[i]
         letter = data[at:at + 2].decode('utf-16-le') if length == 4 else ''
         if letter in swap and re.fullmatch(r'T_[ABXY]_\d+', labels.get(i, '')):
-            data[at:at + 2] = swap[letter].encode('utf-16-le')
+            new = swap[letter]
+            data[at:at + 2] = new.to_bytes(2, 'little') if isinstance(new, int) else new.encode('utf-16-le')
             changed.append(labels[i])
     return changed
 
@@ -236,9 +239,10 @@ LAYOUT_MSG = 'LayoutMsg/DoCommand_00.msbt'
 RESTBL = max((p for p in files if p.startswith('System/Resource/ResourceSizeTable.') and p.endswith('.rsizetable.zs')),
              key=lambda p: int((re.search(r'\.(\d+)\.', p) or [0, 0])[1]), default=None)
 by_position = args.prompts == 'xbox'   # the face buttons' prompts swapped to the labels (pad_layout = nintendo)
+keyboard = args.prompts == 'keyboard'  # the face buttons' prompts and letters drawn as keycaps
 if args.prompts:
     assert FONTS, 'no Font/Font*.Nin_NX_NVN.bfarc.zs in the RomFS'
-    assert MALS or not by_position, 'no Mals/<language>.Product.<version>.sarc.zs in the RomFS'
+    assert MALS, 'no Mals/<language>.Product.<version>.sarc.zs in the RomFS'
     assert RESTBL, 'no System/Resource/ResourceSizeTable.Product.<n>...rsizetable.zs in the RomFS'
     spec = importlib.util.spec_from_file_location('button_icons', Path(__file__).with_name('button_icons.py'))
     icons = importlib.util.module_from_spec(spec)
@@ -257,7 +261,7 @@ with (args.romfs / 'romfs.bin').open('rb') as image:
     for name, (lo, hi) in sarc_members(pack).items():
         d = zstd.ZstdDict(pack[lo:hi])
         dictionaries[d.dict_id] = d
-    prompt_files = (FONTS + (MALS if by_position else []) + [RESTBL]) if args.prompts else []
+    prompt_files = (FONTS + (MALS if args.prompts else []) + [RESTBL]) if args.prompts else []
     originals = {path: read(path) for path in [ARCHIVE] + prompt_files}
 raw = originals[ARCHIVE]
 info = zstd.get_frame_info(raw)
@@ -309,15 +313,20 @@ if args.prompts:
         drawn = icons.xbox_icons(glyphs)
     bntx = members['timg/__Combined.bntx'][0]
     letters = {}
-    if by_position:
-        bntx_swap(blarc, bntx, KEY_TEXTURES)
+    letter_map = KEY_LETTERS if by_position else icons.FACE_LETTERS
+    if by_position or keyboard:
+        if by_position:
+            bntx_swap(blarc, bntx, KEY_TEXTURES)
         for member, (lo, hi) in members.items():
             if member.endswith('.bflyt'):
-                changed = bflyt_letters(blarc, lo, hi, KEY_LETTERS)
+                changed = bflyt_letters(blarc, lo, hi, letter_map)
                 if changed:
                     letters[member] = changed
         assert 'blyt/DoCommand_00.bflyt' in letters, 'no letter panes in blyt/DoCommand_00.bflyt'
-    hud = icons.bntx_redraw(blarc, bntx, icons.HUD_TEXTURES, drawn)
+    textures = dict(icons.HUD_TEXTURES)
+    if keyboard:
+        textures.update(icons.FACE_TEXTURES)   # the action prompt's round A/B/X/Y become keycaps too
+    hud = icons.bntx_redraw(blarc, bntx, textures, drawn)
     outputs[ARCHIVE] = bytes(blarc)
     fonts = {}   # each distinct font is drawn once (1.4.3's four archives hold the same one)
     for path, bfarc in archives.items():
@@ -327,11 +336,11 @@ if args.prompts:
             fonts[otf] = icons.redraw_font(otf, drawn, KEY_GLYPHS if by_position else ())
         outputs[path] = sarc_replace(bfarc, {icons.FONT: icons.bfotf_encode(fonts[otf], key, bfarc[lo:hi])})
     messages = {}
-    for path in MALS if by_position else []:
+    for path in MALS if by_position or keyboard else []:
         mals = bytearray(unpack(path))
         lo, hi = sarc_members(mals)[LAYOUT_MSG]
         msbt = bytearray(mals[lo:hi])
-        changed = msbt_letters(msbt, KEY_LETTERS)
+        changed = msbt_letters(msbt, letter_map)
         assert len(changed) == sum(len(v) for v in letters.values()), (path, changed)
         mals[lo:hi] = msbt
         outputs[path] = bytes(mals)
@@ -340,7 +349,7 @@ if args.prompts:
     grown = {path: len(data) - sizes[path] for path, data in outputs.items() if len(data) > sizes[path]}
     if grown:
         outputs[RESTBL] = icons.grow_restbl(unpack(RESTBL), grown)
-    prompts = dict(style=args.prompts, textures=KEY_TEXTURES if by_position else [], letters=letters,
+    prompts = dict(style=args.prompts, textures=sorted(textures), letters=letters,
                    messages=messages, hud=hud, icons=len(drawn), fonts=FONTS, grown=grown)
 
 lines = []

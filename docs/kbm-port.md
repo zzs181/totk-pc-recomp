@@ -1,8 +1,8 @@
 # The PC keyboard and mouse scheme
 
 > This patch applies on top of commit `7f38eb6` (PC controls and F1 rows). It does not include the game-screen
-> watcher (`screen_watch.c`), the mouse gyro or the keyboard keycap prompt set; contexts are `WORLD` and the host
-> settings menu's `PAUSE`.
+> watcher (`screen_watch.c`) or the mouse gyro; contexts are `WORLD` and the host settings menu's `PAUSE`. The keyboard
+> keycap prompt set is included (`prompts = keyboard`).
 
 
 A port of [Weeping of the Empire](https://github.com/daniel-madrid-07/weeping-of-the-empire)'s controls (MIT, v0.1.8.2):
@@ -101,8 +101,10 @@ world rows and their group fallbacks apply there. `TOTK_SCREEN_CTX` and `TOTK_SC
    (`recomp/patches-v143.txt`, docs/mousedirect.md), which adds the mouse to the 1.4.3 PlayerCamera's processed stick
    after the dead zone and curve.
 3. **Keyboard keycap prompts**: included as `prompts = keyboard`, which redraws the game's prompts with the PC scheme's
-   keys (Kenney's CC0 "Input Prompts"; `tools/make_romfs_patches.py --prompts keyboard`). The game reads its fonts once,
-   so this takes a restart after the folder is written.
+   keys (Kenney's CC0 "Input Prompts"; `tools/make_romfs_patches.py --prompts keyboard`). The action prompt's
+   highlighted face button (`Nt_KeyTexA/B/X/Y_00`) is painted as its keycap, and its one-letter diamond panes become
+   `E`, `S`, `_` and `L`: the layout's `Normal_00` font has no keycap glyphs, so those three stay text. The game reads
+   its fonts once, so this takes a restart after the folder is written.
 4. **Motion mechanics**: a narrow mouse-to-six-axis feed is included (`TOTK_MOUSE_MOTION_KEY`, default `k`): holding the
    key feeds the mouse to the virtual controller's six-axis for the gyro shrines, with the camera paused. The full
    mouse gyro aiming path is not part of this patch.

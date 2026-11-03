@@ -45,6 +45,14 @@ TEXT_ARCHIVE = 'Font/Font.Nin_NX_NVN.bfarc.zs'
 TEXT_FONTS = ('scft/ninP_RodinNTLG-B_DH_003_subset.bfotf', 'scft/nintendo_NTLG-DB_DH_002.bfotf')
 # The button guide's images and the glyph each one shows.
 HUD_TEXTURES = {'Nt_KeyTexL_00': 0xE044, 'Nt_KeyTexZL_00': 0xE046}
+# The action prompt's four face-button images (blyt/DoCommand_00.bflyt), as the keycaps of A, B, X and Y: E, shift,
+# space and the left mouse button. The round pad icons become the keys the PC scheme puts on those buttons.
+FACE_TEXTURES = {'Nt_KeyTexA_00': 0xE040, 'Nt_KeyTexB_00': 0xE041,
+                 'Nt_KeyTexX_00': 0xE042, 'Nt_KeyTexY_00': 0xE043}
+# The one-letter panes around the action prompt, and the one-character key legend that replaces each letter for the
+# keyboard set: E, S (shift), _ (the space bar) and L (the left mouse button). The panes are one UTF-16 letter wide and
+# use the layout's Normal font, which has no keycap glyphs; the highlighted button above them is a textured keycap.
+FACE_LETTERS = {'A': 'E', 'B': 'S', 'X': '_', 'Y': 'L'}
 
 
 def xor(data, key):
