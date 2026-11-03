@@ -207,17 +207,19 @@ static const char *const text_en[UI_TEXT_COUNT] = {
     [UI_MENU_PAD_LAYOUT_XBOX] = "Xbox (A bottom)",
     [UI_MENU_PAD_LAYOUT_IN_USE] = "in use: %s",
     [UI_MENU_PROMPTS] = "Button prompts",
-    [UI_MENU_PROMPTS_DESC] = "Which controller's buttons the game's prompts show. Nintendo: the game's own. Xbox: LB, "
-                             "RB, LT, RT, Menu, View and a d-pad cross, and A, B, X and Y as labelled on the button "
-                             "the layout above presses (with Nintendo (A right) the right button is labelled B, so the "
-                             "prompts for A show B). The game reads its prompts at start, so they change after a "
+    [UI_MENU_PROMPTS_DESC] = "Which buttons the game's prompts show. Nintendo: the game's own. Xbox: LB, RB, LT, RT, "
+                             "Menu, View and a d-pad cross, and A, B, X and Y as labelled on the button the layout above "
+                             "presses (with Nintendo (A right) the right button is labelled B, so the prompts for A "
+                             "show B). Keyboard: the PC scheme's keys as keycaps, mouse buttons included; the button "
+                             "layout above does not apply. The game reads its prompts at start, so they change after a "
                              "restart. They are part of the game's files, so a button you remap in Controls keeps its "
                              "old prompt on screen.",
     [UI_MENU_PROMPTS_NINTENDO] = "Nintendo", [UI_MENU_PROMPTS_XBOX] = "Xbox",
     [UI_MENU_PROMPTS_KEYBOARD] = "Keyboard",
     [UI_MENU_PROMPTS_MISSING] = "prompt files missing: run the setup again",
     [UI_MENU_PROMPTS_FAILED] = "prompt files damaged: run the setup again",
-    [UI_MENU_PROMPTS_RESTART] = "prompts change after restart",
+    [UI_MENU_PROMPTS_CURRENT] = "in effect",
+    [UI_MENU_PROMPTS_RESTART] = "changes after restart",
     [UI_MENU_PROMPTS_OFF_SHAPE] = "off at a game resolution not 16:9",
     [UI_MENU_PROMPTS_OFF_MODS] = "off: a RomFS mod replaces their files",
     [UI_MENU_PROMPTS_OFF_PATCHES] = "off while TOTK_ROMFS_PATCHES is set",
@@ -250,7 +252,8 @@ static const char *const text_en[UI_TEXT_COUNT] = {
     [UI_MENU_KBM_SCHEME] = "PC keyboard and mouse scheme",
     [UI_MENU_KBM_SCHEME_DESC] = "Routes the keyboard and mouse through the context table. Off uses the flat bindings "
                                 "below. The Controls page does not edit the scheme; kbm_binds in totk.ini overrides its "
-                                "keys.",
+                                "keys. With keyboard button prompts the keycaps show the scheme's keys whether this is "
+                                "on or off.",
     [UI_MENU_KEY_MIN_HOLD] = "Movement key hold",
     [UI_MENU_KEY_MIN_HOLD_DESC] = "Keep a released movement key held this long (ms), so a quick tap does not break "
                                   "walking at high frame rates. 0 turns it off.",
@@ -663,14 +666,16 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
     [UI_MENU_PROMPTS_DESC] = "Кнопки какого контроллера показывают подсказки игры. Nintendo: как в самой игре. Xbox: "
                              "LB, RB, LT, RT, Menu, View и крестовина, а A, B, X и Y подписаны так же, как кнопка, "
                              "которую нажимает раскладка выше (в Nintendo (A справа) правая кнопка подписана B, и "
-                             "подсказки A показывают B). Игра читает подсказки при запуске, так что они меняются после "
-                             "перезапуска. Подсказки записаны в файлах игры, поэтому у кнопки, переназначенной на "
-                             "вкладке управления, на экране остаётся прежняя подсказка.",
+                             "подсказки A показывают B). Клавиатура: клавиши PC-схемы в виде кейкапов, включая кнопки "
+                             "мыши; раскладка кнопок выше на них не влияет. Игра читает подсказки при запуске, так что "
+                             "они меняются после перезапуска. Подсказки записаны в файлах игры, поэтому у кнопки, "
+                             "переназначенной на вкладке управления, на экране остаётся прежняя подсказка.",
     [UI_MENU_PROMPTS_NINTENDO] = "Nintendo", [UI_MENU_PROMPTS_XBOX] = "Xbox",
     [UI_MENU_PROMPTS_KEYBOARD] = "Клавиатура",
     [UI_MENU_PROMPTS_MISSING] = "нет файлов подсказок: запустите установку снова",
     [UI_MENU_PROMPTS_FAILED] = "файлы подсказок повреждены: запустите установку снова",
-    [UI_MENU_PROMPTS_RESTART] = "подсказки сменятся после перезапуска",
+    [UI_MENU_PROMPTS_CURRENT] = "действует",
+    [UI_MENU_PROMPTS_RESTART] = "изменения после перезапуска",
     [UI_MENU_PROMPTS_OFF_SHAPE] = "выкл. при разрешении игры не 16:9",
     [UI_MENU_PROMPTS_OFF_MODS] = "выкл.: мод RomFS заменяет их файлы",
     [UI_MENU_PROMPTS_OFF_PATCHES] = "выкл., пока задан TOTK_ROMFS_PATCHES",
@@ -704,7 +709,8 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
     [UI_MENU_KBM_SCHEME] = "Схема клавиатуры и мыши",
     [UI_MENU_KBM_SCHEME_DESC] = "Маршрутизирует клавиатуру и мышь по таблице контекстов. Выкл. — плоские привязки "
                                 "ниже. Вкладка «Управление» не меняет схему; kbm_binds в totk.ini переопределяет её "
-                                "клавиши.",
+                                "клавиши. При подсказках-клавиатуре кейкапы показывают клавиши схемы независимо от "
+                                "того, включена она или нет.",
     [UI_MENU_KEY_MIN_HOLD] = "Удержание клавиш движения",
     [UI_MENU_KEY_MIN_HOLD_DESC] = "Сколько миллисекунд отпущенная клавиша движения ещё считается нажатой, чтобы "
                                   "быстрое нажатие не рвало ходьбу при высокой частоте кадров. 0 — выкл.",
@@ -1053,11 +1059,8 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
     [UI_MENU_PAD_LAYOUT] = "Layout dos botões",
     [UI_MENU_PAD_LAYOUT_DESC] = "Qual botão é o A. Nintendo: o da direita, como no Switch. Xbox: o de baixo, como "
                                 "indicado no controle de Xbox (cruz no controle de PlayStation). Automático escolhe "
-                                "Nintendo para controles com os rótulos da Nintendo e Xbox para os demais. Ícones de "
-                                "Xbox: o A é o da direita, como no Nintendo, e o jogo mostra os rótulos do Xbox (B no "
-                                "lugar de A, A no lugar de B, Y no lugar de X, X no lugar de Y); os ícones mudam após "
-                                "reiniciar. As letras fazem parte dos arquivos do jogo, então um botão remapeado em "
-                                "Controles continua com a letra antiga na tela.",
+                                "Nintendo para controles com os rótulos da Nintendo e Xbox para os demais. Qual "
+                                "controle os ícones do jogo mostram é definido em Ícones de botões.",
     [UI_MENU_PAD_LAYOUT_AUTO] = "Automático", [UI_MENU_PAD_LAYOUT_NINTENDO] = "Nintendo (A à direita)",
     [UI_MENU_PAD_LAYOUT_XBOX] = "Xbox (A embaixo)",
     [UI_MENU_PAD_LAYOUT_IN_USE] = "em uso: %s",
@@ -1089,7 +1092,8 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
     [UI_MENU_KBM_SCHEME] = "Esquema de teclado e mouse",
     [UI_MENU_KBM_SCHEME_DESC] = "Encaminha teclado e mouse pela tabela de contextos. Desligado usa as ligações "
                                 "planas abaixo. A aba Controles não edita o esquema; kbm_binds no totk.ini substitui "
-                                "suas teclas.",
+                                "suas teclas. Com os ícones de teclado, os keycaps mostram as teclas do esquema esteja "
+                                "ele ligado ou desligado.",
     [UI_MENU_KEY_MIN_HOLD] = "Retenção das teclas de movimento",
     [UI_MENU_KEY_MIN_HOLD_DESC] = "Mantém uma tecla de movimento solta pressionada por este tempo (ms), para que um "
                                   "toque rápido não quebre a caminhada em alta taxa de quadros. 0 desliga.",
@@ -1331,18 +1335,20 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
     [UI_MENU_HDR_UI] = "Brilho do HUD e do menu",
     [UI_MENU_HDR_UI_DESC] = "Nits do branco do HUD e deste menu.",
     [UI_MENU_PROMPTS] = "Ícones de botões",
-    [UI_MENU_PROMPTS_DESC] = "Os botões de qual controle os ícones do jogo mostram. Nintendo: os do próprio jogo. "
+    [UI_MENU_PROMPTS_DESC] = "Quais botões os ícones do jogo mostram. Nintendo: os do próprio jogo. "
                              "Xbox: LB, RB, LT, RT, Menu, Exibir e uma cruz direcional, e A, B, X e Y com a letra do "
                              "botão que o layout acima aperta (com Nintendo (A à direita) o botão da direita tem a "
-                             "letra B, então os ícones de A mostram B). O jogo lê os ícones ao iniciar, então eles "
-                             "mudam depois de reiniciar. Eles fazem parte dos arquivos do jogo, então um botão "
-                             "remapeado em Controles continua com o ícone antigo na tela.",
+                             "letra B, então os ícones de A mostram B). Teclado: as teclas do esquema de PC como "
+                             "keycaps, incluindo os botões do mouse; o layout de botões acima não se aplica. O jogo lê "
+                             "os ícones ao iniciar, então eles mudam depois de reiniciar. Eles fazem parte dos arquivos "
+                             "do jogo, então um botão remapeado em Controles continua com o ícone antigo na tela.",
     [UI_MENU_PROMPTS_NINTENDO] = "Nintendo",
     [UI_MENU_PROMPTS_XBOX] = "Xbox",
     [UI_MENU_PROMPTS_KEYBOARD] = "Teclado",
     [UI_MENU_PROMPTS_MISSING] = "faltam os arquivos dos ícones: execute a instalação de novo",
     [UI_MENU_PROMPTS_FAILED] = "arquivos dos ícones danificados: execute a instalação de novo",
-    [UI_MENU_PROMPTS_RESTART] = "os ícones mudam após reiniciar",
+    [UI_MENU_PROMPTS_CURRENT] = "em vigor",
+    [UI_MENU_PROMPTS_RESTART] = "muda após reiniciar",
     [UI_MENU_PROMPTS_OFF_SHAPE] = "desligados numa resolução de jogo que não é 16:9",
     [UI_MENU_PROMPTS_OFF_MODS] = "desligados: um mod de RomFS substitui os arquivos deles",
     [UI_MENU_PROMPTS_OFF_PATCHES] = "desligados enquanto TOTK_ROMFS_PATCHES está definido",
@@ -1585,10 +1591,7 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
     [UI_MENU_PAD_LAYOUT_DESC] = "哪个按键是 A。Nintendo：右侧按键，与 Switch 相同。Xbox：下方按键，"
                                 "与 Xbox 手柄上的标注一致（PlayStation 手柄上为叉键）。自动："
                                 "带 Nintendo 标注的手柄使用 Nintendo 布局，其他手柄使用 Xbox 布局。"
-                                "Xbox 按键提示：A 仍是右侧键，但游戏显示 Xbox 标注（A 显示为 B、"
-                                "B 显示为 A、X 显示为 Y、Y 显示为 X），重启后生效。"
-                                "这些字母来自游戏文件，因此在“操作”中重映射过的按键，"
-                                "屏幕上仍显示原来的字母。",
+                                "只影响手柄；游戏画面里的按键图标由下面的“按键提示”决定。",
     [UI_MENU_PAD_LAYOUT_AUTO] = "自动",
     [UI_MENU_PAD_LAYOUT_NINTENDO] = "Nintendo（A 在右）",
     [UI_MENU_PAD_LAYOUT_XBOX] = "Xbox（A 在下）",
@@ -1616,7 +1619,8 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
     [UI_MENU_MOUSE_MOTION_SPEED_DESC] = "鼠标倾斜虚拟手柄的幅度。",
     [UI_MENU_KBM_SCHEME] = "键鼠上下文方案",
     [UI_MENU_KBM_SCHEME_DESC] = "按上下文表路由键盘和鼠标。关闭时使用下方的扁平键位。"
-                                "“操作”页不修改方案键位；totk.ini 的 kbm_binds 可覆盖方案按键。",
+                                "“操作”页不修改方案键位；totk.ini 的 kbm_binds 可覆盖方案按键。"
+                                "按键提示为“键盘”时，键帽始终显示方案键位；关闭本项只改变实际按键，不改变键帽。",
     [UI_MENU_KEY_MIN_HOLD] = "移动键保持",
     [UI_MENU_KEY_MIN_HOLD_DESC] = "移动键松开后仍保持按下的毫秒数，避免高帧率下快速点按导致走路断续。"
                                   "0 表示关闭。",
@@ -1934,15 +1938,17 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
     [UI_MENU_HDR_UI] = "HUD 和菜单亮度",
     [UI_MENU_HDR_UI_DESC] = "HUD 和本菜单白色的尼特值。",
     [UI_MENU_PROMPTS] = "按键提示",
-    [UI_MENU_PROMPTS_DESC] = "游戏的按键提示显示哪种手柄的按键。Nintendo：游戏原有的提示。Xbox：LB、RB、LT、RT、Menu、View 和十字键，以及上方布局所按下的按键上标注的 "
+    [UI_MENU_PROMPTS_DESC] = "游戏画面显示哪种按键图标。Nintendo：游戏原有的手柄提示。Xbox：LB、RB、LT、RT、Menu、View 和十字键，以及上方布局所按下的按键上标注的 "
                              "A、B、X、Y（使用 Nintendo（A 在右）时右侧按键标为 B，因此 A 的提示显示 "
-                             "B）。游戏在启动时读取按键提示，因此重启后才会改变。提示属于游戏文件，在“操作”中重新映射的按键在屏幕上仍显示原来的提示。",
+                             "B）。键盘：PC 方案的按键，以键帽显示，包括鼠标按键；上方的按键布局不影响键盘键帽。"
+                             "游戏在启动时读取按键提示，因此更改后需要重启。提示属于游戏文件，在“操作”中重新映射的按键在屏幕上仍显示原来的提示。",
     [UI_MENU_PROMPTS_NINTENDO] = "Nintendo",
     [UI_MENU_PROMPTS_XBOX] = "Xbox",
     [UI_MENU_PROMPTS_KEYBOARD] = "键盘",
     [UI_MENU_PROMPTS_MISSING] = "缺少按键提示文件：请重新运行安装程序",
     [UI_MENU_PROMPTS_FAILED] = "按键提示文件已损坏：请重新运行安装程序",
-    [UI_MENU_PROMPTS_RESTART] = "按键提示重启后生效",
+    [UI_MENU_PROMPTS_CURRENT] = "已生效",
+    [UI_MENU_PROMPTS_RESTART] = "更改后需重启",
     [UI_MENU_PROMPTS_OFF_SHAPE] = "游戏分辨率不是 16:9 时关闭",
     [UI_MENU_PROMPTS_OFF_MODS] = "已关闭：RomFS 模组替换了它们的文件",
     [UI_MENU_PROMPTS_OFF_PATCHES] = "设置了 TOTK_ROMFS_PATCHES 时关闭",
