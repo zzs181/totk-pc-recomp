@@ -32,51 +32,58 @@ static int g_sel;   // index into kScopes
 
 static int zh_menu(void) { return !strncmp(menu_language(), "zh", 2); }
 
-// A short Chinese name of an action, else the action itself. The scheme's names are English; the tab shows both.
+// A short Chinese name of an action, else the action itself. The scheme's names are English; the tab shows the Chinese
+// alone on a Chinese menu. These strings are not catalog rows, so kbm_labels_visit hands them to the font atlas: a
+// glyph that no ui_text string uses would otherwise show as a box.
+static const struct { const char *action, *zh; } kActionZh[] = {
+    {"jump", "跳跃"}, {"sprint", "冲刺"}, {"interact", "交互"}, {"attack", "攻击"}, {"lock_on", "锁定"},
+    {"holster", "收放武器"}, {"bow_toggle", "弓"}, {"throw", "投掷"}, {"ability_wheel", "能力轮盘"},
+    {"ultrahand", "究极手"}, {"fuse", "余料建造"}, {"ascend", "通天术"}, {"recall", "倒转乾坤"},
+    {"autobuild", "蓝图"}, {"camera", "相机"}, {"weapons", "武器栏"}, {"shields", "盾牌栏"},
+    {"materials", "材料"}, {"bows", "弓栏"}, {"weapon_next", "下一个武器"}, {"weapon_prev", "上一个武器"},
+    {"scope", "望远镜"}, {"whistle", "口哨"}, {"crouch", "蹲下"}, {"dive", "俯冲"}, {"swim_dash", "冲刺游泳"},
+    {"guard", "防御"}, {"parry", "弹反"}, {"soothe", "安抚"}, {"spur", "加速"}, {"dismount", "下马"},
+    {"get_off", "下车"}, {"unstick", "分离"}, {"rotate", "旋转"}, {"rotate_left", "左转"},
+    {"rotate_right", "右转"}, {"push", "推"}, {"pull", "拉"}, {"raise", "抬起"}, {"lower", "放下"},
+    {"place_pin", "放置图钉"}, {"map", "地图"}, {"pause", "暂停"}, {"inventory", "背包"},
+    {"adventure_log", "冒险记录"}, {"recipe_book", "食谱"}, {"sort", "排序"}, {"drop", "丢弃"},
+    {"confirm", "确认"}, {"back", "返回"}, {"close", "关闭"}, {"next_tip", "下一条提示"},
+    {"scroll_up", "向上滚"}, {"scroll_down", "向下滚"}, {"tab_prev", "上一页"}, {"tab_next", "下一页"},
+    {"move_up", "上移"}, {"move_down", "下移"}, {"move_left", "左移"}, {"move_right", "右移"},
+    {"focus_up", "焦点上"}, {"focus_down", "焦点下"}, {"focus_left", "焦点左"}, {"focus_right", "焦点右"},
+    {"zoom_in", "放大"}, {"zoom_out", "缩小"}, {"self_portrait", "自拍"}, {"capture", "拍照"},
+    {"arrow_next", "下一支箭"}, {"arrow_prev", "上一支箭"},
+    {"attach", "附着"}, {"back_part", "返回上一部分"}, {"click", "点击"}, {"close_book", "关闭书"},
+    {"close_glider", "收起滑翔伞"}, {"dpad_down", "十字键下"}, {"dpad_left", "十字键左"},
+    {"dpad_right", "十字键右"}, {"dpad_up", "十字键上"}, {"history", "历史"}, {"l_stick_click", "左摇杆按下"},
+    {"leave", "离开"}, {"left_arm", "左臂"}, {"let_go", "松手"}, {"log", "记录"}, {"quit", "退出"},
+    {"r_stick_click", "右摇杆按下"}, {"reset_camera", "重置视角"}, {"reset_rotation", "重置旋转"},
+    {"right_arm", "右臂"}, {"secondary", "次要"}, {"skip", "跳过"}, {"skip_x", "跳过 X"},
+    {"use", "使用"}, {"walk", "走"}, {"x_prompt", "X 提示"}, {"y_prompt", "Y 提示"}, {"zl", "ZL"}, {"zr", "ZR"},
+};
+
+static const struct { int scope; const char *zh; } kScopeZh[] = {
+    {KBM_SC_WORLD, "世界"}, {KBM_SC_AIM, "拉弓"}, {KBM_SC_CLIMB, "攀爬"}, {KBM_SC_AIR, "空中"},
+    {KBM_SC_GLIDE, "滑翔"}, {KBM_SC_SWIM, "游泳"}, {KBM_SC_HORSE, "骑乘"}, {KBM_SC_QUICKMENU, "快捷栏"},
+    {KBM_SC_ABILITY, "能力"}, {KBM_SC_VEHICLE, "载具"}, {KBM_SC_MENUS, "菜单"}, {KBM_SC_PAUSE, "暂停"},
+    {KBM_SC_MAP, "地图"}, {KBM_SC_CHOICE, "选项"}, {KBM_SC_CAMERA, "相机"}, {KBM_SC_SCOPE, "望远镜"},
+    {KBM_SC_CONSTRUCT, "建造"}, {KBM_SC_RECIPE, "食谱"},
+};
+
+void kbm_labels_visit(void (*visit)(void *ctx, const char *text), void *ctx) {
+    for (size_t i = 0; i < sizeof kActionZh / sizeof *kActionZh; i++) visit(ctx, kActionZh[i].zh);
+    for (size_t i = 0; i < sizeof kScopeZh / sizeof *kScopeZh; i++) visit(ctx, kScopeZh[i].zh);
+}
+
 static const char *zh_action(const char *a) {
-    static const struct { const char *action, *zh; } t[] = {
-        {"jump", "跳跃"}, {"sprint", "冲刺"}, {"interact", "交互"}, {"attack", "攻击"}, {"lock_on", "锁定"},
-        {"holster", "收放武器"}, {"bow_toggle", "弓"}, {"throw", "投掷"}, {"ability_wheel", "能力轮盘"},
-        {"ultrahand", "究极手"}, {"fuse", "余料建造"}, {"ascend", "通天术"}, {"recall", "倒转乾坤"},
-        {"autobuild", "蓝图"}, {"camera", "相机"}, {"weapons", "武器栏"}, {"shields", "盾牌栏"},
-        {"materials", "材料"}, {"bows", "弓栏"}, {"weapon_next", "下一个武器"}, {"weapon_prev", "上一个武器"},
-        {"scope", "望远镜"}, {"whistle", "口哨"}, {"crouch", "蹲下"}, {"dive", "俯冲"}, {"swim_dash", "冲刺游泳"},
-        {"guard", "防御"}, {"parry", "弹反"}, {"soothe", "安抚"}, {"spur", "加速"}, {"dismount", "下马"},
-        {"get_off", "下车"}, {"unstick", "分离"}, {"rotate", "旋转"}, {"rotate_left", "左转"},
-        {"rotate_right", "右转"}, {"push", "推"}, {"pull", "拉"}, {"raise", "抬起"}, {"lower", "放下"},
-        {"place_pin", "放置图钉"}, {"map", "地图"}, {"pause", "暂停"}, {"inventory", "背包"},
-        {"adventure_log", "冒险记录"}, {"recipe_book", "食谱"}, {"sort", "排序"}, {"drop", "丢弃"},
-        {"confirm", "确认"}, {"back", "返回"}, {"close", "关闭"}, {"next_tip", "下一条提示"},
-        {"scroll_up", "向上滚"}, {"scroll_down", "向下滚"}, {"tab_prev", "上一页"}, {"tab_next", "下一页"},
-        {"move_up", "上移"}, {"move_down", "下移"}, {"move_left", "左移"}, {"move_right", "右移"},
-        {"focus_up", "焦点上"}, {"focus_down", "焦点下"}, {"focus_left", "焦点左"}, {"focus_right", "焦点右"},
-        {"zoom_in", "放大"}, {"zoom_out", "缩小"}, {"self_portrait", "自拍"}, {"capture", "拍照"},
-        {"arrow_next", "下一支箭"}, {"arrow_prev", "上一支箭"}, {"ability_1", "能力 1"}, {"ability_2", "能力 2"},
-        {"ability_3", "能力 3"}, {"ability_4", "能力 4"}, {"ability_5", "能力 5"}, {"ability_6", "能力 6"},
-        {"attach", "附着"}, {"back_part", "返回上一部分"}, {"click", "点击"}, {"close_book", "关闭书"},
-        {"close_glider", "收起滑翔伞"}, {"dpad_down", "十字键下"}, {"dpad_left", "十字键左"},
-        {"dpad_right", "十字键右"}, {"dpad_up", "十字键上"}, {"history", "历史"}, {"l_stick_click", "左摇杆按下"},
-        {"leave", "离开"}, {"left_arm", "左臂"}, {"let_go", "松手"}, {"log", "记录"}, {"quit", "退出"},
-        {"r_stick_click", "右摇杆按下"}, {"reset_camera", "重置视角"}, {"reset_rotation", "重置旋转"},
-        {"right_arm", "右臂"}, {"secondary", "次要"}, {"skip", "跳过"}, {"skip_x", "跳过 X"},
-        {"use", "使用"}, {"walk", "走"}, {"x_prompt", "X 提示"}, {"y_prompt", "Y 提示"}, {"zl", "ZL"},
-        {"zr", "ZR"},
-    };
-    for (size_t i = 0; i < sizeof t / sizeof *t; i++)
-        if (!strcmp(t[i].action, a)) return t[i].zh;
+    for (size_t i = 0; i < sizeof kActionZh / sizeof *kActionZh; i++)
+        if (!strcmp(kActionZh[i].action, a)) return kActionZh[i].zh;
     return NULL;
 }
 
 static const char *zh_scope(int scope) {
-    static const struct { int scope; const char *zh; } t[] = {
-        {KBM_SC_WORLD, "世界"}, {KBM_SC_AIM, "拉弓"}, {KBM_SC_CLIMB, "攀爬"}, {KBM_SC_AIR, "空中"},
-        {KBM_SC_GLIDE, "滑翔"}, {KBM_SC_SWIM, "游泳"}, {KBM_SC_HORSE, "骑乘"}, {KBM_SC_QUICKMENU, "快捷栏"},
-        {KBM_SC_ABILITY, "能力"}, {KBM_SC_VEHICLE, "载具"}, {KBM_SC_MENUS, "菜单"}, {KBM_SC_PAUSE, "暂停"},
-        {KBM_SC_MAP, "地图"}, {KBM_SC_CHOICE, "选项"}, {KBM_SC_CAMERA, "相机"}, {KBM_SC_SCOPE, "望远镜"},
-        {KBM_SC_CONSTRUCT, "建造"}, {KBM_SC_RECIPE, "食谱"},
-    };
-    for (size_t i = 0; i < sizeof t / sizeof *t; i++)
-        if (t[i].scope == scope) return t[i].zh;
+    for (size_t i = 0; i < sizeof kScopeZh / sizeof *kScopeZh; i++)
+        if (kScopeZh[i].scope == scope) return kScopeZh[i].zh;
     return NULL;
 }
 

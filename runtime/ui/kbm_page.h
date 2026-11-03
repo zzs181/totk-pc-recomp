@@ -8,3 +8,6 @@ void kbm_rows(float scale);
 void kbm_after_page(void);
 // A key cell waits for a press: the tab keys, Esc and the menu stay on the page until it ends.
 bool kbm_modal(void);
+// The tab's own Chinese strings (the action and context names are not catalog rows): the font atlas builder visits
+// them so their glyphs are in the merged system font (ui/menu.cpp fonts_up).
+void kbm_labels_visit(void (*visit)(void *ctx, const char *text), void *ctx);

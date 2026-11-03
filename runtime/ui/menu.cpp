@@ -347,6 +347,9 @@ static int fonts_up(float scale) {
         ImFontGlyphRangesBuilder b;
         b.AddText(ui_text_in("en", kCjk[i].name));
         ui_text_visit(kCjk[i].lang, add_row_glyphs, &b);
+        // The Keyboard & mouse tab names the scheme's actions and contexts from its own tables, not from catalog
+        // rows, so those strings have to be asked for separately or their glyphs show as boxes.
+        if (!strcmp(kCjk[i].lang, "zh-Hans")) kbm_labels_visit(add_row_glyphs, &b);
         b.BuildRanges(&ranges[i]);
         ImFontConfig mc;
         mc.MergeMode = true;
