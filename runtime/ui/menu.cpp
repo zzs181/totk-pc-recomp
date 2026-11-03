@@ -831,6 +831,10 @@ static void tab_controls(float scale) {
                !restart && !strcmp(note, menu_text(UI_MENU_PROMPTS_CURRENT)));
     bool ask = restart && opt_button("##restart", UI_MENU_RESTART, UI_MENU_RESTART_DESC);
     opt_toggle("TOTK_KBM_SCHEME", UI_MENU_KBM_SCHEME, UI_MENU_KBM_SCHEME_DESC);
+    opt_toggle("TOTK_SCREEN_WATCH", UI_MENU_SCREEN_WATCH, UI_MENU_SCREEN_WATCH_DESC);
+    opt_toggle("TOTK_SCREEN_WATCH_LOG", UI_MENU_SCREEN_WATCH_LOG, UI_MENU_SCREEN_WATCH_LOG_DESC);
+    opt_toggle("TOTK_MENU_CURSOR", UI_MENU_MENU_CURSOR, UI_MENU_MENU_CURSOR_DESC);
+    opt_toggle("TOTK_MENU_CURSOR_LOG", UI_MENU_MENU_CURSOR_LOG, UI_MENU_MENU_CURSOR_LOG_DESC);
     static const char *const mat_values[] = {"c", "z", "b", "n"};
     static const char *const mat_names[] = {"C", "Z", "B", "N"};
     opt_choice_list("TOTK_KBM_MATERIALS_KEY", UI_MENU_KBM_MATERIALS_KEY, mat_values, mat_names, 4,

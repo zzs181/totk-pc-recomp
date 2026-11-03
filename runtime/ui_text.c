@@ -265,6 +265,18 @@ static const char *const text_en[UI_TEXT_COUNT] = {
     [UI_MENU_WHEEL_STEP] = "Wheel step",
     [UI_MENU_WHEEL_STEP_DESC] = "The press and the rest of each wheel notch, in milliseconds. 0 holds a notch for "
                                 "one poll only.",
+    [UI_MENU_SCREEN_WATCH] = "Screen context watch",
+    [UI_MENU_SCREEN_WATCH_DESC] = "Reads the game's current menu screen (1.4.3) for the scheme's context; off keeps "
+                                  "the scheme on the world rows.",
+    [UI_MENU_SCREEN_WATCH_LOG] = "Screen context log",
+    [UI_MENU_SCREEN_WATCH_LOG_DESC] = "Logs each screen and the scheme's context when they change.",
+    [UI_MENU_MENU_CURSOR] = "Mouse in game menus",
+    [UI_MENU_MENU_CURSOR_DESC] = "Experimental, off by default (1.4.3). Releases the pointer in the game's menus and "
+                                 "reads their nodes, but the write that moves eui's focus box does not take effect "
+                                 "yet, so hovering and clicking do nothing.",
+    [UI_MENU_MENU_CURSOR_LOG] = "Game menu mouse log",
+    [UI_MENU_MENU_CURSOR_LOG_DESC] = "Logs each menu screen's nodes and the pointer's hit test, for finding the "
+                                     "1.4.3 focus write.",
     [UI_MENU_MOUSE_FLOOD] = "Mouse count injection",
     [UI_MENU_MOUSE_FLOOD_DESC] = "Extra mouse counts per presented frame, for stress-testing a high-report-rate "
                                  "mouse and the input path. 0 is off.",
@@ -752,6 +764,18 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
     [UI_MENU_WHEEL_STEP] = "Шаг колеса",
     [UI_MENU_WHEEL_STEP_DESC] = "Нажатие и пауза каждого щелчка колеса, в миллисекундах. 0 — щелчок держится один "
                                 "опрос.",
+    [UI_MENU_SCREEN_WATCH] = "Определение экрана",
+    [UI_MENU_SCREEN_WATCH_DESC] = "Читает текущий экран меню игры (1.4.3) для контекста схемы; выкл. оставляет схему "
+                                  "на строках мира.",
+    [UI_MENU_SCREEN_WATCH_LOG] = "Журнал экранов",
+    [UI_MENU_SCREEN_WATCH_LOG_DESC] = "Пишет строку при смене экрана или контекста схемы.",
+    [UI_MENU_MENU_CURSOR] = "Мышь в меню игры",
+    [UI_MENU_MENU_CURSOR_DESC] = "Экспериментально, по умолчанию выкл. (1.4.3). Освобождает указатель в меню игры и "
+                                  "читает его узлы, но запись, перемещающая рамку фокуса eui, в 1.4.3 ещё не "
+                                  "действует: наведение и clicks ничего не делают.",
+    [UI_MENU_MENU_CURSOR_LOG] = "Журнал мыши в меню",
+    [UI_MENU_MENU_CURSOR_LOG_DESC] = "Пишет узлы экрана и результат попадания указателя — для поиска записи фокуса в "
+                                     "1.4.3.",
     [UI_MENU_MOUSE_FLOOD] = "Инъекция отсчётов мыши",
     [UI_MENU_MOUSE_FLOOD_DESC] = "Лишние отсчёты мыши за кадр для проверки мыши с высокой частотой опроса и пути "
                                  "ввода. 0 — выкл.",
@@ -1167,6 +1191,18 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
     [UI_MENU_WHEEL_STEP] = "Passo da roda",
     [UI_MENU_WHEEL_STEP_DESC] = "O toque e a pausa de cada entalhe da roda, em milissegundos. 0 mantém o entalhe por "
                                 "uma única consulta.",
+    [UI_MENU_SCREEN_WATCH] = "Leitura do ecrã",
+    [UI_MENU_SCREEN_WATCH_DESC] = "Lê o ecrã de menu atual do jogo (1.4.3) para o contexto do esquema; desligado "
+                                  "mantém o esquema nas linhas do mundo.",
+    [UI_MENU_SCREEN_WATCH_LOG] = "Registo de ecrãs",
+    [UI_MENU_SCREEN_WATCH_LOG_DESC] = "Escreve uma linha quando o ecrã ou o contexto do esquema muda.",
+    [UI_MENU_MENU_CURSOR] = "Mouse nos menus do jogo",
+    [UI_MENU_MENU_CURSOR_DESC] = "Experimental, desligado por omissão (1.4.3). Liberta o ponteiro nos menus do jogo e "
+                                 "lê os nós, mas a escrita que move a caixa de foco do eui ainda não funciona no "
+                                 "1.4.3: passar por cima e clicar não fazem nada.",
+    [UI_MENU_MENU_CURSOR_LOG] = "Registo do mouse nos menus",
+    [UI_MENU_MENU_CURSOR_LOG_DESC] = "Escreve os nós de cada ecrã e o teste de acerto do ponteiro, para procurar a "
+                                     "escrita do foco no 1.4.3.",
     [UI_MENU_MOUSE_FLOOD] = "Injeção de contagem do mouse",
     [UI_MENU_MOUSE_FLOOD_DESC] = "Contagens extras de mouse por quadro, para testar um mouse de alta taxa de "
                                  "relatório e o caminho de entrada. 0 desliga.",
@@ -1723,6 +1759,15 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
                                "0 = 只在按下那一帧输出。",
     [UI_MENU_WHEEL_STEP] = "滚轮节拍",
     [UI_MENU_WHEEL_STEP_DESC] = "滚轮每格的按下与停顿毫秒数。0 = 每格只保持一次轮询（最小）。",
+    [UI_MENU_SCREEN_WATCH] = "屏幕上下文探测",
+    [UI_MENU_SCREEN_WATCH_DESC] = "读取游戏当前菜单界面（1.4.3），让键鼠方案切到对应上下文；关闭后只用世界行。",
+    [UI_MENU_SCREEN_WATCH_LOG] = "屏幕上下文日志",
+    [UI_MENU_SCREEN_WATCH_LOG_DESC] = "界面或方案上下文变化时写一行日志。",
+    [UI_MENU_MENU_CURSOR] = "游戏菜单鼠标",
+    [UI_MENU_MENU_CURSOR_DESC] = "实验功能，默认关（1.4.3）。会在游戏菜单里释放鼠标指针并读到界面节点，但移动 eui "
+                                 "焦点框的写入在 1.4.3 上还没生效，悬停和点击目前不起作用。",
+    [UI_MENU_MENU_CURSOR_LOG] = "游戏菜单鼠标日志",
+    [UI_MENU_MENU_CURSOR_LOG_DESC] = "记录每个菜单界面的节点数与指针命中测试，用于继续排查 1.4.3 的焦点写入。",
     [UI_MENU_MOUSE_FLOOD] = "鼠标计数注入",
     [UI_MENU_MOUSE_FLOOD_DESC] = "每帧额外注入的鼠标计数，用于高回报率鼠标与输入路径压测。0 = 关。",
     [UI_MENU_KBM_HELP] = "方案里每个动作的按键，可按上下文或全局设置。选中一行后按新键；Delete 清除覆盖。"

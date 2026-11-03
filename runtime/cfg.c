@@ -57,7 +57,8 @@ static const char *const known[] = {
     "VK_PRESENT", "VK_RECORDER", "VK_SSBO_ALIGN", "VK_SUBGROUP", "VK_SUBGROUP_PIN", "VK_VALIDATION", "VOLUME", "VRAM_HEADROOM", "VS_OUTS",
     "WALK_KEY", "WALK_SCALE", "WB_EXACT", "WB_FENCE_LIMIT", "WINDOW_SIZE", "XLATE", "XLATE_ID", "XLATE_PROCS",
     "CAMLOG", "KEY_MIN_HOLD_MS", "KBM_BINDS", "KBM_MATERIALS_KEY", "KBM_PULSE_MS", "WHEEL_STEP_MS", "KEYSNAP",
-    "LOCK_TOGGLE", "MOUSE_FLOOD", "SPRINT_TOGGLE",
+    "LOCK_TOGGLE", "MENU_CURSOR", "MENU_CURSOR_LOG", "MOUSE_FLOOD", "SCREEN_WATCH", "SCREEN_WATCH_LOG",
+    "SPRINT_TOGGLE",
     "ZSTD_CHECK", "ZSTD_NATIVE",
 };
 
@@ -84,7 +85,8 @@ static const struct { const char *key, *section; } sections[] = {
     {"STICK_SENS", "input"},
     {"MOUSE_SENS", "input"}, {"MOUSE_DIRECT", "input"}, {"MOUSE_DIRECT_SENS", "input"}, {"MOUSE_DIRECT_PITCH", "input"}, {"MOUSE_MOTION_KEY", "input"}, {"MOUSE_MOTION_SPEED", "input"},
     {"KBM_SCHEME", "input"}, {"KBM_BINDS", "input"}, {"KBM_MATERIALS_KEY", "input"}, {"KBM_PULSE_MS", "input"},
-    {"WHEEL_STEP_MS", "input"}, {"KEY_MIN_HOLD_MS", "input"},
+    {"WHEEL_STEP_MS", "input"}, {"SCREEN_WATCH", "input"}, {"SCREEN_WATCH_LOG", "input"}, {"MENU_CURSOR", "input"},
+    {"MENU_CURSOR_LOG", "input"}, {"KEY_MIN_HOLD_MS", "input"},
     {"SPRINT_TOGGLE", "input"}, {"LOCK_TOGGLE", "input"}, {"KEYSNAP", "input"}, {"CAMLOG", "input"},
     {"MOUSE_FLOOD", "input"}, {"WALK_KEY", "input"}, {"WALK_SCALE", "input"}, {"INPUT_RECORD", "input"},
     {"BIND_A", "input"}, {"BIND_B", "input"}, {"BIND_X", "input"}, {"BIND_Y", "input"}, {"BIND_LCLICK", "input"},
@@ -157,6 +159,8 @@ static const CfgMeta metas[] = {
     {"KBM_BINDS", "", NULL, LIVE}, {"CAMLOG", "", NULL, LIVE},
     {"KBM_MATERIALS_KEY", "c", "c|z|b|n", LIVE},
     {"KBM_PULSE_MS", "70", "0..200", LIVE}, {"WHEEL_STEP_MS", "70", "0..200", LIVE},
+    {"SCREEN_WATCH", "1", "0|1", LIVE}, {"SCREEN_WATCH_LOG", "1", "0|1", LIVE},
+    {"MENU_CURSOR", "0", "0|1", LIVE}, {"MENU_CURSOR_LOG", "0", "0|1", LIVE},
     {"MOUSE_FLOOD", "0", "0..100", LIVE},
     {"WALK_KEY", "none", NULL, LIVE}, {"WALK_SCALE", "0.51", "0.2..0.9", LIVE},
     {"MENU_LANG", "", "en|ru|pt-BR|zh-Hans", LIVE},

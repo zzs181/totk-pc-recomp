@@ -292,6 +292,20 @@
 # global entry; the Keyboard & mouse tab (F1) writes both. Empty keeps the upstream table; kbm_materials_key applies
 # unless this line gives materials its own key.
 # kbm_binds = attack=Mouse Left|world.jump=Space|bow_toggle=F
+# Read the game's own eui screen (1.4.3) for the PC scheme's context: the title, inventory/pause, save list, options,
+# shops, dialogue choices, map, strips and the rest; the bow (ZR) is AIM when no screen has focus. 1 on, 0 keeps the
+# scheme on the world rows.
+# screen_watch = 1
+# Logs each screen and the scheme's context when they change (1 on).
+# screen_watch_log = 1
+# EXPERIMENTAL, off by default. The mouse pointer in the game's own menus (1.4.3), from Wintego's PR #605: it reads
+# eui::ScreenMgr, takes the focused screen's layout name and node list, hit-tests the pointer and releases the OS
+# cursor in menus. The write that moves eui's focus box does not take effect on 1.4.3 yet, so hovering and clicking
+# do nothing: 1 only releases the pointer.
+# menu_cursor = 0
+# Logs each menu screen's nodes and the pointer's hit test (layout coordinates, first box, hit node/none), for
+# finding the 1.4.3 focus write.
+# menu_cursor_log = 0
 # The PC scheme (Weeping of the Empire's context table) in place of the flat table above: 0 off, 1 on. The Keyboard &
 # mouse tab (F1) edits every action's key, globally or per context, and the wheel switches materials while the throw
 # key is held. Off, the

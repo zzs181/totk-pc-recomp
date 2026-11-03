@@ -432,11 +432,12 @@ void kbm_scheme_set_ctx(int scope) {
     kbm_scheme_init();
     if (scope < 0 || scope >= KBM_SC_COUNT) scope = KBM_SC_WORLD;
     if (scope != g_ctx) {
-        // The keys held across the change start over: upstream lets a held key carry into the next context only
-        // where the new context has a row for the action, and a 'T' row that was not yet a hold must not fire its
-        // tap on the release that lands elsewhere.
+        // A key that is already held when the context changes must not read as a fresh press in the new one: the Esc
+        // that opened the pause menu is the pause's "back", and firing it here would close the menu the same frame it
+        // opened. g_held still holds the previous frame's rows, so carrying it into g_was lets the key end its hold
+        // where it started and only a new press acts. Upstream's 'T' rows still start over (g_hold, g_press below).
+        for (int r = 0; r < g_nrows; r++) g_was[r] = g_held[r];
         memset(g_hold, 0, sizeof g_hold);
-        memset(g_was, 0, sizeof g_was);
         g_step.on = 0, g_step.pending = 0;   // a strip left open by the old context's step closes with it
         g_ctx = scope;
     }

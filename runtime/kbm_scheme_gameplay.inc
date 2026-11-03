@@ -91,6 +91,12 @@ PC_ROW(AIM,      "materials",     'H', PCOP_NONE, 0,             KB_DU,       "C
 PC_ROW(AIM,      "arrow_next",    'M', PCOP_NONE, MAC_ARROW_NEXT, KB_DU,      "Wheel Down")   // d-up + a right-stick flick
 PC_ROW(AIM,      "arrow_prev",    'M', PCOP_NONE, MAC_ARROW_PREV, KB_DU,      "Wheel Up")
 PC_ROW(AIM,      "scope",         'P', PCOP_NONE, 0,             KB_RS,       "V, Mouse Middle")  // R3 while aiming: the game leaves the aim for the Scope, no bow zoom
+// The pad's D-pad right/left changes bows while aiming, so the strips' 1/2 and the wheel's weapon step are not on foot's
+// rows here: 1/2 do nothing, 3 opens the bow strip (ZR + d-right) and the wheel walks the arrows below.
+PC_ROW(AIM,      "weapons",       'X', PCOP_NONE, 0,             0,          "")
+PC_ROW(AIM,      "shields",       'X', PCOP_NONE, 0,             0,          "")
+PC_ROW(AIM,      "weapon_next",   'X', PCOP_NONE, 0,             0,          "")
+PC_ROW(AIM,      "weapon_prev",   'X', PCOP_NONE, 0,             0,          "")
 PC_NOLAYOUT(AIM)
 
 // ---- climbing (3.4): no sprint (B lets go); S + Space kicks off the wall (D2)

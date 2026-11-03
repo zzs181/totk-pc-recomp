@@ -1,8 +1,9 @@
 # The PC keyboard and mouse scheme
 
-> This patch applies on top of commit `7f38eb6` (PC controls and F1 rows). It does not include the game-screen
-> watcher (`screen_watch.c`) or the mouse gyro; contexts are `WORLD` and the host settings menu's `PAUSE`. The keyboard
-> keycap prompt set is included (`prompts = keyboard`).
+> This patch applies on top of commit `7f38eb6` (PC controls and F1 rows). It includes the game-screen watcher
+> (`screen_watch.c`, 1.4.3) and the menu pointer (PR #605), but not the mouse gyro; the screen watcher selects the
+> game's menu/quick-menu/map/camera/scope contexts and AIM from ZR, while the player's stance (climb, air, glide, swim,
+> horse, vehicle) is still not read. The keyboard keycap prompt set is included (`prompts = keyboard`).
 
 
 A port of [Weeping of the Empire](https://github.com/daniel-madrid-07/weeping-of-the-empire)'s controls (MIT, v0.1.8.2):
@@ -86,17 +87,20 @@ single button means. Neither exists here yet, so:
 
 ## Contexts in this patch
 
-This patch does not include the game-screen watcher. The scheme runs `WORLD`; the host settings menu (F1) selects
-`PAUSE`. The game's own pause, map, shop and quick-menu screens are not detected, so their rows are not selected; the
-world rows and their group fallbacks apply there. `TOTK_SCREEN_CTX` and `TOTK_SCREENLOG` are not part of this patch.
+`runtime/screen_watch.c` reads `eui::ScreenMgr` at each pad read (the game thread) and selects the focused screen's
+context: `Title_00` is `TITLE`, `Pouch_00`/`Pause*` is `PAUSE`, the save list is `SAVES`, options, shops, dialogue and
+choices get their rows, `AppMap_00` is `MAP`, the strips are `QUICKMENU`, Autobuild is `CONSTRUCT`, the camera and the
+scope are their contexts. The map and the strips have no focus box, so the input fallback uses the game's Minus toggle
+for `MAP` and the held D-pad directions/L for `QUICKMENU`; a held bow key (ZR) selects `AIM`. The host settings menu
+(F1) stays `PAUSE`. `TOTK_SCREEN_WATCH` (default 1) turns the watcher off, and `TOTK_SCREEN_WATCH_LOG` (default 1) logs
+each change (`screen: Pouch_00 -> pause`).
 
 ## What still needs a game hook
 
-1. **The player's state**, to reach `AIM`, `CLIMB`, `AIR`, `GLIDE`, `SWIM`, `ABILITY`, `HORSE`, `VEHICLE`,
-   `CONSTRUCT`, `CAMERA`, `SCOPE`. Upstream pushes a `PCP_*` flag word once per game frame (`pc_ctx_player` in its
+1. **The player's stance**, to reach `CLIMB`, `AIR`, `GLIDE`, `SWIM`, `HORSE` and `VEHICLE`; `AIM` is selected from
+   ZR and the screen contexts are read. Upstream pushes a `PCP_*` flag word once per game frame (`pc_ctx_player` in its
    `pc_input.h`). Here that would be a patch site that writes the flags into the patch page, read by
-   `kbm_scheme_set_ctx`. Until then the scheme stays on foot, and `AIM`'s rows (the bow's draw, the arrow wheel, the
-   Scope) are dead weight. The screen is read (above), but the player's stance is not in it.
+   `kbm_scheme_set_ctx`.
 2. **The camera veneer**, the direct mouse look: this patch includes it as the `mousedirect` set
    (`recomp/patches-v143.txt`, docs/mousedirect.md), which adds the mouse to the 1.4.3 PlayerCamera's processed stick
    after the dead zone and curve.
@@ -112,6 +116,13 @@ world rows and their group fallbacks apply there. `TOTK_SCREEN_CTX` and `TOTK_SC
    all contexts or for one context. A captured key is written to `kbm_binds` as `action=key` or `context.action=key`;
    the context entry wins over the global one, and Delete clears it. While the throw key is held, a wheel notch steps
    the material strip (the same D-pad-up step macro as the arrow strip) instead of the weapon strip.
+6. **The menu pointer** (`runtime/menu_cursor.c`, Wintego's PR #605 adapted from Weeping's `totk_menu_cursor.cpp`):
+   ported and compiling, and its **read** path is verified on 1.4.3 — the ScreenMgr/BoxCursor chain, the screen's
+   layout name (`Pouch_00`), its node list (45 nodes with own hit panes), the pointer's hit test (`hit node`) and the
+   OS pointer release in menus all work. Its **write** path is not: the three stores `moveBoxCursor` makes do not move
+   the game's focus box on 1.4.3, so hovering does not focus and clicking does not confirm. `TOTK_MENU_CURSOR` is
+   therefore **0 by default**; `TOTK_MENU_CURSOR_LOG=1` prints the pointer's layout coordinates, the node count and
+   the hit result for whoever chases the 1.4.3 offsets next.
 
 ## What changes for the player
 

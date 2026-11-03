@@ -153,6 +153,27 @@ F1's *Keyboard & mouse* tab edits every action's key: pick *All contexts* or one
 select a row and press the new key; Delete clears the override. The tab writes `kbm_binds` (`action=key` or
 `context.action=key`), and a context entry wins over a global one.
 
+## The game's own menus (1.4.3)
+
+`TOTK_SCREEN_WATCH` (default 1) reads `eui::ScreenMgr` at each pad read on the game thread and gives the PC scheme the
+screen's context: `Title_00` is `TITLE`, `Pouch_00`/`Pause*` is `PAUSE`, the save list is `SAVES`, options, shops,
+dialogue and choices get their own rows, `AppMap_00` is `MAP`, the strips are `QUICKMENU`, Autobuild is `CONSTRUCT`,
+the camera and the scope are their contexts. With no screen, a held bow key (ZR) selects `AIM`; the AIM rows disable
+1/2 (the pad's D-pad changes bows there) and keep 3 for the bow strip and C for arrow materials. `TOTK_SCREEN_WATCH_LOG`
+(default 1) logs each screen and context (`screen: Pouch_00 -> pause`). The screen read is from Wintego's PR #605 /
+Weeping of the Empire (MIT); the player's stance (climb, air, glide, swim, horse, vehicle) is still not read.
+
+`TOTK_MENU_CURSOR` (**experimental, off by default**) is Wintego's PR #605 menu pointer, ported to this tree. What is
+verified working on 1.4.3: it reads `eui::ScreenMgr` → `BoxCursorMgr` → the focused screen, takes the screen's layout
+name and node list (the inventory reads 45 nodes with its own hit panes), hit-tests the node under the pointer
+(`hit node` in the log) and releases the OS pointer in the game's menus (`GetCursorInfo` shows it visible). What does
+**not** work yet: the three writes `eui::BoxCursorMgr::moveBoxCursor` makes do not move the game's focus box, so
+hovering does not focus an item and a click confirms nothing — the PR's 1.4.3 field offsets for the reserved node
+(`+0x150`), the request bit (`+0x175`) and the control's target (`+0x60`) are not reproducible here, and the lifted C
+of 1.4.3 has no matching writer. It is therefore off by default; `TOTK_MENU_CURSOR=1` only releases the pointer, and
+`TOTK_MENU_CURSOR_LOG=1` logs the pointer's layout coordinates, the node count and the hit result for the next round
+of digging. The SDL build has no pointer yet (the `ikb_pointer` stubs return 0).
+
 ## Nintendo Switch 2 controllers
 
 Windows does not present the Switch 2 Pro Controller as a gamepad SDL can open (the log says `input: no gamepad`), so it needs a bridge program that wakes it and creates a virtual gamepad. The DS4Windows fork by hbashton ([github.com/hbashton/DS4Windows](https://github.com/hbashton/DS4Windows), tested with release VIIPERRC4.5.1, a pre-release) with the output set to an emulated DualSense gives buttons, rumble, gyro and accelerometer, and reads the sticks through the controller's calibration (they rest at 0 to 2%). The game reads its virtual DualSense directly; the log then shows `input: gamepad "DualSense Wireless Controller" (rumble, gyro and accelerometer, ...)` and `input: motion sensors on`. Its release notes also list Joy-Con 2 support, which is untested here.

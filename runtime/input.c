@@ -18,6 +18,7 @@
 #include "input_map.h"
 #include "input_wsys.h"
 #include "kbm_scheme.h"
+#include "screen_watch.h"
 #include "nvn_api.h"
 #include "ui/menu.h"
 #include "vk.h"
@@ -996,7 +997,7 @@ static void poll_merged(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx
                 // The context table decides. The mouse camera stays this file's: no row of the scheme carries it,
                 // and upstream's direct mouse look needs the game-side veneer (docs/kbm-port.md).
                 int32_t kl[2] = {0, 0}, kr[2] = {0, 0};
-                kbm_scheme_set_ctx(kbm_scheme_host_ctx(menu_open));
+                kbm_scheme_set_ctx(screen_watch_ctx(menu_open));
                 kbm_scheme_frame(down, plat_now_ns() / 1000000u, &key_bits, kl, kr);
                 pick(&sl[0], &sl[1], kl[0], kl[1]);
                 pick(&sr[0], &sr[1], kr[0], kr[1]);
@@ -1065,7 +1066,7 @@ static volatile int32_t g_menu;   // the in-game menu, the same way (input_menu)
 
 int input_cursor_allowed(void) {
     const char *in = cfg_get("TOTK_INPUT");
-    return g_block != 1 && g_menu != 1 && mouse_sens_get() > 0 && !(in && !strcmp(in, "none"));
+    return g_block != 1 && g_menu != 1 && mouse_sens_get() > 0 && !(in && !strcmp(in, "none")) && !menu_cursor_pointer();
 }
 
 void input_block(int on) {
@@ -1094,6 +1095,8 @@ static int blocked(volatile int32_t *flag, uint64_t buttons, const int32_t *axes
 
 void input_poll(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx, int32_t *ry) {
     poll_merged(buttons, lx, ly, rx, ry);
+    if (!g_block && !g_menu) menu_cursor_poll(buttons);   // the game's menus: hover and click as A/B
+    screen_watch_poll(*buttons);   // the game thread's pad read: the eui screen for the scheme's next context
     const int32_t axes[4] = {*lx, *ly, *rx, *ry};
     int text = blocked(&g_block, *buttons, axes), menu = blocked(&g_menu, *buttons, axes);
     if (!text && !menu) return;
