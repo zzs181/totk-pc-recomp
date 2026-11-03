@@ -11,6 +11,18 @@
 #include "input_map.h"
 #include "kbm_scheme.h"
 
+// kbm_scheme.c reads two settings (TOTK_KBM_PULSE_MS, TOTK_KBM_MATERIALS_KEY). This binary links it without cfg.c, so
+// they answer as an unset totk.ini does for the test's purpose: a press' bits stay in the frame of the press, and the
+// materials row keeps the table's own key. Routing is what is under test here, not the length of a pulse.
+int cfg_int(const char *name) {
+    (void)name;
+    return 0;
+}
+const char *cfg_value(const char *name) {
+    (void)name;
+    return "";
+}
+
 static int fails;
 
 static void expect_u(const char *what, unsigned long long got, unsigned long long want) {
@@ -43,9 +55,10 @@ int main(void) {
     int32_t lx, ly, rx, ry;
     uint64_t b;
 
-    // The whole upstream table is in, and every key name in it is one this port knows. Ten tokens are Esc, which
+    // The whole upstream table is in (255 rows), plus the four AIM rows that turn the inherited strips off while the
+    // bow is drawn (kbm_scheme_gameplay.inc); every key name in it is one this port knows. Ten tokens are Esc, which
     // this branch gives to the host: they are counted apart, not as unknown.
-    expect_i("rows", kbm_scheme_row_count(), 255);
+    expect_i("rows", kbm_scheme_row_count(), 259);
     expect_i("unknown keys", kbm_scheme_unknown_key_count(), 0);
 
     // WORLD, on foot: W drives the left stick up; Alt (the walk row) scales it; Space is the jump button.
