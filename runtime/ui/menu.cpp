@@ -835,6 +835,10 @@ static void tab_controls(float scale) {
                pad ? stick_note[1] : nullptr, "TOTK_STICK_DEADZONE");
     opt_slider("TOTK_STICK_SENS", UI_MENU_STICK_SENS, 0.1f, 3, UI_MENU_STICK_SENS_DESC, 0.05f, "%.2f");
     opt_slider("TOTK_MOUSE_SENS", UI_MENU_MOUSE_SENS, 0, 10, UI_MENU_MOUSE_SENS_DESC, 0.1f, "%.1f");
+    opt_slider("TOTK_MOUSE_AIM_SCALE", UI_MENU_MOUSE_AIM_SCALE, 0.1f, 3, UI_MENU_MOUSE_AIM_SCALE_DESC, 0.05f, "%.2f");
+    static const UiTextId gyro[] = {UI_MENU_MOUSE_GYRO_OFF, UI_MENU_MOUSE_GYRO_AIM, UI_MENU_MOUSE_GYRO_ALWAYS};
+    opt_choice("TOTK_MOUSE_GYRO", UI_MENU_MOUSE_GYRO, gyro, 3, UI_MENU_MOUSE_GYRO_DESC);
+    opt_slider("TOTK_MOUSE_GYRO_SPEED", UI_MENU_MOUSE_GYRO_SPEED, 0.05f, 4, UI_MENU_MOUSE_GYRO_SPEED_DESC, 0.05f, "%.2f");
     row_walk_key();
     opt_slider("TOTK_WALK_SCALE", UI_MENU_WALK_SCALE, 0.2f, 0.9f, UI_MENU_WALK_SCALE_DESC, 0.01f, "%.2f");
     binds_rows(scale);

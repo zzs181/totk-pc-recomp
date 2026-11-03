@@ -231,6 +231,15 @@ static const char *const text_en[UI_TEXT_COUNT] = {
     [UI_MENU_STICK_DEADZONE_NOW] = "stick now: %.0f %%",
     [UI_MENU_MOUSE_SENS] = "Mouse camera sensitivity",
     [UI_MENU_MOUSE_SENS_DESC] = "How fast the mouse turns the camera.",
+    [UI_MENU_MOUSE_AIM_SCALE] = "Aim mouse scale",
+    [UI_MENU_MOUSE_AIM_SCALE_DESC] = "Mouse sensitivity while ZR draws the bow; 1 leaves it unchanged.",
+    [UI_MENU_MOUSE_GYRO] = "Mouse gyro",
+    [UI_MENU_MOUSE_GYRO_DESC] = "The mouse turns a virtual controller for motion aiming instead of pushing the right "
+                                "stick: off, while aiming (ZR) or always. A gamepad with motion sensors keeps its own.",
+    [UI_MENU_MOUSE_GYRO_OFF] = "Off", [UI_MENU_MOUSE_GYRO_AIM] = "While aiming",
+    [UI_MENU_MOUSE_GYRO_ALWAYS] = "Always",
+    [UI_MENU_MOUSE_GYRO_SPEED] = "Mouse gyro speed",
+    [UI_MENU_MOUSE_GYRO_SPEED_DESC] = "How far the mouse turns the virtual controller.",
     [UI_MENU_WALK_KEY] = "Walk key",
     [UI_MENU_WALK_KEY_DESC] = "Hold it to tilt the keyboard's sticks part of the way, so the keyboard walks instead of "
                               "runs. The walk scale sets how far. A controller and the mouse are not affected.",
@@ -653,6 +662,16 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
     [UI_MENU_STICK_DEADZONE_NOW] = "стик сейчас: %.0f %%",
     [UI_MENU_MOUSE_SENS] = "Чувствительность мыши",
     [UI_MENU_MOUSE_SENS_DESC] = "Как быстро мышь поворачивает камеру.",
+    [UI_MENU_MOUSE_AIM_SCALE] = "Множитель при прицеливании",
+    [UI_MENU_MOUSE_AIM_SCALE_DESC] = "Чувствительность мыши, пока ZR натягивает лук; 1 — без изменений.",
+    [UI_MENU_MOUSE_GYRO] = "Гироскоп мыши",
+    [UI_MENU_MOUSE_GYRO_DESC] = "Мышь поворачивает виртуальный контроллер для прицеливания движением вместо правого "
+                                "стика: выкл., при прицеливании (ZR) или всегда. Геймпад с датчиками движения "
+                                "использует свои.",
+    [UI_MENU_MOUSE_GYRO_OFF] = "Выкл.", [UI_MENU_MOUSE_GYRO_AIM] = "При прицеливании",
+    [UI_MENU_MOUSE_GYRO_ALWAYS] = "Всегда",
+    [UI_MENU_MOUSE_GYRO_SPEED] = "Скорость гироскопа мыши",
+    [UI_MENU_MOUSE_GYRO_SPEED_DESC] = "Насколько далеко мышь поворачивает виртуальный контроллер.",
     [UI_MENU_WALK_KEY] = "Клавиша шага",
     [UI_MENU_WALK_KEY_DESC] = "Удерживайте: стики клавиатуры отклоняются частично, и персонаж идёт, а не бежит. "
                               "Насколько — задаёт сила шага. Контроллер и мышь не затрагиваются.",
@@ -1006,6 +1025,16 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
     [UI_MENU_STICK_DEADZONE_NOW] = "analógico agora: %.0f %%",
     [UI_MENU_MOUSE_SENS] = "Sensibilidade da câmera no mouse",
     [UI_MENU_MOUSE_SENS_DESC] = "Quão rápido o mouse gira a câmera.",
+    [UI_MENU_MOUSE_AIM_SCALE] = "Escala da mira no mouse",
+    [UI_MENU_MOUSE_AIM_SCALE_DESC] = "Sensibilidade do mouse enquanto ZR puxa o arco; 1 não muda nada.",
+    [UI_MENU_MOUSE_GYRO] = "Giroscópio do mouse",
+    [UI_MENU_MOUSE_GYRO_DESC] = "O mouse gira um controle virtual para mirar por movimento em vez de empurrar o "
+                                "analógico direito: desligado, ao mirar (ZR) ou sempre. Um controle com sensores de "
+                                "movimento usa os próprios.",
+    [UI_MENU_MOUSE_GYRO_OFF] = "Desligado", [UI_MENU_MOUSE_GYRO_AIM] = "Ao mirar",
+    [UI_MENU_MOUSE_GYRO_ALWAYS] = "Sempre",
+    [UI_MENU_MOUSE_GYRO_SPEED] = "Velocidade do giroscópio do mouse",
+    [UI_MENU_MOUSE_GYRO_SPEED_DESC] = "Quanto o mouse gira o controle virtual.",
 
     [UI_BINDS_HELP] = "Selecione uma célula e aperte A ou Enter, depois a tecla, o botão do mouse ou o botão do "
                       "controle. Delete ou X limpa a célula. Uma tecla já em uso vem para cá; um botão do controle "
@@ -1503,6 +1532,15 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
     [UI_MENU_STICK_DEADZONE_NOW] = "当前摇杆：%.0f %%",
     [UI_MENU_MOUSE_SENS] = "鼠标视角灵敏度",
     [UI_MENU_MOUSE_SENS_DESC] = "鼠标转动视角的速度。",
+    [UI_MENU_MOUSE_AIM_SCALE] = "瞄准时鼠标倍率",
+    [UI_MENU_MOUSE_AIM_SCALE_DESC] = "按住 ZR 拉弓时的鼠标灵敏度倍率；1 表示不变。",
+    [UI_MENU_MOUSE_GYRO] = "鼠标陀螺仪",
+    [UI_MENU_MOUSE_GYRO_DESC] = "用鼠标转动虚拟手柄来体感瞄准，而不是推动右摇杆：关闭、仅瞄准时（ZR）或始终。"
+                                "带体感的手柄仍使用自己的传感器。",
+    [UI_MENU_MOUSE_GYRO_OFF] = "关闭", [UI_MENU_MOUSE_GYRO_AIM] = "仅瞄准时",
+    [UI_MENU_MOUSE_GYRO_ALWAYS] = "始终",
+    [UI_MENU_MOUSE_GYRO_SPEED] = "鼠标陀螺仪速度",
+    [UI_MENU_MOUSE_GYRO_SPEED_DESC] = "鼠标转动虚拟手柄的速度。",
 
     [UI_BINDS_HELP] = "选中一个格子后按 A 或 Enter，再按键、鼠标键或手柄按键。"
                       "Delete 或 X 清除格子。已占用的按键会移到这里；"
