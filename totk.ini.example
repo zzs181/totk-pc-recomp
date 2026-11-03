@@ -288,10 +288,13 @@
 # camlog = 250
 # mouse_flood = 0
 # Override the PC scheme's keys by action, in every context: action=key,key|action=key (the keys are the names in the
-# bind_ lines, e.g. attack, bow_toggle, jump, interact). Empty keeps the upstream table; kbm_materials_key applies
+# bind_ lines, e.g. attack, bow_toggle, jump, interact). context.action=key overrides one context only and wins over a
+# global entry; the Keyboard & mouse tab (F1) writes both. Empty keeps the upstream table; kbm_materials_key applies
 # unless this line gives materials its own key.
-# kbm_binds = attack=Mouse Left|bow_toggle=F|jump=Space
-# The PC scheme (Weeping of the Empire's context table) in place of the flat table above: 0 off, 1 on. Off, the
+# kbm_binds = attack=Mouse Left|world.jump=Space|bow_toggle=F
+# The PC scheme (Weeping of the Empire's context table) in place of the flat table above: 0 off, 1 on. The Keyboard &
+# mouse tab (F1) edits every action's key, globally or per context, and the wheel switches materials while the throw
+# key is held. Off, the
 # Controls tab and the bind_ lines are the layout (docs/controls.md). On, the keyboard and the mouse follow
 # docs/kbm-port.md's table of (context, action) rows; the Controls tab and bind_ do nothing then, and the gamepad, its
 # layout, the mouse camera and every other input setting are unchanged. Live: the next poll switches and the log says

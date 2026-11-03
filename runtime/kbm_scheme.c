@@ -224,15 +224,30 @@ static int g_ctx = KBM_SC_WORLD;
 static int g_ready;
 static int g_unknown_keys;
 
-// TOTK_KBM_BINDS: "action=key,key|action=key" overrides a scheme action's keys in every context. The rows themselves
-// stay the upstream table; an empty spec keeps them all.
-enum { KBM_BIND_MAX = 32 };
-static struct { char action[32]; char keys[64]; } g_binds[KBM_BIND_MAX];
+// TOTK_KBM_BINDS: "action=key,key|context.action=key" overrides a scheme action's keys, in every context or in one.
+// The rows themselves stay the upstream table; an empty spec keeps them all.
+enum { KBM_BIND_MAX = 128 };
+static struct { char context[24]; char action[32]; char keys[64]; } g_binds[KBM_BIND_MAX];
 static int g_nbinds;
 
-static const char *keys_for(const char *action) {
+// A scope name as the spec and the tab write it, lower-case; -1 for another name.
+static int scope_from_name(const char *s, size_t n) {
+    char buf[24];
+    if (!n || n >= sizeof buf) return -1;
+    for (size_t i = 0; i < n; i++) buf[i] = (char)(s[i] >= 'A' && s[i] <= 'Z' ? s[i] - 'A' + 'a' : s[i]);
+    buf[n] = 0;
+    for (int i = 0; i < KBM_SC_COUNT; i++)
+        if (g_scope_names[i] && !strcmp(g_scope_names[i], buf)) return i;
+    return -1;
+}
+
+static const char *keys_for(const char *action, uint8_t scope) {
+    const char *ctx = scope < KBM_SC_COUNT ? g_scope_names[scope] : NULL;
     for (int i = 0; i < g_nbinds; i++)
-        if (!strcmp(g_binds[i].action, action)) return g_binds[i].keys;
+        if (g_binds[i].context[0] && ctx && !strcmp(g_binds[i].context, ctx) && !strcmp(g_binds[i].action, action))
+            return g_binds[i].keys;
+    for (int i = 0; i < g_nbinds; i++)
+        if (!g_binds[i].context[0] && !strcmp(g_binds[i].action, action)) return g_binds[i].keys;
     return NULL;
 }
 
@@ -244,15 +259,32 @@ void kbm_scheme_set_binds(const char *spec) {
         while (*p == ' ' || *p == ',' || *p == '|') p++;
         const char *eq = strchr(p, '=');
         if (!eq) break;
+        const char *name = p;
         size_t an = (size_t)(eq - p);
-        while (an && p[an - 1] == ' ') an--;
+        while (an && name[an - 1] == ' ') an--;
+        size_t cn = 0;
+        const char *dot = memchr(name, '.', an);
+        int scope = -1;
+        if (dot) {
+            cn = (size_t)(dot - name);
+            scope = scope_from_name(name, cn);
+        }
+        const char *action = scope >= 0 ? dot + 1 : name;
+        size_t action_n = scope >= 0 ? (size_t)(eq - action) : an;
+        while (action_n && action[action_n - 1] == ' ') action_n--;
+        while (action_n && *action == ' ') action++, action_n--;
         const char *end = eq + 1;
         while (*end && *end != '|') end++;
         size_t kn = (size_t)(end - (eq + 1));
         while (kn && (eq[1 + kn - 1] == ' ' || eq[1 + kn - 1] == '\r')) kn--;
-        if (an && an < sizeof g_binds[0].action && kn && kn < sizeof g_binds[0].keys) {
-            memcpy(g_binds[g_nbinds].action, p, an);
-            g_binds[g_nbinds].action[an] = 0;
+        if (action_n && action_n < sizeof g_binds[0].action && kn && kn < sizeof g_binds[0].keys) {
+            if (scope >= 0) {
+                snprintf(g_binds[g_nbinds].context, sizeof g_binds[0].context, "%s", g_scope_names[scope]);
+            } else {
+                g_binds[g_nbinds].context[0] = 0;
+            }
+            memcpy(g_binds[g_nbinds].action, action, action_n);
+            g_binds[g_nbinds].action[action_n] = 0;
             memcpy(g_binds[g_nbinds].keys, eq + 1, kn);
             g_binds[g_nbinds].keys[kn] = 0;
             g_nbinds++;
@@ -267,12 +299,23 @@ void kbm_scheme_set_binds(const char *spec) {
 // KEY_NONE for a name the table has and this port does not know.
 static int key_from_name(const char *s, size_t n) {
     static const struct { const char *name; int key; } table[] = {
-        {"space", KEY_SPACE}, {"tab", KEY_TAB}, {"shift", KEY_LSHIFT}, {"ctrl", KEY_LCTRL}, {"alt", KEY_LALT},
+        {"space", KEY_SPACE}, {"tab", KEY_TAB}, {"shift", KEY_LSHIFT}, {"lshift", KEY_LSHIFT}, {"rshift", KEY_RSHIFT},
+        {"ctrl", KEY_LCTRL}, {"lctrl", KEY_LCTRL}, {"rctrl", KEY_RCTRL}, {"alt", KEY_LALT}, {"capslock", KEY_CAPSLOCK},
         {"esc", KEY_ESC}, {"enter", KEY_ENTER}, {"up", KEY_UP}, {"down", KEY_DOWN}, {"left", KEY_LEFT},
         {"right", KEY_RIGHT}, {"mouse left", KEY_MOUSE_L}, {"mouse right", KEY_MOUSE_R}, {"mouse middle", KEY_MOUSE_M},
+        {"mouse x1", KEY_MOUSE_X1}, {"mouse x2", KEY_MOUSE_X2},
         {"wheel up", KEY_WHEEL_UP}, {"wheel down", KEY_WHEEL_DOWN},
         {"backspace", KEY_BACKSPACE}, {"insert", KEY_INSERT}, {"delete", KEY_DELETE}, {"home", KEY_HOME},
         {"end", KEY_END}, {"pageup", KEY_PAGEUP}, {"pagedown", KEY_PAGEDOWN},
+        {"f2", KEY_F2}, {"f3", KEY_F3}, {"f4", KEY_F4}, {"f5", KEY_F5}, {"f6", KEY_F6}, {"f7", KEY_F7},
+        {"f9", KEY_F9}, {"f12", KEY_F12},
+        {"num0", KEY_NUM0}, {"num1", KEY_NUM1}, {"num2", KEY_NUM2}, {"num3", KEY_NUM3}, {"num4", KEY_NUM4},
+        {"num5", KEY_NUM5}, {"num6", KEY_NUM6}, {"num7", KEY_NUM7}, {"num8", KEY_NUM8}, {"num9", KEY_NUM9},
+        {"num add", KEY_NUM_ADD}, {"num sub", KEY_NUM_SUB}, {"num mul", KEY_NUM_MUL}, {"num div", KEY_NUM_DIV},
+        {"num decimal", KEY_NUM_DECIMAL},
+        {"minus", KEY_MINUS}, {"equals", KEY_EQUALS}, {"lbracket", KEY_LBRACKET}, {"rbracket", KEY_RBRACKET},
+        {"semicolon", KEY_SEMICOLON}, {"apostrophe", KEY_APOSTROPHE}, {"comma", KEY_COMMA}, {"period", KEY_PERIOD},
+        {"slash", KEY_SLASH}, {"backslash", KEY_BACKSLASH}, {"grave", KEY_GRAVE},
     };
     char buf[24];
     if (n == 0 || n >= sizeof buf) return KEY_NONE;
@@ -290,7 +333,7 @@ static int key_from_name(const char *s, size_t n) {
 
 // "Esc, Mouse Right" -> the keys the game sees, in order; the first is the prompt's glyph.
 static void parse_keys(KbmRow *row) {
-    const char *override = keys_for(row->action);
+    const char *override = keys_for(row->action, row->scope);
     // TOTK_KBM_MATERIALS_KEY: the material action's key, for G + a key that is easier to reach than C.
     if (!override && !strcmp(row->action, "materials")) override = cfg_value("TOTK_KBM_MATERIALS_KEY");
     const char *p = override ? override : row->keys;
@@ -311,6 +354,16 @@ static void parse_keys(KbmRow *row) {
 static int row_held(const KbmRow *row, const uint8_t down[KEY_COUNT]) {
     for (int i = 0; i < row->nkeys; i++)
         if (down[row->key[i]]) return 1;
+    return 0;
+}
+
+// Whether the key of action in the context in effect is held (the throw key routes the wheel to materials).
+static int action_key_held(const char *action, const uint8_t down[KEY_COUNT]) {
+    for (int a = 0; a < g_nactions; a++) {
+        if (strcmp(g_action[a], action)) continue;
+        int r = g_active[g_ctx][a];
+        return r >= 0 && row_held(&g_rows[r], down);
+    }
     return 0;
 }
 
@@ -438,8 +491,13 @@ void kbm_scheme_frame(const uint8_t down[KEY_COUNT], uint64_t now_ms, uint64_t *
             if (held) out |= row->out;
             break;
         case 'M': {
+            int arg = row->arg;
+            // While the throw key is held the wheel steps the material strip (D-pad up) instead of the weapon strip
+            // (D-pad right): the same step macro, the strip the player is looking at.
+            if ((arg == MAC_NEXT || arg == MAC_PREV) && action_key_held("throw", down))
+                arg = arg == MAC_NEXT ? MAC_ARROW_NEXT : MAC_ARROW_PREV;
             int dpad, next, prev;
-            int step = step_family(row->arg, &dpad, &next, &prev);
+            int step = step_family(arg, &dpad, &next, &prev);
             if (step) {
                 // The strip's step (g_step): queue the notch, it runs below.
                 if (held && !was && g_step.pending > -KBM_STEP_WAIT_MAX && g_step.pending < KBM_STEP_WAIT_MAX) {
@@ -535,4 +593,98 @@ int kbm_scheme_keys(int scope, const char *action, int *keys, int max) {
         return n;
     }
     return 0;
+}
+
+// ---- the F1 "Keyboard & mouse" tab's view of the table -----------------------------------------
+
+int kbm_scheme_action_count(void) {
+    kbm_scheme_init();
+    return g_nactions;
+}
+
+const char *kbm_scheme_action_name(int index) {
+    kbm_scheme_init();
+    return index >= 0 && index < g_nactions ? g_action[index] : NULL;
+}
+
+int kbm_scheme_action_keys(const char *action, int *keys, int max) {
+    kbm_scheme_init();
+    if (!action) return 0;
+    for (int r = 0; r < g_nrows; r++) {
+        if (strcmp(g_rows[r].action, action)) continue;
+        int n = g_rows[r].nkeys < max ? g_rows[r].nkeys : max;
+        for (int i = 0; i < n; i++) keys[i] = g_rows[r].key[i];
+        return n;
+    }
+    return 0;
+}
+
+int kbm_scheme_action_default_keys(const char *action, int *keys, int max) {
+    kbm_scheme_init();
+    if (!action) return 0;
+    for (int r = 0; r < g_nrows; r++) {
+        if (strcmp(g_rows[r].action, action)) continue;
+        const char *p = g_rows[r].keys;
+        int n = 0;
+        while (*p && n < max) {
+            while (*p == ' ' || *p == ',') p++;
+            const char *start = p;
+            while (*p && *p != ',') p++;
+            size_t len = (size_t)(p - start);
+            while (len && start[len - 1] == ' ') len--;
+            if (!len) break;
+            int k = key_from_name(start, len);
+            if (k == KEY_NONE) continue;
+            keys[n++] = k;
+        }
+        return n;
+    }
+    return 0;
+}
+
+static int scope_action_seen(int scope, int row) {
+    for (int r = 0; r < row; r++)
+        if (g_rows[r].scope == scope && !strcmp(g_rows[r].action, g_rows[row].action)) return 1;
+    return 0;
+}
+
+int kbm_scheme_scope_action_count(int scope) {
+    kbm_scheme_init();
+    if (scope < 0 || scope >= KBM_SC_COUNT) return 0;
+    int n = 0;
+    for (int r = 0; r < g_nrows; r++)
+        if (g_rows[r].scope == scope && !scope_action_seen(scope, r)) n++;
+    return n;
+}
+
+const char *kbm_scheme_scope_action(int scope, int index) {
+    kbm_scheme_init();
+    if (scope < 0 || scope >= KBM_SC_COUNT || index < 0) return NULL;
+    int n = 0;
+    for (int r = 0; r < g_nrows; r++) {
+        if (g_rows[r].scope != scope || scope_action_seen(scope, r)) continue;
+        if (n++ == index) return g_rows[r].action;
+    }
+    return NULL;
+}
+
+int kbm_scheme_bind_kind(int scope, const char *action) {
+    if (!action) return 0;
+    const char *ctx = scope >= 0 && scope < KBM_SC_COUNT ? g_scope_names[scope] : NULL;
+    for (int i = 0; i < g_nbinds; i++)
+        if (g_binds[i].context[0] && ctx && !strcmp(g_binds[i].context, ctx) && !strcmp(g_binds[i].action, action))
+            return 2;
+    for (int i = 0; i < g_nbinds; i++)
+        if (!g_binds[i].context[0] && !strcmp(g_binds[i].action, action)) return 1;
+    return 0;
+}
+
+const char *kbm_scheme_bind(int scope, const char *action) {
+    int kind = kbm_scheme_bind_kind(scope, action);
+    if (!kind) return NULL;
+    const char *ctx = scope >= 0 && scope < KBM_SC_COUNT ? g_scope_names[scope] : NULL;
+    for (int i = 0; i < g_nbinds; i++)
+        if (kind == 1 ? !g_binds[i].context[0] : (ctx && !strcmp(g_binds[i].context, ctx)))
+            if (!strcmp(g_binds[i].action, action)) return g_binds[i].keys;
+    return NULL;
 }

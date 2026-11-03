@@ -108,6 +108,10 @@ world rows and their group fallbacks apply there. `TOTK_SCREEN_CTX` and `TOTK_SC
 4. **Motion mechanics**: a narrow mouse-to-six-axis feed is included (`TOTK_MOUSE_MOTION_KEY`, default `k`): holding the
    key feeds the mouse to the virtual controller's six-axis for the gyro shrines, with the camera paused. The full
    mouse gyro aiming path is not part of this patch.
+5. **The Keyboard & mouse tab** (`runtime/ui/kbm_page.cpp`): F1's tab lists every scheme action with one key cell, for
+   all contexts or for one context. A captured key is written to `kbm_binds` as `action=key` or `context.action=key`;
+   the context entry wins over the global one, and Delete clears it. While the throw key is held, a wheel notch steps
+   the material strip (the same D-pad-up step macro as the arrow strip) instead of the weapon strip.
 
 ## What changes for the player
 

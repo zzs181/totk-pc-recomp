@@ -144,9 +144,14 @@ the old polling path. `TOTK_MOUSE_FLOOD` (0 to 100, default 0) adds that many mo
 stress test for a high-report-rate mouse and the input path. `TOTK_KBM_MATERIALS_KEY` (c, z, b or n; default c) is the
 PC scheme's material key, held with the throw key. All are on the Controls tab.
 
-The strips 1, 2 and 3 are the pad's own D-pad quick selects (weapons, shields, bows). While the bow is drawn the
-game's D-pad means bow and arrow switching instead, so put the bow away (tap `F`) before walking the strips. The
-scheme has `AIM` rows for that state, but the port has no player-stance hook yet, so it keeps the on-foot rows.
+The strips 1, 2 and 3 are the pad's own D-pad quick selects (weapons, shields, bows). While the throw key is held, the
+wheel steps the material strip; without it, the wheel walks the weapon strip. While the bow is drawn the game's D-pad
+means bow and arrow switching instead, so put the bow away (tap `F`) before walking the strips. The scheme has `AIM`
+rows for that state, but the port has no player-stance hook yet, so it keeps the on-foot rows.
+
+F1's *Keyboard & mouse* tab edits every action's key: pick *All contexts* or one context (world, aim, climb, ...), then
+select a row and press the new key; Delete clears the override. The tab writes `kbm_binds` (`action=key` or
+`context.action=key`), and a context entry wins over a global one.
 
 ## Nintendo Switch 2 controllers
 

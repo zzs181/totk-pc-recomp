@@ -30,7 +30,8 @@ static const char *const text_en[UI_TEXT_COUNT] = {
 
     [UI_MENU_TITLE] = "Settings",
     [UI_MENU_TAB_SCREEN] = "Screen", [UI_MENU_TAB_GAME] = "Game", [UI_MENU_TAB_MODS] = "Mods", [UI_MENU_TAB_SOUND] = "Sound",
-    [UI_MENU_TAB_CONTROLS] = "Controls", [UI_MENU_TAB_AMIIBO] = "Amiibo", [UI_MENU_TAB_MENU] = "Menu", [UI_MENU_TAB_ADVANCED] = "Advanced",
+    [UI_MENU_TAB_CONTROLS] = "Controls", [UI_MENU_TAB_KBM] = "Keyboard & mouse", [UI_MENU_TAB_AMIIBO] = "Amiibo",
+    [UI_MENU_TAB_MENU] = "Menu", [UI_MENU_TAB_ADVANCED] = "Advanced",
     [UI_MENU_CONTINUE] = "Continue", [UI_MENU_QUIT] = "Quit game",
     [UI_MENU_ON] = "On", [UI_MENU_OFF] = "Off", [UI_MENU_AUTO] = "Automatic", [UI_MENU_DEFAULT_MARK] = "default",
     [UI_MENU_AFTER_RESTART] = "after restart", [UI_MENU_SET_BY_ENV] = "set by environment variable",
@@ -253,7 +254,8 @@ static const char *const text_en[UI_TEXT_COUNT] = {
     [UI_MENU_KBM_SCHEME_DESC] = "Routes the keyboard and mouse through the context table. Off uses the flat bindings "
                                 "below. The Controls page does not edit the scheme; kbm_binds in totk.ini overrides its "
                                 "keys. With keyboard button prompts the keycaps show the scheme's keys whether this is "
-                                "on or off.",
+                                "on or off. The Keyboard & mouse tab sets each action's key; while the throw key is "
+                                "held the wheel switches materials.",
     [UI_MENU_KBM_MATERIALS_KEY] = "Material key",
     [UI_MENU_KBM_MATERIALS_KEY_DESC] = "The scheme's key for the material action (C at first). Z, B or N is easier to "
                                        "reach with the throw key held; it changes the scheme at once.",
@@ -266,6 +268,22 @@ static const char *const text_en[UI_TEXT_COUNT] = {
     [UI_MENU_MOUSE_FLOOD] = "Mouse count injection",
     [UI_MENU_MOUSE_FLOOD_DESC] = "Extra mouse counts per presented frame, for stress-testing a high-report-rate "
                                  "mouse and the input path. 0 is off.",
+    [UI_MENU_KBM_HELP] = "Every action's key, in one context or in all of them. Select a row and press the new key; "
+                         "Delete clears the override. A context override wins over a global one. While the throw key "
+                         "is held the wheel steps the materials.",
+    [UI_MENU_KBM_CONTEXT] = "Context",
+    [UI_MENU_KBM_CONTEXT_DESC] = "The table the rows below edit. All contexts changes the action wherever no context "
+                                 "override names it.",
+    [UI_MENU_KBM_GLOBAL] = "All contexts",
+    [UI_MENU_KBM_ACTIONS] = "Actions",
+    [UI_MENU_KBM_DEFAULT] = "default",
+    [UI_MENU_KBM_OVERRIDE_GLOBAL] = "global override",
+    [UI_MENU_KBM_OVERRIDE_CONTEXT] = "context override",
+    [UI_MENU_KBM_PRESS] = "Press the new key for %s",
+    [UI_MENU_KBM_CANCEL_HINT] = "Esc cancels; Delete clears the override (%d s)",
+    [UI_MENU_KBM_CLEAR_HINT] = "Delete clears the override, Esc cancels",
+    [UI_MENU_KBM_ACTION_DESC] = "Click or press A to capture a key; Delete clears the override for this row.",
+    [UI_MENU_KBM_NO_ROWS] = "This context has no rows of its own; its actions come from its parent context.",
     [UI_MENU_KEY_MIN_HOLD] = "Movement key hold",
     [UI_MENU_KEY_MIN_HOLD_DESC] = "Keep a released movement key held this long (ms), so a quick tap does not break "
                                   "walking at high frame rates. 0 turns it off.",
@@ -498,7 +516,8 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
 
     [UI_MENU_TITLE] = "Настройки",
     [UI_MENU_TAB_SCREEN] = "Экран", [UI_MENU_TAB_GAME] = "Игра", [UI_MENU_TAB_MODS] = "Моды", [UI_MENU_TAB_SOUND] = "Звук",
-    [UI_MENU_TAB_CONTROLS] = "Управление", [UI_MENU_TAB_AMIIBO] = "Amiibo", [UI_MENU_TAB_MENU] = "Меню", [UI_MENU_TAB_ADVANCED] = "Дополнительно",
+    [UI_MENU_TAB_CONTROLS] = "Управление", [UI_MENU_TAB_KBM] = "Клавиатура и мышь", [UI_MENU_TAB_AMIIBO] = "Amiibo",
+    [UI_MENU_TAB_MENU] = "Меню", [UI_MENU_TAB_ADVANCED] = "Дополнительно",
     [UI_MENU_CONTINUE] = "Продолжить", [UI_MENU_QUIT] = "Выйти из игры",
     [UI_MENU_ON] = "Вкл.", [UI_MENU_OFF] = "Выкл.", [UI_MENU_AUTO] = "Автоматически",
     [UI_MENU_DEFAULT_MARK] = "по умолчанию",
@@ -722,7 +741,8 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
     [UI_MENU_KBM_SCHEME_DESC] = "Маршрутизирует клавиатуру и мышь по таблице контекстов. Выкл. — плоские привязки "
                                 "ниже. Вкладка «Управление» не меняет схему; kbm_binds в totk.ini переопределяет её "
                                 "клавиши. При подсказках-клавиатуре кейкапы показывают клавиши схемы независимо от "
-                                "того, включена она или нет.",
+                                "того, включена она или нет. Вкладка «Клавиатура и мышь» задаёт клавишу каждого "
+                                "действия; пока удерживается клавиша броска, колесо переключает материалы.",
     [UI_MENU_KBM_MATERIALS_KEY] = "Клавиша материалов",
     [UI_MENU_KBM_MATERIALS_KEY_DESC] = "Клавиша действия «материалы» в схеме (сначала C). Z, B или N удобнее "
                                        "нажимать, удерживая клавишу броска; схема меняется сразу.",
@@ -735,6 +755,23 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
     [UI_MENU_MOUSE_FLOOD] = "Инъекция отсчётов мыши",
     [UI_MENU_MOUSE_FLOOD_DESC] = "Лишние отсчёты мыши за кадр для проверки мыши с высокой частотой опроса и пути "
                                  "ввода. 0 — выкл.",
+    [UI_MENU_KBM_HELP] = "Клавиша каждого действия схемы, в одном контексте или во всех. Выберите строку и нажмите "
+                         "новую клавишу; Delete снимает переопределение. Контекстное важнее глобального. Пока "
+                         "удерживается клавиша броска, колесо переключает материалы.",
+    [UI_MENU_KBM_CONTEXT] = "Контекст",
+    [UI_MENU_KBM_CONTEXT_DESC] = "Таблица, которую редактируют строки ниже. «Все контексты» меняет действие везде, "
+                                 "где его не переопределяет контекст.",
+    [UI_MENU_KBM_GLOBAL] = "Все контексты",
+    [UI_MENU_KBM_ACTIONS] = "Действия",
+    [UI_MENU_KBM_DEFAULT] = "по умолчанию",
+    [UI_MENU_KBM_OVERRIDE_GLOBAL] = "глобальное переопределение",
+    [UI_MENU_KBM_OVERRIDE_CONTEXT] = "переопределение контекста",
+    [UI_MENU_KBM_PRESS] = "Нажмите новую клавишу для %s",
+    [UI_MENU_KBM_CANCEL_HINT] = "Esc — отмена; Delete снимает переопределение (%d с)",
+    [UI_MENU_KBM_CLEAR_HINT] = "Delete снимает переопределение, Esc — отмена",
+    [UI_MENU_KBM_ACTION_DESC] = "Щёлкните или нажмите A, чтобы захватить клавишу; Delete снимает переопределение этой "
+                                "строки.",
+    [UI_MENU_KBM_NO_ROWS] = "В этом контексте нет собственных строк; его действия берутся из родительского контекста.",
     [UI_MENU_KEY_MIN_HOLD] = "Удержание клавиш движения",
     [UI_MENU_KEY_MIN_HOLD_DESC] = "Сколько миллисекунд отпущенная клавиша движения ещё считается нажатой, чтобы "
                                   "быстрое нажатие не рвало ходьбу при высокой частоте кадров. 0 — выкл.",
@@ -972,7 +1009,8 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
 
     [UI_MENU_TITLE] = "Configurações",
     [UI_MENU_TAB_SCREEN] = "Tela", [UI_MENU_TAB_GAME] = "Jogo", [UI_MENU_TAB_SOUND] = "Som",
-    [UI_MENU_TAB_CONTROLS] = "Controles", [UI_MENU_TAB_AMIIBO] = "Amiibo", [UI_MENU_TAB_MENU] = "Menu", [UI_MENU_TAB_ADVANCED] = "Avançado",
+    [UI_MENU_TAB_CONTROLS] = "Controles", [UI_MENU_TAB_KBM] = "Teclado e mouse", [UI_MENU_TAB_AMIIBO] = "Amiibo",
+    [UI_MENU_TAB_MENU] = "Menu", [UI_MENU_TAB_ADVANCED] = "Avançado",
     [UI_MENU_TAB_MODS] = "Mods",
     [UI_MENU_MODS_BUILTIN] = "Embutidos no port", [UI_MENU_MODS_INSTALLED] = "Mods instalados",
     [UI_MENU_MODS_NONE] = "Nenhum mod ainda. Descompacte um mod na pasta mods, uma pasta por mod com a pasta romfs dentro, "
@@ -1117,7 +1155,8 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
     [UI_MENU_KBM_SCHEME_DESC] = "Encaminha teclado e mouse pela tabela de contextos. Desligado usa as ligações "
                                 "planas abaixo. A aba Controles não edita o esquema; kbm_binds no totk.ini substitui "
                                 "suas teclas. Com os ícones de teclado, os keycaps mostram as teclas do esquema esteja "
-                                "ele ligado ou desligado.",
+                                "ele ligado ou desligado. A aba Teclado e mouse define a tecla de cada ação; com a "
+                                "tecla de arremesso pressionada, a roda troca os materiais.",
     [UI_MENU_KBM_MATERIALS_KEY] = "Tecla de materiais",
     [UI_MENU_KBM_MATERIALS_KEY_DESC] = "A tecla do esquema para a ação de materiais (C no início). Z, B ou N é mais "
                                        "fácil de alcançar com a tecla de arremesso pressionada; o esquema muda na "
@@ -1131,6 +1170,22 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
     [UI_MENU_MOUSE_FLOOD] = "Injeção de contagem do mouse",
     [UI_MENU_MOUSE_FLOOD_DESC] = "Contagens extras de mouse por quadro, para testar um mouse de alta taxa de "
                                  "relatório e o caminho de entrada. 0 desliga.",
+    [UI_MENU_KBM_HELP] = "A tecla de cada ação do esquema, num contexto ou em todos. Selecione uma linha e pressione a "
+                         "nova tecla; Delete limpa a substituição. A do contexto vence a global. Com a tecla de "
+                         "arremesso pressionada, a roda troca os materiais.",
+    [UI_MENU_KBM_CONTEXT] = "Contexto",
+    [UI_MENU_KBM_CONTEXT_DESC] = "A tabela que as linhas abaixo editam. Todos os contextos muda a ação onde nenhum "
+                                 "contexto a substitui.",
+    [UI_MENU_KBM_GLOBAL] = "Todos os contextos",
+    [UI_MENU_KBM_ACTIONS] = "Ações",
+    [UI_MENU_KBM_DEFAULT] = "padrão",
+    [UI_MENU_KBM_OVERRIDE_GLOBAL] = "substituição global",
+    [UI_MENU_KBM_OVERRIDE_CONTEXT] = "substituição do contexto",
+    [UI_MENU_KBM_PRESS] = "Pressione a nova tecla para %s",
+    [UI_MENU_KBM_CANCEL_HINT] = "Esc cancela; Delete limpa a substituição (%d s)",
+    [UI_MENU_KBM_CLEAR_HINT] = "Delete limpa a substituição, Esc cancela",
+    [UI_MENU_KBM_ACTION_DESC] = "Clique ou pressione A para capturar uma tecla; Delete limpa a substituição desta linha.",
+    [UI_MENU_KBM_NO_ROWS] = "Este contexto não tem linhas próprias; suas ações vêm do contexto pai.",
     [UI_MENU_KEY_MIN_HOLD] = "Retenção das teclas de movimento",
     [UI_MENU_KEY_MIN_HOLD_DESC] = "Mantém uma tecla de movimento solta pressionada por este tempo (ms), para que um "
                                   "toque rápido não quebre a caminhada em alta taxa de quadros. 0 desliga.",
@@ -1480,6 +1535,7 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
     [UI_MENU_TAB_GAME] = "游戏",
     [UI_MENU_TAB_SOUND] = "声音",
     [UI_MENU_TAB_CONTROLS] = "操作",
+    [UI_MENU_TAB_KBM] = "键鼠",
     [UI_MENU_TAB_AMIIBO] = "amiibo",
     [UI_MENU_TAB_MENU] = "菜单",
     [UI_MENU_TAB_ADVANCED] = "高级",
@@ -1657,7 +1713,8 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
     [UI_MENU_KBM_SCHEME] = "键鼠上下文方案",
     [UI_MENU_KBM_SCHEME_DESC] = "按上下文表路由键盘和鼠标。关闭时使用下方的扁平键位。"
                                 "“操作”页不修改方案键位；totk.ini 的 kbm_binds 可覆盖方案按键。"
-                                "按键提示为“键盘”时，键帽始终显示方案键位；关闭本项只改变实际按键，不改变键帽。",
+                                "按键提示为“键盘”时，键帽始终显示方案键位；关闭本项只改变实际按键，不改变键帽。"
+                                "“键鼠”标签页可逐项改键；按住投掷键时滚轮换材料。",
     [UI_MENU_KBM_MATERIALS_KEY] = "换材料键",
     [UI_MENU_KBM_MATERIALS_KEY_DESC] = "方案里“材料”动作的键（默认 C）。按住投掷键时，Z、B 或 N 更好按；"
                                        "改动对方案立即生效。",
@@ -1668,6 +1725,20 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
     [UI_MENU_WHEEL_STEP_DESC] = "滚轮每格的按下与停顿毫秒数。0 = 每格只保持一次轮询（最小）。",
     [UI_MENU_MOUSE_FLOOD] = "鼠标计数注入",
     [UI_MENU_MOUSE_FLOOD_DESC] = "每帧额外注入的鼠标计数，用于高回报率鼠标与输入路径压测。0 = 关。",
+    [UI_MENU_KBM_HELP] = "方案里每个动作的按键，可按上下文或全局设置。选中一行后按新键；Delete 清除覆盖。"
+                         "上下文覆盖优先于全局。按住投掷键时滚轮换材料。",
+    [UI_MENU_KBM_CONTEXT] = "上下文",
+    [UI_MENU_KBM_CONTEXT_DESC] = "下面编辑哪张表。全局会修改所有未被上下文覆盖的动作。",
+    [UI_MENU_KBM_GLOBAL] = "全局",
+    [UI_MENU_KBM_ACTIONS] = "动作",
+    [UI_MENU_KBM_DEFAULT] = "默认",
+    [UI_MENU_KBM_OVERRIDE_GLOBAL] = "全局覆盖",
+    [UI_MENU_KBM_OVERRIDE_CONTEXT] = "上下文覆盖",
+    [UI_MENU_KBM_PRESS] = "请为 %s 按下一个新键",
+    [UI_MENU_KBM_CANCEL_HINT] = "Esc 取消；Delete 清除覆盖（%d 秒）",
+    [UI_MENU_KBM_CLEAR_HINT] = "Delete 清除覆盖，Esc 取消",
+    [UI_MENU_KBM_ACTION_DESC] = "点击或按 A 捕获按键；Delete 清除这一行的覆盖。",
+    [UI_MENU_KBM_NO_ROWS] = "这个上下文没有直接定义的行；它的动作来自父上下文。",
     [UI_MENU_KEY_MIN_HOLD] = "移动键保持",
     [UI_MENU_KEY_MIN_HOLD_DESC] = "移动键松开后仍保持按下的毫秒数，避免高帧率下快速点按导致走路断续。"
                                   "0 表示关闭。",
@@ -2129,7 +2200,7 @@ static const char *resolve_menu_lang(void) {
     return "en";
 }
 
-const char *menu_text(UiTextId id) {
+const char *menu_language(void) {
     static _Atomic(const char *) lang = "en";
     static _Atomic unsigned seen = ~0u;
     unsigned v = cfg_version();
@@ -2137,5 +2208,9 @@ const char *menu_text(UiTextId id) {
         atomic_store_explicit(&lang, resolve_menu_lang(), memory_order_relaxed);
         atomic_store_explicit(&seen, v, memory_order_relaxed);
     }
-    return ui_text_in(atomic_load_explicit(&lang, memory_order_relaxed), id);
+    return atomic_load_explicit(&lang, memory_order_relaxed);
+}
+
+const char *menu_text(UiTextId id) {
+    return ui_text_in(menu_language(), id);
 }

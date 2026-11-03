@@ -43,8 +43,19 @@ enum {
 // Parses the rows and builds the per-context tables; call once before a frame. Any thread, but before the first
 // kbm_scheme_frame (the runtime does both from its input init).
 void kbm_scheme_init(void);
-// TOTK_KBM_BINDS overrides, applied before the table is parsed: "action=key,key|action=key".
+// TOTK_KBM_BINDS overrides, applied before the table is parsed: "action=key,key|action=key", or "context.action=key"
+// for one context (the names of kbm_scheme_scope_name). A context entry wins over a global one for its rows.
 void kbm_scheme_set_binds(const char *spec);
+// The F1 "Keyboard & mouse" tab: every action, and the actions a context writes rows for directly, in table order.
+int kbm_scheme_action_count(void);
+const char *kbm_scheme_action_name(int index);
+int kbm_scheme_action_keys(const char *action, int *keys, int max);   // the first row's keys, any context
+int kbm_scheme_action_default_keys(const char *action, int *keys, int max);   // the table's own keys, no override
+int kbm_scheme_scope_action_count(int scope);
+const char *kbm_scheme_scope_action(int scope, int index);
+// 0 no override, 1 a global one, 2 a context one: the tab shows it and Delete clears that entry.
+int kbm_scheme_bind_kind(int scope, const char *action);
+const char *kbm_scheme_bind(int scope, const char *action);   // the override's keys, or NULL
 // The context the caller pushed (KBM_SC_*); KBM_SC_WORLD until it pushes another.
 void kbm_scheme_set_ctx(int scope);
 int kbm_scheme_ctx(void);

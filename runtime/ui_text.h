@@ -15,8 +15,8 @@ typedef enum {
     // Simplified Chinese texts.
     UI_MENU_FIRST,
     UI_MENU_TITLE = UI_MENU_FIRST,
-    UI_MENU_TAB_SCREEN, UI_MENU_TAB_GAME, UI_MENU_TAB_MODS, UI_MENU_TAB_SOUND, UI_MENU_TAB_CONTROLS, UI_MENU_TAB_AMIIBO,
-    UI_MENU_TAB_MENU, UI_MENU_TAB_ADVANCED,
+    UI_MENU_TAB_SCREEN, UI_MENU_TAB_GAME, UI_MENU_TAB_MODS, UI_MENU_TAB_SOUND, UI_MENU_TAB_CONTROLS, UI_MENU_TAB_KBM,
+    UI_MENU_TAB_AMIIBO, UI_MENU_TAB_MENU, UI_MENU_TAB_ADVANCED,
     UI_MENU_CONTINUE, UI_MENU_QUIT,
     UI_MENU_ON, UI_MENU_OFF, UI_MENU_AUTO, UI_MENU_DEFAULT_MARK,      // "default" beside the default value
     UI_MENU_AFTER_RESTART,    // note on a setting that is read at start
@@ -114,6 +114,11 @@ typedef enum {
     UI_MENU_KBM_MATERIALS_KEY, UI_MENU_KBM_MATERIALS_KEY_DESC,
     UI_MENU_KBM_PULSE, UI_MENU_KBM_PULSE_DESC, UI_MENU_WHEEL_STEP, UI_MENU_WHEEL_STEP_DESC,
     UI_MENU_MOUSE_FLOOD, UI_MENU_MOUSE_FLOOD_DESC,
+    // the Keyboard & mouse tab: context picker, action rows and the press window
+    UI_MENU_KBM_HELP, UI_MENU_KBM_CONTEXT, UI_MENU_KBM_CONTEXT_DESC, UI_MENU_KBM_GLOBAL,
+    UI_MENU_KBM_ACTIONS, UI_MENU_KBM_DEFAULT, UI_MENU_KBM_OVERRIDE_GLOBAL, UI_MENU_KBM_OVERRIDE_CONTEXT,
+    UI_MENU_KBM_PRESS, UI_MENU_KBM_CANCEL_HINT, UI_MENU_KBM_CLEAR_HINT, UI_MENU_KBM_ACTION_DESC,
+    UI_MENU_KBM_NO_ROWS,
     UI_MENU_KEY_MIN_HOLD, UI_MENU_KEY_MIN_HOLD_DESC,
     UI_MENU_SPRINT_TOGGLE, UI_MENU_SPRINT_TOGGLE_DESC, UI_MENU_LOCK_TOGGLE, UI_MENU_LOCK_TOGGLE_DESC,
     UI_MENU_KEYSNAP, UI_MENU_KEYSNAP_DESC,
@@ -257,7 +262,8 @@ int ui_text_defined(const char *lang, UiTextId id);
 // The catalog language for a Switch language code ("en-GB" -> "en", "zh-CN" -> "zh-Hans", ...).
 const char *ui_text_lang(const char *switch_code);
 
-// Menu text: ui_text_in(menu language, id). The menu language is TOTK_MENU_LANG ("en", "ru", "pt-BR", "zh-Hans");
-// unset, the system UI language when the catalog has menu text for it (English, Russian, Brazilian Portuguese,
-// Simplified Chinese), else English. Follows a live change of the setting.
+// The menu language in effect ("en", "ru", "pt-BR", "zh-Hans"): TOTK_MENU_LANG, or unset the system UI language when
+// the catalog has menu text for it, else English. Follows a live change of the setting.
+const char *menu_language(void);
+// Menu text: ui_text_in(menu language, id).
 const char *menu_text(UiTextId id);

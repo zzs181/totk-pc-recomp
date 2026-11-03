@@ -84,6 +84,8 @@ static const char *key_label(int k, char *buf, size_t n) {
     return buf;
 }
 
+const char *binds_key_label(int key, char *buf, size_t n) { return key_label(key, buf, n); }
+
 // A gamepad button: the label the open pad has on a face button, else its place on the pad.
 static const char *pad_label(int p) {
     if (p == PAD_NONE) return "";
