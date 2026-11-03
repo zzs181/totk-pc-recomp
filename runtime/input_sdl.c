@@ -80,6 +80,7 @@ static SDL_Scancode key_sc(int key) {
     case KEY_SLASH: return SDL_SCANCODE_SLASH;
     case KEY_BACKSLASH: return SDL_SCANCODE_BACKSLASH;
     case KEY_GRAVE: return SDL_SCANCODE_GRAVE;
+    case KEY_ESC: return SDL_SCANCODE_ESCAPE;
     }
     return SDL_SCANCODE_UNKNOWN;
 }
@@ -173,8 +174,10 @@ void input_sdl_event(const SDL_Event *e) {
         int down = e->type == SDL_EVENT_KEY_DOWN;
         if (e->key.scancode == SDL_SCANCODE_ESCAPE) {
             plat_xchg32(&esc_held, down);
-            // Esc is unbound in the game layout: it releases the cursor and opens the menu (ui/menu_sdl.cpp)
-            if (down && !e->key.repeat && !(cur_rel & CUR_REL)) plat_xchg32(&cur_rel, CUR_REL | CUR_ESC);
+            // Esc is unbound in the game layout: it releases the cursor and opens the menu (ui/menu_sdl.cpp), unless
+            // the PC scheme runs, where Esc is the game's own key (input_kbm_scheme)
+            if (down && !e->key.repeat && !(cur_rel & CUR_REL) && !input_kbm_scheme())
+                plat_xchg32(&cur_rel, CUR_REL | CUR_ESC);
         }
         if (e->key.scancode == SDL_SCANCODE_F8) plat_xchg32(&f8_held, down);
         int k = key_of_sc(e->key.scancode);

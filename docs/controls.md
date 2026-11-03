@@ -1,5 +1,9 @@
 # Controls
 
+`TOTK_KBM_SCHEME=1` switches to a second keyboard and mouse path, ported from Weeping of the Empire, whose
+contexts, keys and approximations are in [kbm-port.md](kbm-port.md). Off (the default), the table below is what
+the game reads.
+
 Input comes from the first SDL3 gamepad, the keyboard and the mouse, merged into one Switch controller (`runtime/input_win.c`). Buttons are ORed; each stick takes the source with the larger deflection. Keys and mouse buttons count only while the game window is in the foreground. `TOTK_INPUT=none` disables both (automated runs). `TOTK_*` settings can also be set in `totk.ini` next to `totk.exe` (`input = none`, `motion = 0`, `rumble = 0`); the environment overrides the file. `TOTK_RUMBLE_STRENGTH` is the rumble strength in percent (0 to 300, default 130; 0 is the same as `rumble = 0`). `TOTK_RUMBLE_CURVE` is the exponent applied to the amplitude before the strength (0.2 to 1.5, default 0.6; lower makes weak pulses stronger, 1 is linear). `TOTK_RUMBLE_TRIGGERS=1` also drives the impulse triggers of an Xbox pad.
 
 `TOTK_PAD_LAYOUT` (`pad_layout`, the *Button layout* row on the Controls tab, live) picks which face button is Switch A:
@@ -28,7 +32,8 @@ The log names the layout in effect (`input: gamepad layout ...`); the menu shows
 | Plus | Start | Tab | menu, inventory |
 | Minus | Back | M | map |
 
-Esc is unbound in the game; it opens the settings menu and releases the mouse cursor (see Mouse camera). Z and X duplicate ZL and ZR so menu pages turn with two neighbouring keys; the menu tabs (L, R) are Q and R. The mouse wheel is unbound. The bindings are the tables of `input_map` in `runtime/input_map.c`: the keys (platform-neutral key ids) and one gamepad table per layout (gamepad inputs by position); `runtime/input_win.c` translates Win32 virtual keys and SDL buttons.
+Esc is unbound in the game; it opens the settings menu and releases the mouse cursor (see Mouse camera), unless the PC
+scheme runs (`TOTK_KBM_SCHEME`, docs/kbm-port.md): `Esc` is the game's pause menu there and `F1` opens this menu. Z and X duplicate ZL and ZR so menu pages turn with two neighbouring keys; the menu tabs (L, R) are Q and R. The mouse wheel is unbound. The bindings are the tables of `input_map` in `runtime/input_map.c`: the keys (platform-neutral key ids) and one gamepad table per layout (gamepad inputs by position); `runtime/input_win.c` translates Win32 virtual keys and SDL buttons.
 
 ## Xbox button prompts
 
@@ -94,13 +99,38 @@ Mouse motion (raw input) becomes right-stick deflection. Each presented frame ta
 
 `TOTK_MOUSE_SENS` (0 to 10, default 1; higher turns faster, 0 turns the mouse camera and the cursor capture off). `TOTK_MOUSE_AIM_SCALE` (0.1 to 3, default 1) multiplies it while ZR is held, for a calmer drawn bow. While the window is the foreground window the cursor is hidden and confined to the client area; a 4 ms keeper puts the clip back and recenters the pointer when Windows drops it.
 
-`TOTK_MOUSE_GYRO` (`off`, `aim`, `always`; default off) turns the mouse into a virtual controller's motion instead of a right-stick sample: the mouse counts become yaw and pitch, gravity is fed with them, and the game's own motion aiming does the rest. `aim` is active while ZR is held; `always` whenever the cursor is captured. A gamepad with a gyro and accelerometer keeps the six-axis and the mouse gyro stays off. `TOTK_MOUSE_GYRO_SPEED` (0.05 to 4, default 1) scales it. The right stick is not driven while the mouse gyro is active. It is released on focus loss, minimise, while F11 changes the window, during a size or move loop and while a text entry is open. Esc releases it by hand: the cursor shows, the mouse camera and mouse buttons stop, and the window can be moved, minimised or closed. A mouse click inside the client area captures it again; that click does not reach the game. Activating the window by a click on its title bar or border does not capture, so it can be dragged or closed right away; Alt+Tab or a click in the client area captures as before. `TOTK_INPUT=none` disables the capture too.
 
 `TOTK_STICK_DEADZONE` (0 to 50, default 8) is the gamepad stick dead zone in percent of full deflection, the same for both sticks. It is round: a stick inside the circle reads centred, and the rest of its travel is scaled to start at 0 at the edge, so full deflection still reaches full. Raise it for a stick that drifts. The game's own dead zone applies after it. `TOTK_LSTICK_DEADZONE` and `TOTK_RSTICK_DEADZONE` (the *Left/Right stick dead zone* rows on the Controls tab) set one stick each and fall back to `TOTK_STICK_DEADZONE` while unset, so a worn stick can get a larger zone than the other. With a gamepad connected each row shows its stick's deflection now, before the dead zone (*stick now*): let go of the stick and set the row a few percent above the value it rests at.
 
 The stick direction bits (`StickLLeft` to `StickRDown`) are derived from the sticks at 50% deflection. A gamepad plugged in later is picked up within one second; with none connected the log says `input: no gamepad`.
 
-Wheel notches are events, not held keys: each notch is bound like a key (`mouse_wheel_up`, `mouse_wheel_down`) and becomes a two-poll press. Keys and mouse buttons also keep their bit for two polls after a release, so a tap made between two of the game's Npad samples is not lost at high frame rates.
+Wheel notches are events, not held keys: each notch is bound like a key (`mouse_wheel_up`, `mouse_wheel_down`) and becomes a 70 ms press with a 70 ms rest after it, one notch at a time, so a quick scroll steps the game once per notch instead of merging the notches into one press (the notches that arrive during a press wait their turn, up to eight a direction). Keys and mouse buttons also keep their bit for two polls after a release, so a tap made between two of the game's Npad samples is not lost at high frame rates.
+
+## Direct mouse look
+
+`TOTK_MOUSE_DIRECT=1` (or *Direct mouse look* on the Controls tab) adds the mouse to the camera's **processed** right
+stick after the game's dead zone, curve and scripted checks, so slow motion is not lost and fast flicks do not
+saturate. The mouse no longer drives the right stick itself; the gamepad and the arrow keys still do. The game-side
+site is the 1.4.3 PlayerCamera stick step (docs/mousedirect.md); another game version needs a new site.
+
+`TOTK_MOUSE_DIRECT_SENS` (0.05 to 10, default 1) is the stick units per mouse count at 30 fps; 1 is about the speed of
+the right-stick mouse at 60 fps. `TOTK_MOUSE_DIRECT_PITCH` (0.2 to 4, default 1.3725 = 70/51) shapes the vertical
+motion as `sign(v) * sqrt(gain * |v|)`, which turns the game's quadratic pitch into the same response as yaw.
+
+## Mouse motion for the gyro shrines
+
+Some shrines and mechanisms read the controller's six-axis instead of the sticks. Hold `K` (`TOTK_MOUSE_MOTION_KEY`,
+default `k`; `none` disables) to feed the mouse to the game's six-axis: the mouse tilts the virtual controller, and the
+direct mouse look is paused while the key is held. `TOTK_MOUSE_MOTION_SPEED` (0.05 to 4, default 1) scales the tilt.
+A gamepad with motion sensors keeps its own six-axis, so the key does nothing then.
+
+## Keyboard hold, toggles and keyboard snapshot
+
+`TOTK_KEY_MIN_HOLD_MS` (0 to 1000, default 150; 0 off) keeps a released movement key held for that long, so a quick tap
+does not break walking at high frame rates. `TOTK_SPRINT_TOGGLE=1` taps the run key to keep running (it ends 300 ms
+after movement stops or on the next tap), and `TOTK_LOCK_TOGGLE=1` taps the shield/lock key to keep it held until the
+next tap; the gamepad's own buttons are never latched. `TOTK_KEYSNAP=1` (default) reads the keyboard from the window's
+messages instead of polling every key every poll; `0` is the old polling path. All four are on the Controls tab.
 
 ## Nintendo Switch 2 controllers
 

@@ -41,6 +41,9 @@ Code copied or adapted from another project is listed here with its source, the 
 | Zstandard 1.5.7 (MSYS2 `mingw-w64-ucrt-x86_64-zstd`), static link | https://github.com/facebook/zstd, Copyright (c) Meta Platforms, Inc. and affiliates | BSD-3-Clause | `runtime/resolution.c` (the HeapDef table), `runtime/ov_zstd.c` (the game's zstd frames decoded on the host) |
 | musl `fma.c`, `fmaf.c` and `scalbn.c`, adapted into one file for the x86-64-v2 build | https://github.com/kraj/musl @ `5a56ad13e1e0790c06122978aad2a14d6b9efc1a` (mirror of https://git.musl-libc.org/cgit/musl), Copyright (c) 2005-2020 Rich Felker and contributors | MIT | `runtime/fma.c` (the correctly rounded fma/fmaf the FP lowering needs on CPUs without FMA3) |
 
+| Weeping of the Empire PC scheme: the context table of keyboard and mouse rows (`pc_scheme.inc`, `pc_scheme_gameplay.inc`; tokens rewritten for this runtime's bit names), the per-context row resolution, the `T` tap-and-hold pairs and the kind vocabulary | https://github.com/daniel-madrid-07/weeping-of-the-empire @ `df0586cdc5702ca19bbebfa59697e0b6980f6237` (v0.1.8.2), Copyright (c) 2026 daniel-madrid-07 | MIT | `runtime/kbm_scheme.c`, `runtime/kbm_scheme.h`, `runtime/kbm_scheme_ui.inc`, `runtime/kbm_scheme_gameplay.inc`, `tests/kbm_scheme_test.c`, `tests/kbm_scheme_test.py` |
+| Weeping of the Empire direct mouse look: the 1.0.0 PlayerCamera stick-step site semantics, injection point and pitch shaping (`sign(v) * sqrt(70/51 * |v|)`) | https://github.com/daniel-madrid-07/weeping-of-the-empire @ `df0586cdc5702ca19bbebfa59697e0b6980f6237` (v0.1.8.2), Copyright (c) 2026 daniel-madrid-07 | MIT | `recomp/patches-v143.txt` (set mousedirect), `runtime/input.c` |
+
 ## Compiler runtime in a source build
 
 A build with the MSYS2 UCRT64 toolchain of `docs/building.md` links these into `totk.exe`. The installer release builds with llvm-mingw instead (its row below).

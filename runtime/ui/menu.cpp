@@ -731,6 +731,13 @@ static int key_action(const InputMap *m, int key) {
 // unset key falls back to the default in the settings table, the same as a fresh installation. totk.ini takes any name
 // input_map.c knows (walks of the keyboard sticks, not of the gamepad). A key the current bindings also use says which
 // action it presses.
+static void row_motion_key(void) {
+    static const char *const keys[] = {"none", "k", "h", "j", "n", "p", "u", "y"};
+    const char *names[sizeof keys / sizeof *keys] = {menu_text(UI_MENU_OFF), "K", "H", "J", "N", "P", "U", "Y"};
+    opt_choice_list("TOTK_MOUSE_MOTION_KEY", UI_MENU_MOUSE_MOTION_KEY, keys, names, sizeof keys / sizeof *keys,
+                    UI_MENU_MOUSE_MOTION_KEY_DESC, -1, nullptr);
+}
+
 static void row_walk_key(void) {
     static const char *const keys[] = {"none", "lshift", "lalt", "lctrl", "tab", "capslock"};
     const char *names[sizeof keys / sizeof *keys] = {menu_text(UI_MENU_OFF), "Shift", "Alt", "Ctrl", "Tab", "Caps Lock"};
@@ -818,6 +825,7 @@ static void tab_controls(float scale) {
     const char *note = prompts_note(&restart);
     opt_choice("TOTK_PROMPTS", UI_MENU_PROMPTS, prompts, 2, UI_MENU_PROMPTS_DESC, note);
     bool ask = restart && opt_button("##restart", UI_MENU_RESTART, UI_MENU_RESTART_DESC);
+    opt_toggle("TOTK_KBM_SCHEME", UI_MENU_KBM_SCHEME, UI_MENU_KBM_SCHEME_DESC);
     opt_toggle("TOTK_MOTION", UI_MENU_MOTION, UI_MENU_MOTION_DESC);
     opt_slider("TOTK_RUMBLE_STRENGTH", UI_MENU_RUMBLE_STRENGTH, 0, 300, UI_MENU_RUMBLE_STRENGTH_DESC, 10, "%.0f %%");
     opt_slider("TOTK_RUMBLE_CURVE", UI_MENU_RUMBLE_CURVE, 0.2f, 1.5f, UI_MENU_RUMBLE_CURVE_DESC, 0.05f, "%.2f");
@@ -836,11 +844,20 @@ static void tab_controls(float scale) {
     opt_slider("TOTK_STICK_SENS", UI_MENU_STICK_SENS, 0.1f, 3, UI_MENU_STICK_SENS_DESC, 0.05f, "%.2f");
     opt_slider("TOTK_MOUSE_SENS", UI_MENU_MOUSE_SENS, 0, 10, UI_MENU_MOUSE_SENS_DESC, 0.1f, "%.1f");
     opt_slider("TOTK_MOUSE_AIM_SCALE", UI_MENU_MOUSE_AIM_SCALE, 0.1f, 3, UI_MENU_MOUSE_AIM_SCALE_DESC, 0.05f, "%.2f");
-    static const UiTextId gyro[] = {UI_MENU_MOUSE_GYRO_OFF, UI_MENU_MOUSE_GYRO_AIM, UI_MENU_MOUSE_GYRO_ALWAYS};
-    opt_choice("TOTK_MOUSE_GYRO", UI_MENU_MOUSE_GYRO, gyro, 3, UI_MENU_MOUSE_GYRO_DESC);
-    opt_slider("TOTK_MOUSE_GYRO_SPEED", UI_MENU_MOUSE_GYRO_SPEED, 0.05f, 4, UI_MENU_MOUSE_GYRO_SPEED_DESC, 0.05f, "%.2f");
+    opt_toggle("TOTK_MOUSE_DIRECT", UI_MENU_MOUSE_DIRECT, UI_MENU_MOUSE_DIRECT_DESC);
+    opt_slider("TOTK_MOUSE_DIRECT_SENS", UI_MENU_MOUSE_DIRECT_SENS, 0.05f, 10, UI_MENU_MOUSE_DIRECT_SENS_DESC, 0.05f,
+               "%.2f");
+    opt_slider("TOTK_MOUSE_DIRECT_PITCH", UI_MENU_MOUSE_DIRECT_PITCH, 0.2f, 4, UI_MENU_MOUSE_DIRECT_PITCH_DESC, 0.05f,
+               "%.2f");
+    row_motion_key();
+    opt_slider("TOTK_MOUSE_MOTION_SPEED", UI_MENU_MOUSE_MOTION_SPEED, 0.05f, 4, UI_MENU_MOUSE_MOTION_SPEED_DESC, 0.05f,
+               "%.2f");
     row_walk_key();
     opt_slider("TOTK_WALK_SCALE", UI_MENU_WALK_SCALE, 0.2f, 0.9f, UI_MENU_WALK_SCALE_DESC, 0.01f, "%.2f");
+    opt_slider("TOTK_KEY_MIN_HOLD_MS", UI_MENU_KEY_MIN_HOLD, 0, 1000, UI_MENU_KEY_MIN_HOLD_DESC, 10, "%.0f ms");
+    opt_toggle("TOTK_SPRINT_TOGGLE", UI_MENU_SPRINT_TOGGLE, UI_MENU_SPRINT_TOGGLE_DESC);
+    opt_toggle("TOTK_LOCK_TOGGLE", UI_MENU_LOCK_TOGGLE, UI_MENU_LOCK_TOGGLE_DESC);
+    opt_toggle("TOTK_KEYSNAP", UI_MENU_KEYSNAP, UI_MENU_KEYSNAP_DESC);
     binds_rows(scale);
     opt_end();
     binds_after_page();

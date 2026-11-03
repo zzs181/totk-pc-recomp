@@ -72,6 +72,7 @@ static int key_vk(int key) {
     case KEY_SLASH: return VK_OEM_2;
     case KEY_BACKSLASH: return VK_OEM_5;
     case KEY_GRAVE: return VK_OEM_3;
+    case KEY_ESC: return VK_ESCAPE;
     }
     return 0;
 }
@@ -84,6 +85,10 @@ uint32_t input_key_char(int key) {
 // ---- mouse camera: raw motion accumulated by the window thread, one stick sample per presented frame
 static volatile LONG mouse_dx, mouse_dy;   // raw counts since the last frame sample
 static volatile LONG wheel_notches;        // wheel notches since the last poll
+// TOTK_KEYSNAP: the window thread's keyboard snapshot. GetKeyboardState here sees the messages the window pumps;
+// the game thread only reads the bytes, instead of calling GetAsyncKeyState for every bound key every poll.
+static volatile uint8_t key_snap[256];
+static volatile LONG snap_valid;
 static volatile LONG cur_captured;         // cursor hidden and confined to the client area
 static volatile LONG cur_active;           // WM_ACTIVATEAPP: the window's application is active
 // Bits: CUR_REL, Esc or activation by a click on the title bar or border: until a client click; CUR_ESC, set with CUR_REL
@@ -151,12 +156,39 @@ static DWORD WINAPI cursor_keeper(void *arg) {
     return 0;
 }
 
+static int keysnap_on(void) {
+    static int on = 1;
+    static unsigned seen = ~0u;
+    unsigned v = cfg_version();
+    if (v != seen) { seen = v; on = cfg_bool("TOTK_KEYSNAP"); }
+    return on;
+}
+static void snap_refresh(void) {
+    BYTE ks[256];
+    if (GetKeyboardState(ks)) {
+        memcpy((void *)key_snap, ks, sizeof ks);
+        InterlockedExchange(&snap_valid, 1);
+    }
+}
+static void snap_refresh_input(void) {
+    static ULONGLONG last;
+    ULONGLONG now = GetTickCount64();
+    if (now == last) return;   // at most one user32 call per ms from raw input
+    last = now;
+    if (keysnap_on()) snap_refresh();
+}
+static void snap_clear(void) {
+    memset((void *)key_snap, 0, sizeof key_snap);
+    InterlockedExchange(&snap_valid, 0);
+}
+
 // Window procedure hook (gfx_window_win.c calls it first). Returns 1 with *res set when the message is fully handled.
 int input_window_msg(HWND h, UINT m, WPARAM w, LPARAM l, LRESULT *res) {
     switch (m) {
     case WM_CREATE: {
         RAWINPUTDEVICE rid = {.usUsagePage = 1, .usUsage = 2, .dwFlags = 0, .hwndTarget = h};   // generic mouse
         if (!RegisterRawInputDevices(&rid, 1, sizeof rid)) rt_log("input: raw mouse registration failed (%lu)", GetLastError());
+        snap_refresh();
         CreateThread(NULL, 0, cursor_keeper, NULL, 0, NULL);
         break;
     }
@@ -168,6 +200,7 @@ int input_window_msg(HWND h, UINT m, WPARAM w, LPARAM l, LRESULT *res) {
             InterlockedAdd(&mouse_dx, ri.data.mouse.lLastX);
             InterlockedAdd(&mouse_dy, ri.data.mouse.lLastY);
         }
+        snap_refresh_input();
         break;   // DefWindowProc must see WM_INPUT for cleanup
     }
     case WM_MOUSEWHEEL:
@@ -182,21 +215,39 @@ int input_window_msg(HWND h, UINT m, WPARAM w, LPARAM l, LRESULT *res) {
     case WM_SYSCOMMAND:   // Alt pressed alone would enter the window menu loop, which stalls the game: Alt is a game key
         if ((w & 0xFFF0) == SC_KEYMENU && l == 0) { *res = 0; return 1; }
         break;
-    case WM_KEYDOWN:   // Esc is unbound in the game layout: it releases the cursor and opens the menu (menu_window_msg)
-        if (w == VK_ESCAPE && !(cur_rel & CUR_REL)) { cur_rel_update(rel_esc); cursor_update(h); }
+    case WM_KEYDOWN:   // Esc is unbound in the game layout: it releases the cursor and opens the menu (menu_window_msg),
+                       // unless the PC scheme runs, where Esc is the game's own key (input_kbm_scheme)
+        snap_refresh();
+        if (w == VK_ESCAPE && !(cur_rel & CUR_REL) && !input_kbm_scheme()) { cur_rel_update(rel_esc); cursor_update(h); }
         break;
-    case WM_LBUTTONDOWN: case WM_RBUTTONDOWN: case WM_MBUTTONDOWN:   // client area only; poll_merged drops the click
+    case WM_KEYUP: case WM_SYSKEYDOWN: case WM_SYSKEYUP:
+        snap_refresh();
+        break;
+    case WM_LBUTTONDOWN: case WM_RBUTTONDOWN: case WM_MBUTTONDOWN: case WM_XBUTTONDOWN:   // client area only; poll_merged drops the click
+        snap_refresh();
         if (cur_rel & CUR_REL) { cur_rel_update(rel_clear); cursor_update(h); }
+        break;
+    case WM_LBUTTONUP: case WM_RBUTTONUP: case WM_MBUTTONUP: case WM_XBUTTONUP:
+        snap_refresh();
         break;
     case WM_MOUSEACTIVATE:   // sent before WM_ACTIVATEAPP: a title bar or border click must not capture
         if (LOWORD(l) != HTCLIENT) cur_rel_update(rel_title);
         break;
     case WM_ACTIVATEAPP:
-        if (!w) cur_rel_update(rel_clear);   // Alt+Tab back in captures again
+        if (!w) { cur_rel_update(rel_clear); snap_clear(); }   // Alt+Tab back in captures again
+        else snap_refresh();
         InterlockedExchange(&cur_active, w != 0);
         cursor_update(h);
         break;
-    case WM_SETFOCUS: case WM_KILLFOCUS: case WM_SIZE: case WM_MOVE:
+    case WM_SETFOCUS:
+        snap_refresh();
+        cursor_update(h);
+        break;
+    case WM_KILLFOCUS:
+        snap_clear();
+        cursor_update(h);
+        break;
+    case WM_SIZE: case WM_MOVE:
         cursor_update(h);
         break;
     case WM_ENTERSIZEMOVE:
@@ -213,7 +264,10 @@ int input_window_msg(HWND h, UINT m, WPARAM w, LPARAM l, LRESULT *res) {
     return 0;
 }
 
-static int key_down(int vk) { return (GetAsyncKeyState(vk) & 0x8000) != 0; }
+static int key_down(int vk) {
+    if (keysnap_on() && snap_valid && vk > 0 && vk < 256) return (key_snap[vk] & 0x80) != 0;
+    return (GetAsyncKeyState(vk) & 0x8000) != 0;
+}
 
 int ikb_wheel_take(void) { return (int)InterlockedExchange(&wheel_notches, 0); }
 

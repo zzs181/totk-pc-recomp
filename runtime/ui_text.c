@@ -233,13 +233,34 @@ static const char *const text_en[UI_TEXT_COUNT] = {
     [UI_MENU_MOUSE_SENS_DESC] = "How fast the mouse turns the camera.",
     [UI_MENU_MOUSE_AIM_SCALE] = "Aim mouse scale",
     [UI_MENU_MOUSE_AIM_SCALE_DESC] = "Mouse sensitivity while ZR draws the bow; 1 leaves it unchanged.",
-    [UI_MENU_MOUSE_GYRO] = "Mouse gyro",
-    [UI_MENU_MOUSE_GYRO_DESC] = "The mouse turns a virtual controller for motion aiming instead of pushing the right "
-                                "stick: off, while aiming (ZR) or always. A gamepad with motion sensors keeps its own.",
-    [UI_MENU_MOUSE_GYRO_OFF] = "Off", [UI_MENU_MOUSE_GYRO_AIM] = "While aiming",
-    [UI_MENU_MOUSE_GYRO_ALWAYS] = "Always",
-    [UI_MENU_MOUSE_GYRO_SPEED] = "Mouse gyro speed",
-    [UI_MENU_MOUSE_GYRO_SPEED_DESC] = "How far the mouse turns the virtual controller.",
+    [UI_MENU_MOUSE_DIRECT] = "Direct mouse look (experimental)",
+    [UI_MENU_MOUSE_DIRECT_DESC] = "Adds the mouse to the camera's processed stick, so it skips the game's dead zone "
+                                  "and curve; the mouse no longer drives the right stick.",
+    [UI_MENU_MOUSE_DIRECT_SENS] = "Direct mouse look speed",
+    [UI_MENU_MOUSE_DIRECT_SENS_DESC] = "Stick units per mouse count at 30 fps; 1 matches the right-stick mouse at 60 fps.",
+    [UI_MENU_MOUSE_DIRECT_PITCH] = "Direct look pitch shape",
+    [UI_MENU_MOUSE_DIRECT_PITCH_DESC] = "Square-root pitch shaping. 1.37 matches the game's quadratic pitch to yaw; "
+                                        "higher makes small vertical moves stronger.",
+    [UI_MENU_MOUSE_MOTION_KEY] = "Mouse motion key",
+    [UI_MENU_MOUSE_MOTION_KEY_DESC] = "Hold this key to feed mouse motion to the game's six-axis for the gyro shrines; "
+                                     "the camera is paused while held. none disables.",
+    [UI_MENU_MOUSE_MOTION_SPEED] = "Mouse motion speed",
+    [UI_MENU_MOUSE_MOTION_SPEED_DESC] = "How far the mouse tilts the virtual controller.",
+    [UI_MENU_KBM_SCHEME] = "PC keyboard and mouse scheme",
+    [UI_MENU_KBM_SCHEME_DESC] = "Routes the keyboard and mouse through the context table. Off uses the flat bindings "
+                                "below. The Controls page does not edit the scheme; kbm_binds in totk.ini overrides its "
+                                "keys.",
+    [UI_MENU_KEY_MIN_HOLD] = "Movement key hold",
+    [UI_MENU_KEY_MIN_HOLD_DESC] = "Keep a released movement key held this long (ms), so a quick tap does not break "
+                                  "walking at high frame rates. 0 turns it off.",
+    [UI_MENU_SPRINT_TOGGLE] = "Sprint toggle",
+    [UI_MENU_SPRINT_TOGGLE_DESC] = "Tap the run key to keep running; it stops when movement stops for 300 ms or the "
+                                   "key is tapped again.",
+    [UI_MENU_LOCK_TOGGLE] = "Lock-on toggle",
+    [UI_MENU_LOCK_TOGGLE_DESC] = "Tap the shield/lock key to keep it held until the key is tapped again.",
+    [UI_MENU_KEYSNAP] = "Keyboard snapshot",
+    [UI_MENU_KEYSNAP_DESC] = "Read the keyboard from the window's messages instead of polling every key. Off uses "
+                             "the old polling.",
     [UI_MENU_WALK_KEY] = "Walk key",
     [UI_MENU_WALK_KEY_DESC] = "Hold it to tilt the keyboard's sticks part of the way, so the keyboard walks instead of "
                               "runs. The walk scale sets how far. A controller and the mouse are not affected.",
@@ -664,14 +685,35 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
     [UI_MENU_MOUSE_SENS_DESC] = "Как быстро мышь поворачивает камеру.",
     [UI_MENU_MOUSE_AIM_SCALE] = "Множитель при прицеливании",
     [UI_MENU_MOUSE_AIM_SCALE_DESC] = "Чувствительность мыши, пока ZR натягивает лук; 1 — без изменений.",
-    [UI_MENU_MOUSE_GYRO] = "Гироскоп мыши",
-    [UI_MENU_MOUSE_GYRO_DESC] = "Мышь поворачивает виртуальный контроллер для прицеливания движением вместо правого "
-                                "стика: выкл., при прицеливании (ZR) или всегда. Геймпад с датчиками движения "
-                                "использует свои.",
-    [UI_MENU_MOUSE_GYRO_OFF] = "Выкл.", [UI_MENU_MOUSE_GYRO_AIM] = "При прицеливании",
-    [UI_MENU_MOUSE_GYRO_ALWAYS] = "Всегда",
-    [UI_MENU_MOUSE_GYRO_SPEED] = "Скорость гироскопа мыши",
-    [UI_MENU_MOUSE_GYRO_SPEED_DESC] = "Насколько далеко мышь поворачивает виртуальный контроллер.",
+    [UI_MENU_MOUSE_DIRECT] = "Прямой обзор мышью (эксперимент)",
+    [UI_MENU_MOUSE_DIRECT_DESC] = "Добавляет мышь к уже обработанному стику камеры, минуя мёртвую зону и кривую "
+                                  "игры; мышь больше не управляет правым стиком.",
+    [UI_MENU_MOUSE_DIRECT_SENS] = "Скорость прямого обзора",
+    [UI_MENU_MOUSE_DIRECT_SENS_DESC] = "Единицы стика на отсчёт мыши при 30 fps; 1 совпадает с мышью через правый "
+                                       "стик при 60 fps.",
+    [UI_MENU_MOUSE_DIRECT_PITCH] = "Форма вертикали прямого обзора",
+    [UI_MENU_MOUSE_DIRECT_PITCH_DESC] = "Квадратичный корень для вертикали. 1,37 согласует квадратичный наклон игры с "
+                                        "поворотом; больше усиливает малые движения.",
+    [UI_MENU_MOUSE_MOTION_KEY] = "Клавиша движения мышью",
+    [UI_MENU_MOUSE_MOTION_KEY_DESC] = "Удерживайте, чтобы мышь управляла шестиосевым датчиком в святилищах с наклоном; "
+                                      "камера на паузе. none отключает.",
+    [UI_MENU_MOUSE_MOTION_SPEED] = "Скорость движения мышью",
+    [UI_MENU_MOUSE_MOTION_SPEED_DESC] = "Насколько далеко мышь наклоняет виртуальный контроллер.",
+    [UI_MENU_KBM_SCHEME] = "Схема клавиатуры и мыши",
+    [UI_MENU_KBM_SCHEME_DESC] = "Маршрутизирует клавиатуру и мышь по таблице контекстов. Выкл. — плоские привязки "
+                                "ниже. Вкладка «Управление» не меняет схему; kbm_binds в totk.ini переопределяет её "
+                                "клавиши.",
+    [UI_MENU_KEY_MIN_HOLD] = "Удержание клавиш движения",
+    [UI_MENU_KEY_MIN_HOLD_DESC] = "Сколько миллисекунд отпущенная клавиша движения ещё считается нажатой, чтобы "
+                                  "быстрое нажатие не рвало ходьбу при высокой частоте кадров. 0 — выкл.",
+    [UI_MENU_SPRINT_TOGGLE] = "Переключение бега",
+    [UI_MENU_SPRINT_TOGGLE_DESC] = "Нажмите клавишу бега, чтобы бежать постоянно; бег заканчивается через 300 мс "
+                                   "после остановки или при повторном нажатии.",
+    [UI_MENU_LOCK_TOGGLE] = "Переключение захвата",
+    [UI_MENU_LOCK_TOGGLE_DESC] = "Нажмите клавишу щита/захвата, чтобы удерживать её до повторного нажатия.",
+    [UI_MENU_KEYSNAP] = "Снимок клавиатуры",
+    [UI_MENU_KEYSNAP_DESC] = "Читать клавиатуру из сообщений окна вместо опроса каждой клавиши. Выкл. — старый "
+                             "опрос.",
     [UI_MENU_WALK_KEY] = "Клавиша шага",
     [UI_MENU_WALK_KEY_DESC] = "Удерживайте: стики клавиатуры отклоняются частично, и персонаж идёт, а не бежит. "
                               "Насколько — задаёт сила шага. Контроллер и мышь не затрагиваются.",
@@ -1027,14 +1069,36 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
     [UI_MENU_MOUSE_SENS_DESC] = "Quão rápido o mouse gira a câmera.",
     [UI_MENU_MOUSE_AIM_SCALE] = "Escala da mira no mouse",
     [UI_MENU_MOUSE_AIM_SCALE_DESC] = "Sensibilidade do mouse enquanto ZR puxa o arco; 1 não muda nada.",
-    [UI_MENU_MOUSE_GYRO] = "Giroscópio do mouse",
-    [UI_MENU_MOUSE_GYRO_DESC] = "O mouse gira um controle virtual para mirar por movimento em vez de empurrar o "
-                                "analógico direito: desligado, ao mirar (ZR) ou sempre. Um controle com sensores de "
-                                "movimento usa os próprios.",
-    [UI_MENU_MOUSE_GYRO_OFF] = "Desligado", [UI_MENU_MOUSE_GYRO_AIM] = "Ao mirar",
-    [UI_MENU_MOUSE_GYRO_ALWAYS] = "Sempre",
-    [UI_MENU_MOUSE_GYRO_SPEED] = "Velocidade do giroscópio do mouse",
-    [UI_MENU_MOUSE_GYRO_SPEED_DESC] = "Quanto o mouse gira o controle virtual.",
+    [UI_MENU_MOUSE_DIRECT] = "Olhar direto do mouse (experimental)",
+    [UI_MENU_MOUSE_DIRECT_DESC] = "Soma o mouse ao analógico já processado da câmera, ignorando a zona morta e a "
+                                  "curva do jogo; o mouse deixa de empurrar o analógico direito.",
+    [UI_MENU_MOUSE_DIRECT_SENS] = "Velocidade do olhar direto",
+    [UI_MENU_MOUSE_DIRECT_SENS_DESC] = "Unidades de analógico por contagem do mouse a 30 fps; 1 iguala o mouse pelo "
+                                       "analógico direito a 60 fps.",
+    [UI_MENU_MOUSE_DIRECT_PITCH] = "Curva vertical do olhar direto",
+    [UI_MENU_MOUSE_DIRECT_PITCH_DESC] = "Curva de raiz quadrada para a vertical. 1,37 iguala a inclinação quadrática do "
+                                        "jogo ao giro; mais aumenta movimentos pequenos.",
+
+    [UI_MENU_MOUSE_MOTION_KEY] = "Tecla de movimento do mouse",
+    [UI_MENU_MOUSE_MOTION_KEY_DESC] = "Segure para o mouse alimentar o sensor de seis eixos nos santuários de inclinação; "
+                                      "a câmera pausa. none desativa.",
+    [UI_MENU_MOUSE_MOTION_SPEED] = "Velocidade do movimento do mouse",
+    [UI_MENU_MOUSE_MOTION_SPEED_DESC] = "Quanto o mouse inclina o controle virtual.",
+    [UI_MENU_KBM_SCHEME] = "Esquema de teclado e mouse",
+    [UI_MENU_KBM_SCHEME_DESC] = "Encaminha teclado e mouse pela tabela de contextos. Desligado usa as ligações "
+                                "planas abaixo. A aba Controles não edita o esquema; kbm_binds no totk.ini substitui "
+                                "suas teclas.",
+    [UI_MENU_KEY_MIN_HOLD] = "Retenção das teclas de movimento",
+    [UI_MENU_KEY_MIN_HOLD_DESC] = "Mantém uma tecla de movimento solta pressionada por este tempo (ms), para que um "
+                                  "toque rápido não quebre a caminhada em alta taxa de quadros. 0 desliga.",
+    [UI_MENU_SPRINT_TOGGLE] = "Alternar corrida",
+    [UI_MENU_SPRINT_TOGGLE_DESC] = "Toque na tecla de correr para continuar correndo; para após 300 ms sem movimento "
+                                   "ou ao tocar de novo.",
+    [UI_MENU_LOCK_TOGGLE] = "Alternar mira fixa",
+    [UI_MENU_LOCK_TOGGLE_DESC] = "Toque na tecla de escudo/mira para mantê-la pressionada até tocar de novo.",
+    [UI_MENU_KEYSNAP] = "Instantâneo do teclado",
+    [UI_MENU_KEYSNAP_DESC] = "Lê o teclado pelas mensagens da janela em vez de consultar cada tecla. Desligado usa "
+                             "a consulta antiga.",
 
     [UI_BINDS_HELP] = "Selecione uma célula e aperte A ou Enter, depois a tecla, o botão do mouse ou o botão do "
                       "controle. Delete ou X limpa a célula. Uma tecla já em uso vem para cá; um botão do controle "
@@ -1534,13 +1598,31 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
     [UI_MENU_MOUSE_SENS_DESC] = "鼠标转动视角的速度。",
     [UI_MENU_MOUSE_AIM_SCALE] = "瞄准时鼠标倍率",
     [UI_MENU_MOUSE_AIM_SCALE_DESC] = "按住 ZR 拉弓时的鼠标灵敏度倍率；1 表示不变。",
-    [UI_MENU_MOUSE_GYRO] = "鼠标陀螺仪",
-    [UI_MENU_MOUSE_GYRO_DESC] = "用鼠标转动虚拟手柄来体感瞄准，而不是推动右摇杆：关闭、仅瞄准时（ZR）或始终。"
-                                "带体感的手柄仍使用自己的传感器。",
-    [UI_MENU_MOUSE_GYRO_OFF] = "关闭", [UI_MENU_MOUSE_GYRO_AIM] = "仅瞄准时",
-    [UI_MENU_MOUSE_GYRO_ALWAYS] = "始终",
-    [UI_MENU_MOUSE_GYRO_SPEED] = "鼠标陀螺仪速度",
-    [UI_MENU_MOUSE_GYRO_SPEED_DESC] = "鼠标转动虚拟手柄的速度。",
+    [UI_MENU_MOUSE_DIRECT] = "鼠标直接视角（实验）",
+    [UI_MENU_MOUSE_DIRECT_DESC] = "把鼠标加到相机已处理的右摇杆上，跳过游戏的死区和曲线；鼠标不再推动右摇杆。",
+    [UI_MENU_MOUSE_DIRECT_SENS] = "直接视角速度",
+    [UI_MENU_MOUSE_DIRECT_SENS_DESC] = "30 fps 下每个鼠标计数对应的摇杆量；1 约等于 60 fps 时右摇杆鼠标的速度。",
+    [UI_MENU_MOUSE_DIRECT_PITCH] = "直接视角俯仰整形",
+    [UI_MENU_MOUSE_DIRECT_PITCH_DESC] = "垂直方向用平方根整形。1.37 让游戏的二次俯仰与水平转动一致；"
+                                        "调高会让小幅垂直移动更灵敏。",
+
+    [UI_MENU_MOUSE_MOTION_KEY] = "鼠标体感按键",
+    [UI_MENU_MOUSE_MOTION_KEY_DESC] = "按住时把鼠标交给游戏的六轴传感器，用于体感神庙/倾斜机关；此时视角直插暂停。"
+                                      "none 关闭。",
+    [UI_MENU_MOUSE_MOTION_SPEED] = "鼠标体感速度",
+    [UI_MENU_MOUSE_MOTION_SPEED_DESC] = "鼠标倾斜虚拟手柄的幅度。",
+    [UI_MENU_KBM_SCHEME] = "键鼠上下文方案",
+    [UI_MENU_KBM_SCHEME_DESC] = "按上下文表路由键盘和鼠标。关闭时使用下方的扁平键位。"
+                                "“操作”页不修改方案键位；totk.ini 的 kbm_binds 可覆盖方案按键。",
+    [UI_MENU_KEY_MIN_HOLD] = "移动键保持",
+    [UI_MENU_KEY_MIN_HOLD_DESC] = "移动键松开后仍保持按下的毫秒数，避免高帧率下快速点按导致走路断续。"
+                                  "0 表示关闭。",
+    [UI_MENU_SPRINT_TOGGLE] = "冲刺切换",
+    [UI_MENU_SPRINT_TOGGLE_DESC] = "轻点奔跑键持续冲刺；停止移动 300 毫秒或再次轻点时结束。",
+    [UI_MENU_LOCK_TOGGLE] = "锁定切换",
+    [UI_MENU_LOCK_TOGGLE_DESC] = "轻点盾/锁定键保持按下，再次轻点取消。",
+    [UI_MENU_KEYSNAP] = "键盘快照",
+    [UI_MENU_KEYSNAP_DESC] = "从窗口消息读取键盘状态，而不是每次轮询所有按键。关闭时使用旧的轮询方式。",
 
     [UI_BINDS_HELP] = "选中一个格子后按 A 或 Enter，再按键、鼠标键或手柄按键。"
                       "Delete 或 X 清除格子。已占用的按键会移到这里；"
