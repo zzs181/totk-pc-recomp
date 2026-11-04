@@ -203,6 +203,23 @@ def msbt_letters(data, swap):
     return changed
 
 
+def swap_menu_codepoints(data, lo, hi):
+    """The layout at data[lo:hi] (a bytearray, changed in place) with every button code point it names moved to the
+    menus' spare one (tools/button_icons.py MENU_CODEPOINTS). Returns how many were moved."""
+    moved = 0
+    for old, new in icons.MENU_CODEPOINTS.items():
+        a, b = struct.pack('<H', old), struct.pack('<H', new)
+        i = lo
+        while True:
+            i = data.find(a, i, hi)
+            if i < 0:
+                break
+            data[i:i + 2] = b
+            moved += 1
+            i += 2
+    return moved
+
+
 def sarc_replace(data, new):
     """The SARC data with the members named in new (name -> bytes) replaced. The header, SFAT and SFNT stay; the
     members are laid out again in their old order, each at an offset with at least the alignment its old one had."""
@@ -242,6 +259,19 @@ RESTBL = max((p for p in files if p.startswith('System/Resource/ResourceSizeTabl
              key=lambda p: int((re.search(r'\.(\d+)\.', p) or [0, 0])[1]), default=None)
 by_position = args.prompts == 'xbox'   # the face buttons' prompts swapped to the labels (pad_layout = nintendo)
 keyboard = args.prompts == 'keyboard'  # the face buttons' prompts and letters drawn as keycaps
+# The layouts a menu or a list shows. Their prompts name the menus' keys (a menu's confirm is Enter, its back Esc),
+# which are not the on-foot ones, so their button code points move to the spare ones the button font already has
+# (tools/button_icons.py MENU_CODEPOINTS) and the font carries both readings. Everything else keeps the on-foot set:
+# a layout a menu shown over the world shares (PaActionGuide, the instant tips, the dialogues) would otherwise change
+# its prompts too.
+MENU_LAYOUTS = (
+    'blyt/CameraPointer_00.bflyt', 'blyt/Challenge_00.bflyt', 'blyt/OwnedHorseList_00.bflyt',
+    'blyt/PaAppMapCursor_00.bflyt', 'blyt/PaAppPictureBookDetail_00.bflyt',
+    'blyt/PaGuideKeyPauseMenu_00.bflyt', 'blyt/PaGuideKeyPauseMenuLeftIcon_00.bflyt',
+    'blyt/PaMapFloorTab_00.bflyt', 'blyt/PaMapTab_00.bflyt', 'blyt/PaMessageBtn_00.bflyt',
+    'blyt/PaPauseInfoHaveNum_00.bflyt', 'blyt/PaPouchSlideList_01.bflyt', 'blyt/PaRecipeCard_00.bflyt',
+    'blyt/PaShopPouchSlideList_00.bflyt', 'blyt/Pouch_00.bflyt', 'blyt/ShopMenu_00.bflyt',
+    'blyt/SystemLoadList_00.bflyt', 'blyt/SystemOption_00.bflyt')
 if args.prompts:
     assert FONTS, 'no Font/Font*.Nin_NX_NVN.bfarc.zs in the RomFS'
     assert MALS, 'no Mals/<language>.Product.<version>.sarc.zs in the RomFS'
@@ -310,6 +340,8 @@ if args.prompts:
     assert not missing, f'no {", ".join(missing)} in {icons.TEXT_ARCHIVE}'
     glyphs = icons.text_glyphs(archives[icons.TEXT_ARCHIVE][slice(*text[name])] for name in icons.TEXT_FONTS)
     drawn = icons.keyboard_icons(glyphs) if args.prompts == 'keyboard' else icons.xbox_icons(glyphs)
+    if keyboard:
+        drawn.update(icons.menu_keyboard_icons(glyphs))   # the menus' set, on the spare code points
     bntx = members['timg/__Combined.bntx'][0]
     letters = {}
     letter_map = KEY_LETTERS if by_position else icons.FACE_LETTERS
@@ -325,6 +357,10 @@ if args.prompts:
     textures = dict(icons.HUD_TEXTURES)
     if keyboard:
         textures.update(icons.FACE_TEXTURES)   # the action prompt's round A/B/X/Y become keycaps too
+        missing = [m for m in MENU_LAYOUTS if m not in members]
+        assert not missing, f'not in {ARCHIVE}: {", ".join(missing)}'
+        moved = sum(swap_menu_codepoints(blarc, *members[m]) for m in MENU_LAYOUTS)
+        assert moved, 'no menu layout names a button code point'
     hud = icons.bntx_redraw(blarc, bntx, textures, drawn)
     outputs[ARCHIVE] = bytes(blarc)
     fonts = {}   # each distinct font is drawn once (1.4.3's four archives hold the same one)

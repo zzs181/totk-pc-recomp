@@ -183,6 +183,22 @@ def key_grid(advance, cells, glyphs):
     return advance, draw
 
 
+def arrow_pair(advance, vertical=True):
+    """(advance, draw) for a cap of ours with two arrows in it: up and down (or left and right) on one keycap. Kenney's
+    pairs are four blank caps, and a cross would say the other two directions work too."""
+    def draw(pen):
+        x0 = advance / 2 - KEYCAP_SIZE / 2
+        rounded(pen, x0, Y0, x0 + KEYCAP_SIZE, Y1, KEYCAP_RADIUS)
+        cx, b, h, w = advance / 2, 45, 150, 105        # centre, gap from it, arrow height and half base
+        if vertical:
+            polygon(pen, [(cx - w, CY + b), (cx, CY + b + h), (cx + w, CY + b)])               # up, clockwise
+            polygon(pen, [(cx + w, CY - b), (cx, CY - b - h), (cx - w, CY - b)])               # down
+        else:
+            polygon(pen, [(cx - b, CY - w), (cx - b - h, CY), (cx - b, CY + w)])               # left
+            polygon(pen, [(cx + b, CY + w), (cx + b + h, CY), (cx + b, CY - w)])               # right
+    return advance, draw
+
+
 def xbox_icons(g):
     """Code point -> (advance, draw(pen)) for the buttons an Xbox controller names differently from a Switch: L R = LB
     RB, ZL ZR = LT RT, Plus and Minus = Menu and View, the d-pad as a cross. g: Glyphs for the letters. The face
@@ -249,6 +265,22 @@ KEYCAP_ADVANCE = {0xE040: 640, 0xE041: 640, 0xE042: 640, 0xE043: 640, 0xE044: 72
                   0xE047: 720, 0xE049: 720, 0xE04B: 600, 0xE04C: 600, 0xE056: 960, 0xE057: 960,
                   **{cp: 720 for cp in range(0xE060, 0xE066)}}
 
+# ---- the menus' set. Their keys are not the on-foot ones (A is Enter, B is Esc, X is F, Y is T, L is Q, R is E, ZL is
+# X, ZR is V, Plus is I), and a font has one glyph per code point. So a menu's prompt -- a text pane holding the
+# button's code point -- is moved to a spare one instead, and the font carries both readings: the on-foot keys stay on
+# U+E040 ..., the menus' on these. U+E06A to U+E07F are empty glyphs in the game's button font (16 units wide, no
+# outline), which is what makes the swap possible without adding glyphs to its CFF.
+MENU_CODEPOINTS = {0xE040: 0xE06A, 0xE041: 0xE06B, 0xE042: 0xE06C, 0xE043: 0xE06D, 0xE044: 0xE06E,
+                   0xE045: 0xE06F, 0xE046: 0xE070, 0xE047: 0xE071, 0xE04B: 0xE072, 0xE04C: 0xE073,
+                   0xE049: 0xE074, 0xE060: 0xE075, 0xE061: 0xE076, 0xE062: 0xE077, 0xE063: 0xE078,
+                   0xE064: 0xE079, 0xE065: 0xE07A}
+MENU_KEYS = {0xE040: 'word:ENTER', 0xE041: 'word:ESC', 0xE042: 'word:F', 0xE043: 'word:T',
+             0xE044: 'word:Q', 0xE045: 'word:E', 0xE046: 'word:X', 0xE047: 'word:V',
+             0xE04B: 'word:I', 0xE04C: 'word:M',
+             0xE049: 'dpad:up,down,left,right', 0xE060: 'keyboard_arrow_up', 0xE061: 'keyboard_arrow_down',
+             0xE062: 'keyboard_arrow_left', 0xE063: 'keyboard_arrow_right',
+             0xE064: 'arrows:up,down', 0xE065: 'arrows:left,right'}
+
 
 def keycap_outline(name):
     """The icon's contours in font coordinates (y up) as a RecordingPen: every path of its SVG, flipped."""
@@ -281,32 +313,45 @@ def keyboard_icons(glyphs=None):
     its legend out of the key, so its contours go into the glyph as they are."""
     icons = {}
     for cp, name in KEYCAP_ICONS.items():
-        advance = KEYCAP_ADVANCE[cp]
-        if name == 'wasd':   # Kenney draws the arrows as four bare caps: nothing in them says which way
-            icons[cp] = key_grid(advance, [('W', 1, 1), ('A', 0, 0), ('S', 1, 0), ('D', 2, 0)], glyphs)
-            continue
-        if name == 'wasd:up,down':
-            icons[cp] = key_grid(advance, [('W', 0, 1), ('S', 0, 0)], glyphs)
-            continue
-        if name == 'wasd:left,right':
-            icons[cp] = key_grid(advance, [('A', 0, 0), ('D', 1, 0)], glyphs)
-            continue
-        if name.startswith('word:'):
-            assert glyphs is not None, f'{name} needs the text fonts'
-            icons[cp] = (advance, word_cap(name[5:], advance, glyphs))
-            continue
-        rec = keycap_outline(name)
-        box = BoundsPen(None)
-        rec.replay(box)
-        x0, y0, x1, y1 = box.bounds
-        scale = min((Y1 - Y0) / (y1 - y0), (advance - 2 * KEYCAP_MARGIN) / (x1 - x0))
-        ox = advance / 2 - (x0 + x1) / 2 * scale
-        oy = CY - (y0 + y1) / 2 * scale
-
-        def draw(pen, rec=rec, s=scale, dx=ox, dy=oy):
-            rec.replay(TransformPen(pen, (s, 0, 0, s, dx, dy)))
-        icons[cp] = (advance, draw)
+        icons[cp] = keycap(name, KEYCAP_ADVANCE[cp], glyphs)
     return icons
+
+
+def keycap(name, advance, glyphs):
+    """(advance, draw) for one named keycap: 'wasd', 'wasd:up,down', 'wasd:left,right', 'arrows:up,down',
+    'dpad:up,down,left,right', 'word:TEXT', or the name of a Kenney SVG."""
+    if name.startswith('wasd'):   # Kenney draws the arrows as four bare caps: nothing says which way
+        if name == 'wasd':
+            return key_grid(advance, [('W', 1, 1), ('A', 0, 0), ('S', 1, 0), ('D', 2, 0)], glyphs)
+        if name == 'wasd:up,down':
+            return key_grid(advance, [('W', 0, 1), ('S', 0, 0)], glyphs)
+        return key_grid(advance, [('A', 0, 0), ('D', 1, 0)], glyphs)
+    if name.startswith('arrows:'):
+        return arrow_pair(advance, vertical=name[7:] == 'up,down')
+    if name.startswith('dpad:'):
+        return dpad(*name[5:].split(','), advance=advance)
+    if name.startswith('word:'):
+        assert glyphs is not None, f'{name} needs the text fonts'
+        return advance, word_cap(name[5:], advance, glyphs)
+    rec = keycap_outline(name)
+    box = BoundsPen(None)
+    rec.replay(box)
+    x0, y0, x1, y1 = box.bounds
+    scale = min((Y1 - Y0) / (y1 - y0), (advance - 2 * KEYCAP_MARGIN) / (x1 - x0))
+    ox = advance / 2 - (x0 + x1) / 2 * scale
+    oy = CY - (y0 + y1) / 2 * scale
+
+    def draw(pen, rec=rec, s=scale, dx=ox, dy=oy):
+        rec.replay(TransformPen(pen, (s, 0, 0, s, dx, dy)))
+    return advance, draw
+
+
+def menu_keyboard_icons(glyphs):
+    """Code point -> (advance, draw) for the menus' set: the same buttons, the keys the UI contexts put on them
+    (docs/kbm-port.md). A menu's prompt is a text pane holding the button's code point, so the menus' layouts name
+    MENU_CODEPOINTS' spare ones instead (tools/make_romfs_patches.py, swap_menu_codepoints) and one font carries both
+    readings. The sticks are in both sets with the same key (CTRL, MMB) and are not swapped."""
+    return {new: keycap(MENU_KEYS[old], KEYCAP_ADVANCE[old], glyphs) for old, new in MENU_CODEPOINTS.items()}
 
 
 def redraw_font(otf, icons, swaps=()):
