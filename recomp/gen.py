@@ -208,11 +208,12 @@ def partition(est, max_fns, max_bytes, big_fn):
 class Emitter:
     """C for the functions of one module. starts is the set of every function start of the module."""
 
-    def __init__(self, mod, starts, patched=None, reg_locals=regs.LOCALS, callee_saved=True, spins=None):
+    def __init__(self, mod, starts, patched=None, reg_locals=regs.LOCALS, callee_saved=True, spins=None, hooks=None):
         self.mod = mod
         self.starts = starts
         self.patched = patched or {}   # {address: [(set index, [replacement words])]} (recomp/patches.py)
         self.spins = spins or {}       # {spin wait back-edge: its head} (recomp/patches.py `spin`)
+        self.hooks = hooks or {}       # {hooked function: its slot} (recomp/patches.py `hook`, runtime/hook.c)
         self.reg_locals = reg_locals   # recomp/regs.py: registers per function in C locals
         self.kept = regs.CALLEE_SAVED if callee_saved else frozenset()   # not reloaded after a call
         self.uses_patches = False
@@ -501,6 +502,19 @@ class Emitter:
         else:
             out += [line for _, line in body]
         out.append('}')
+        slot = self.hooks.get(entry)
+        if slot is not None:
+            # A hooked function keeps its name for its callers: the lifted body moves behind it, and the name becomes
+            # the wrapper the runtime's hook sees (recomp/patches.py `hook`, runtime/hook.c).
+            sig = f'void {fname(entry)}(Cpu *c) {{'
+            for k, line in enumerate(out):
+                if line == sig:
+                    out[k] = f'static void {fname(entry)}_body(Cpu *c) {{'
+                    break
+            else:
+                raise ValueError(f'{entry:#x}: hooked function has no entry to wrap')
+            out.append(f'void {fname(entry)}(Cpu *c) {{ rt_hook_run({slot}, c, {fname(entry)}_body); }}')
+            self.stats['hooked_functions'] += 1
         self.stats['functions'] += 1
         self.stats['instructions'] += len(insns)
         return out, refs
@@ -573,7 +587,8 @@ def _emitter(name):
         mod = Module(name, path, base, 'c')
         e = _W['emitters'][name] = Emitter(mod, set(_W['starts'][name].tolist()),
                                            _W['patches'].for_module(name, base),
-                                           spins=_W['patches'].spins_for(name, base), **_W['opts'])
+                                           spins=_W['patches'].spins_for(name, base),
+                                           hooks=_W['patches'].hooks_for(name, base), **_W['opts'])
     return e
 
 
@@ -665,6 +680,8 @@ def main():
     write_layout(mods, args.out)
     table = patches.load(args.patches, mods) if args.patches else patches.Table()
     write_if_changed(args.out / 'patches.h', patches.header_text(table, GENERATED_MARKER))
+    # Always written: a table that dropped its last hook must not leave the previous build's slots behind.
+    write_if_changed(args.out / 'hooks.h', patches.hooks_header_text(table, GENERATED_MARKER))
     want = args.modules.split(',')
     unknown = set(want) - {n for n, _, _ in mods}
     if unknown:
@@ -681,6 +698,10 @@ def main():
         starts, dstats = discover(mod)
         est = estimate_sizes(mod, starts)
         abs_starts = mod.lo + starts * 4
+        starts_set = set(abs_starts.tolist())
+        for a in table.hooks_for(name, base):
+            if a not in starts_set:   # the wrapper would never be reached: nothing calls a function that does not start
+                raise SystemExit(f'{name}: hook on {a:#x} is not a function start (recomp/patches.py `hook`)')
         n = len(starts) if not args.limit else min(args.limit, len(starts))
         ends = np.append(abs_starts[1:], mod.hi)
         chunks = partition(est[:n], args.chunk_fns, args.chunk_bytes, args.big_fn)

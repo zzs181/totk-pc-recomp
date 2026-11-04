@@ -31,10 +31,14 @@ _Static_assert(offsetof(Cpu, fpsr) == 328, "fpsr");
 _Static_assert(offsetof(Cpu, v) == 512, "v");
 
 typedef void (*GuestFn)(Cpu *);
+typedef void (*RtHookFn)(Cpu *c, void (*body)(Cpu *));   // a host hook: it decides whether and how to run body
 
 // ---- runtime services (runtime/*.c)
 void rt_dispatch(Cpu *c);                 // call function at c->pc
 void rt_spin_gate(Cpu *c, uint64_t head);  // a pass of a spin wait loop (kernel.c, recomp/patches.py `spin`)
+void rt_hook_run(int slot, Cpu *c, void (*body)(Cpu *));   // a hooked function's wrapper (hook.c, patches.py `hook`)
+int rt_hook_slot(const char *name);                        // a hook's slot, from the set the table generated (-1: none)
+int rt_hook_bind(const char *name, RtHookFn fn);           // a hook binds itself at start; -1: no such slot here
 void rt_svc(Cpu *c, uint32_t imm, uint64_t pc);
 void rt_brk(Cpu *c, uint32_t imm, uint64_t pc) __attribute__((noreturn));
 void rt_udf(Cpu *c, uint64_t pc) __attribute__((noreturn));

@@ -41,6 +41,7 @@ TESTS = {
     'flags_check':              ('.venv', None, [], ''),
     'excl_mt':                  ('.venv', None, [], ''),
     'glitch_match_test':        ('.venv', None, [], ''),
+    'hook_test':                ('.venv', None, [], ''),
     'kbm_scheme_test':          ('.venv', None, [], ''),
     'pack_shader_cache_test':   ('.venv', None, [], ''),
     'spin_waits_test':          ('.venv', None, [], ''),

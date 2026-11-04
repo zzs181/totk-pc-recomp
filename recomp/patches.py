@@ -1,12 +1,14 @@
 """Code patch table for the generator: guest instructions replaced in the lifted C, switchable at run time.
 
 Lifted code cannot be byte-patched when the game runs, so a patch is applied when the C is generated. A patch file
-(gen.py --patches) has two kinds of lines; `#` starts a comment, fields are separated by whitespace:
+(gen.py --patches) has three kinds of lines; `#` starts a comment, fields are separated by whitespace:
 
   set  <name> <env> <default>               a patch set: a run-time switch <env>=0/1, <default> when it is unset
   site <set> <module> <address> <original> <replacement> [<replacement> ...]
 
   spin <module> <head> <back-edge> [<back-edge> ...]
+
+  hook <module> <address> <name>
 
 <address> is a module offset (hex), <original> the instruction word the module has there (checked; a mismatch stops
 the generator), each <replacement> an instruction word (hex) or `@page:x<n>`, which is `adrp x<n>, <patch page>`
@@ -29,10 +31,22 @@ A `spin` line names a spin wait found by tools/spin_waits.py: a loop with head <
 and the direct branches back to it (module offsets). Each back-edge (checked: a b, b.cond, cbz / cbnz or tbz / tbnz to
 <head>) is lifted as `rt_spin_gate(c, <head>); goto <head>`, which keeps every register and only adds time
 (runtime/kernel.c kern_spin_gate).
+
+A `hook` line names a host hook: the function at <address> keeps its name, but every caller now reaches
+`rt_hook_run(<slot>, c, f_<address>_body)` (runtime/hook.c), which hands the frame to the runtime function bound to
+<name>, or calls the body straight away when none is bound. The hook sees the caller's registers as the call leaves
+them -- c->x[30] is the return address the caller wrote before the call, c->v[] its vector registers -- may call
+body(c) once, and may leave its own values behind: what the caller reads after the call is what the hook left. That is
+how a per-call constant the game computes for a 30 Hz frame is corrected for a faster one (weeping-of-the-empire's
+totk_effect_sway.cpp and its siblings, MIT): the hook runs only at the call it names, and every other call of the same
+function is the original. <address> must be a function start, or the wrapper would never be reached. A hook binds
+itself at start (rt_hook_bind), so no guest address appears in the runtime and one hook serves every game version.
 """
 from pathlib import Path
+import re
 
 PAGE = 0x1000
+IDENT = re.compile(r'[A-Za-z_][A-Za-z0-9_]*\Z')
 
 
 class PatchError(ValueError):
@@ -49,17 +63,23 @@ def adrp(pc, target, rd):
 
 class Table:
     """sets: [(name, env, default)]; sites: {module: {offset: [(set index, [word | ('page', reg)], original)]}} (the
-    alternatives of a site in file order); page."""
+    alternatives of a site in file order); hooks: [(module, offset, name)] in file order (a hook's slot is its index);
+    page."""
 
-    def __init__(self, sets=(), sites=None, page=0, spins=None):
+    def __init__(self, sets=(), sites=None, page=0, spins=None, hooks=()):
         self.sets = list(sets)
         self.sites = sites or {}
         self.page = page
         self.spins = spins or {}   # {module: {back-edge offset: head offset}}
+        self.hooks = list(hooks)
 
     def spins_for(self, name, base):
         """{absolute back-edge address: absolute head address}."""
         return {base + b: base + h for b, h in self.spins.get(name, {}).items()}
+
+    def hooks_for(self, name, base):
+        """{absolute address: slot} of the hooks on one module (runtime/hook.c)."""
+        return {base + off: i for i, (mod, off, _) in enumerate(self.hooks) if mod == name}
 
     def for_module(self, name, base):
         """{absolute address: [(set index, [words])]} with @page resolved."""
@@ -73,7 +93,7 @@ class Table:
 
 def load(path, mods):
     """Table from a patch file; mods is layout() output [(name, base, size)]."""
-    sets, index, sites, spins = [], {}, {}, {}
+    sets, index, sites, spins, hooks = [], {}, {}, {}, []
     bases = {n: (b, s) for n, b, s in mods}
     for no, raw in enumerate(Path(path).read_text().splitlines(), 1):
         f = raw.split('#', 1)[0].split()
@@ -112,6 +132,17 @@ def load(path, mods):
                 if b in mod:
                     raise PatchError(f'{where}: {f[1]}+{b:#x} is a back-edge twice')
                 mod[b] = head
+        elif f[0] == 'hook' and len(f) == 4:
+            if f[1] not in bases:
+                raise PatchError(f'{where}: module {f[1]} not in the layout')
+            if not IDENT.match(f[3]):
+                raise PatchError(f'{where}: hook name {f[3]!r} is not a C identifier (runtime/hook.c compares it)')
+            off = int(f[2], 16)
+            if any(m == f[1] and o == off for m, o, _ in hooks):
+                raise PatchError(f'{where}: {f[1]}+{off:#x} hooked twice')
+            if any(n == f[3] for _, _, n in hooks):
+                raise PatchError(f'{where}: hook {f[3]} named twice')
+            hooks.append((f[1], off, f[3]))
         else:
             raise PatchError(f'{where}: cannot parse {raw!r}')
     base, size = bases['main'][0], bases['main'][1]
@@ -119,11 +150,11 @@ def load(path, mods):
     nxt = min((b for _, b, _ in mods if b > base), default=None)
     if nxt is not None and page + PAGE > nxt:
         raise PatchError(f'no room for the patch page after main ({page:#x})')
-    return Table(sets, sites, page, spins)
+    return Table(sets, sites, page, spins, hooks)
 
 
 def check(table, mod, name):
-    """Stops on a site whose original word differs from the module's."""
+    """Stops on a site whose original word differs from the module's, or a hook outside its .text."""
     for off, [(_, _, want), *_] in table.sites.get(name, {}).items():
         a = mod.base + off
         if not mod.in_text(a):
@@ -131,6 +162,9 @@ def check(table, mod, name):
         have = mod.word(a)
         if have != want:
             raise PatchError(f'{name}+{off:#x}: module has {have:08x}, the patch expects {want:08x}')
+    for modname, off, hook in table.hooks:
+        if modname == name and not mod.in_text(mod.base + off):
+            raise PatchError(f'{name}+{off:#x}: hook {hook} outside .text')
     for b, head in table.spins.get(name, {}).items():
         a = mod.base + b
         if not mod.in_text(a) or branch_target(mod.word(a), a) != mod.base + head:
@@ -155,4 +189,13 @@ def header_text(table, marker):
              '// X(index, name, env switch, default)',
              '#define RT_PATCH_SETS(X) ' + ' '.join(f'X({i}, {n}, "{e}", {d})' for i, (n, e, d) in
                                                     enumerate(table.sets)), '']
+    return '\n'.join(lines)
+
+
+def hooks_header_text(table, marker):
+    """The runtime's hook slots: each `hook` line's name, by its slot (the order of the lines)."""
+    lines = [f'// {marker}: host hooks, generated by recomp/gen.py --patches. Do not edit or commit.',
+             '#pragma once', '', f'#define RT_HOOK_COUNT {len(table.hooks)}',
+             '// X(index, name)',
+             '#define RT_HOOKS(X) ' + ' '.join(f'X({i}, {n})' for i, (_, _, n) in enumerate(table.hooks)), '']
     return '\n'.join(lines)
