@@ -20,7 +20,9 @@ unchanged. The sticks keep the Switch icons, and so do prompts drawn as fixed im
 
 The keyboard set (keyboard_icons) is Kenney's: each SVG's outlines go into the glyph as they are, fitted into the em at
 the advance the game's own glyph had, so a sentence keeps its spacing. Its keys are the on-foot keys of the PC scheme
-(docs/kbm-port.md): a font has one glyph per button, not one per context.
+(docs/kbm-port.md): a font has one glyph per button, not one per context. The mouse buttons are not Kenney's: that set
+draws a whole mouse and shades the button it means, and at HUD size that shade is one white blob, so the left and right
+buttons say LMB and RMB on a cap of ours, in the game's own text font, as the Xbox set's LB and RB do.
 
 Needs fontTools (tools/requirements-installer.txt, tools/requirements-py314.txt).
 """
@@ -200,14 +202,17 @@ def xbox_icons(g):
 # own advances so a sentence keeps its spacing. tools/data/kenney-input-prompts holds the icons and their licence.
 KEYCAPS = Path(__file__).with_name('data') / 'kenney-input-prompts'
 KEYCAP_MARGIN = 30          # units of the em left at each side of a cap too wide for its advance
+KEYCAP_SIZE = Y1 - Y0       # the square Kenney's 48-unit key draws at: the whole em height
+KEYCAP_RADIUS = 94          # its 8-unit corner at that scale
+KEYCAP_CAP = 260            # the tallest a word's letters may be (its width is the cap's, less a margin)
 KEYCAP_ICONS = {
     0xE040: 'keyboard_e',                 # A: interact, confirm
     0xE041: 'keyboard_shift',             # B: sprint, and cancel in a menu
     0xE042: 'keyboard_space',             # X: jump
-    0xE043: 'mouse_left',                 # Y: attack
+    0xE043: 'word:LMB',                   # Y: attack
     0xE044: 'keyboard_tab',               # L: the ability wheel
     0xE045: 'keyboard_g',                 # R: throw
-    0xE046: 'mouse_right',                # ZL: shield and lock-on
+    0xE046: 'word:RMB',                   # ZL: shield and lock-on
     0xE047: 'keyboard_f',                 # ZR: the bow
     0xE049: 'keyboard_arrows_all',        # the d-pad as a whole
     0xE04B: 'keyboard_escape',            # Plus: the pause menu (Esc, as upstream's scheme has it)
@@ -231,16 +236,32 @@ def keycap_outline(name):
     return rec
 
 
-def keyboard_icons():
-    """Code point -> (advance, draw) for the keyboard set: Kenney's "Input Prompts" (CC0, www.kenney.nl), one keycap per
-    button, at the game's own advances so the sentences around them keep their spacing. A E, B shift, X space, Y and ZL
-    the mouse's left and right buttons, L Tab, R G, ZR F, Plus I, Minus M, the d-pad the arrow keys: the keys
-    docs/kbm-port.md's table puts on those buttons on foot, which is the reading a font can show (one glyph per button,
-    not one per context). The icons live in tools/data/kenney-input-prompts with their licence; each SVG's own winding
-    already cuts its legend out of the key, so its contours go into the glyph as they are."""
+def word_cap(text, advance, glyphs):
+    """draw(pen) for a cap of ours with text cut out of it, drawn where Kenney's square key sits: the mouse buttons
+    (LMB, RMB) that set draws as one shaded whole-mouse outline, which says nothing at HUD size."""
+    x0 = advance / 2 - KEYCAP_SIZE / 2
+
+    def draw(pen):
+        rounded(pen, x0, Y0, x0 + KEYCAP_SIZE, Y1, KEYCAP_RADIUS)
+        glyphs.hole(pen, text, advance / 2, CY, KEYCAP_CAP, KEYCAP_SIZE - 2 * KEYCAP_MARGIN - 30)
+    return draw
+
+
+def keyboard_icons(glyphs=None):
+    """Code point -> (advance, draw) for the keyboard set: Kenney's "Input Prompts" (CC0, www.kenney.nl) where it has
+    the key, our own cap with the word in the game's text font where it does not (glyphs: Glyphs for those words), one
+    keycap per button, at the game's own advances so the sentences around them keep their spacing. A E, B shift, X
+    space, Y and ZL the mouse's left and right buttons, L Tab, R G, ZR F, Plus Esc, Minus M, the d-pad the arrow keys:
+    the keys docs/kbm-port.md's table puts on those buttons on foot, which is the reading a font can show (one glyph per
+    button, not one per context). The icons live in tools/data/kenney-input-prompts with their licence; each SVG's own
+    winding already cuts its legend out of the key, so its contours go into the glyph as they are."""
     icons = {}
     for cp, name in KEYCAP_ICONS.items():
         advance = KEYCAP_ADVANCE[cp]
+        if name.startswith('word:'):
+            assert glyphs is not None, f'{name} needs the text fonts'
+            icons[cp] = (advance, word_cap(name[5:], advance, glyphs))
+            continue
         rec = keycap_outline(name)
         box = BoundsPen(None)
         rec.replay(box)

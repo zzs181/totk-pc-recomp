@@ -27,8 +27,9 @@ added (tools/button_icons.py, which needs fontTools):
   carries the resource size table (System/Resource/ResourceSizeTable.Product.<n>...rsizetable.zs) with their entries
   raised by as much.
 - keyboard: every button becomes a keycap with the key the PC scheme puts on it (docs/kbm-port.md): E, shift, space,
-  the mouse's left and right buttons, Tab, G, F, I, M and the d-pad's arrows, in the button font and in the button
-  guide's two images. The face buttons are not swapped: a keyboard has no pad layout.
+  LMB and RMB (words on our own cap, since a whole-mouse outline reads the same for every button at HUD size), Tab, G,
+  F, Esc, M and the d-pad's arrows, in the button font and in the button guide's two images. The face buttons are not
+  swapped: a keyboard has no pad layout.
 - xbox, for pad_layout = nintendo. That layout plays an Xbox pad by position: the button that does Switch A is
   labelled B, so the face buttons' prompts are swapped to name the labels, A with B and X with Y:
   - the action prompt (blyt/DoCommand_00.bflyt) draws the letter images Nt_KeyTexA/B/X/Y_00 of timg/__Combined.bntx in
@@ -304,13 +305,10 @@ if args.prompts:
         return data
     archives = {path: unpack(path) for path in FONTS}
     text = sarc_members(archives[icons.TEXT_ARCHIVE])
-    if args.prompts == 'keyboard':   # Kenney's icons bring their own legends: no text font is read
-        drawn = icons.keyboard_icons()
-    else:
-        missing = [name for name in icons.TEXT_FONTS if name not in text]
-        assert not missing, f'no {", ".join(missing)} in {icons.TEXT_ARCHIVE}'
-        glyphs = icons.text_glyphs(archives[icons.TEXT_ARCHIVE][slice(*text[name])] for name in icons.TEXT_FONTS)
-        drawn = icons.xbox_icons(glyphs)
+    missing = [name for name in icons.TEXT_FONTS if name not in text]
+    assert not missing, f'no {", ".join(missing)} in {icons.TEXT_ARCHIVE}'
+    glyphs = icons.text_glyphs(archives[icons.TEXT_ARCHIVE][slice(*text[name])] for name in icons.TEXT_FONTS)
+    drawn = icons.keyboard_icons(glyphs) if args.prompts == 'keyboard' else icons.xbox_icons(glyphs)
     bntx = members['timg/__Combined.bntx'][0]
     letters = {}
     letter_map = KEY_LETTERS if by_position else icons.FACE_LETTERS
