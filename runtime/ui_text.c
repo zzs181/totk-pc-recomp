@@ -146,6 +146,8 @@ static const char *const text_en[UI_TEXT_COUNT] = {
     [UI_MENU_REALTIME_DESC] = "Steps the game by real time, so a slow frame does not slow the game down.",
     [UI_MENU_CLOTH_REALTIME] = "Cloth on the clock",
     [UI_MENU_CLOTH_REALTIME_DESC] = "Steps cloth and hair by real time as well.",
+    [UI_MENU_HEROPATH_REALTIME] = "Hero's Path on the clock",
+    [UI_MENU_HEROPATH_REALTIME_DESC] = "Steps the map's Hero's Path replay by real time as well.",
     [UI_MENU_HIGHFPS_FIX] = "High frame rate fixes",
     [UI_MENU_HIGHFPS_FIX_DESC] = "Corrects physics that misbehave above 30 frames per second, and objects that stay see-through or invisible above 60.",
     [UI_MENU_GAME_LANG] = "Game language", [UI_MENU_GAME_LANG_DESC] = "Language of the game's text and voices.",
@@ -271,12 +273,13 @@ static const char *const text_en[UI_TEXT_COUNT] = {
     [UI_MENU_SCREEN_WATCH_LOG] = "Screen context log",
     [UI_MENU_SCREEN_WATCH_LOG_DESC] = "Logs each screen and the scheme's context when they change.",
     [UI_MENU_MENU_CURSOR] = "Mouse in game menus",
-    [UI_MENU_MENU_CURSOR_DESC] = "Experimental, off by default (1.4.3). Releases the pointer in the game's menus and "
-                                 "reads their nodes, but the write that moves eui's focus box does not take effect "
-                                 "yet, so hovering and clicking do nothing.",
+    [UI_MENU_MENU_CURSOR_DESC] = "1.4.3, off by default. Takes the pointer only in the screens listed in "
+                                 "menu_cursor_screens (title, pouch, save and load lists): the focus box walks to what "
+                                 "is under it with the d-pad, left click is A, right click is B. The in-world strips "
+                                 "are left alone -- releasing the capture there kills the wheel.",
     [UI_MENU_MENU_CURSOR_LOG] = "Game menu mouse log",
-    [UI_MENU_MENU_CURSOR_LOG_DESC] = "Logs each menu screen's nodes and the pointer's hit test, for finding the "
-                                     "1.4.3 focus write.",
+    [UI_MENU_MENU_CURSOR_LOG_DESC] = "Logs each menu screen's nodes, the pointer's hit test and every direction the "
+                                     "focus box is walked with.",
     [UI_MENU_MOUSE_FLOOD] = "Mouse count injection",
     [UI_MENU_MOUSE_FLOOD_DESC] = "Extra mouse counts per presented frame, for stress-testing a high-report-rate "
                                  "mouse and the input path. 0 is off.",
@@ -647,6 +650,8 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
     [UI_MENU_REALTIME_DESC] = "Игра идёт по реальному времени, медленный кадр её не замедляет.",
     [UI_MENU_CLOTH_REALTIME] = "Ткань по часам",
     [UI_MENU_CLOTH_REALTIME_DESC] = "Ткань и волосы тоже идут по реальному времени.",
+    [UI_MENU_HEROPATH_REALTIME] = "Путь героя по часам",
+    [UI_MENU_HEROPATH_REALTIME_DESC] = "Повтор «Пути героя» на карте тоже идёт по реальному времени.",
     [UI_MENU_HIGHFPS_FIX] = "Исправления для высокого FPS",
     [UI_MENU_HIGHFPS_FIX_DESC] = "Исправляет физику, которая ломается при частоте выше 30 кадров в секунду, и объекты, которые выше 60 остаются полупрозрачными или невидимыми.",
     [UI_MENU_GAME_LANG] = "Язык игры", [UI_MENU_GAME_LANG_DESC] = "Язык текста и озвучки игры.",
@@ -771,12 +776,13 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
     [UI_MENU_SCREEN_WATCH_LOG] = "Журнал экранов",
     [UI_MENU_SCREEN_WATCH_LOG_DESC] = "Пишет строку при смене экрана или контекста схемы.",
     [UI_MENU_MENU_CURSOR] = "Мышь в меню игры",
-    [UI_MENU_MENU_CURSOR_DESC] = "Экспериментально, по умолчанию выкл. (1.4.3). Освобождает указатель в меню игры и "
-                                  "читает его узлы, но запись, перемещающая рамку фокуса eui, в 1.4.3 ещё не "
-                                  "действует: наведение и clicks ничего не делают.",
+    [UI_MENU_MENU_CURSOR_DESC] = "1.4.3, по умолчанию выкл. Берёт указатель только на экранах из menu_cursor_screens "
+                                  "(титул, сумка, списки сохранений): рамка фокуса идёт к пункту под указателем "
+                                  "крестовиной, левый клик — A, правый — B. Полосы в мире не трогаются — снятие "
+                                  "захвата там убивает колесо.",
     [UI_MENU_MENU_CURSOR_LOG] = "Журнал мыши в меню",
-    [UI_MENU_MENU_CURSOR_LOG_DESC] = "Пишет узлы экрана и результат попадания указателя — для поиска записи фокуса в "
-                                     "1.4.3.",
+    [UI_MENU_MENU_CURSOR_LOG_DESC] = "Пишет узлы экрана, результат попадания указателя и каждое направление, "
+                                     "которым ведут рамку фокуса.",
     [UI_MENU_MOUSE_FLOOD] = "Инъекция отсчётов мыши",
     [UI_MENU_MOUSE_FLOOD_DESC] = "Лишние отсчёты мыши за кадр для проверки мыши с высокой частотой опроса и пути "
                                  "ввода. 0 — выкл.",
@@ -1127,6 +1133,8 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
     [UI_MENU_REALTIME_DESC] = "Avança o jogo pelo tempo real, para que um quadro lento não deixe o jogo mais lento.",
     [UI_MENU_CLOTH_REALTIME] = "Tecidos pelo relógio",
     [UI_MENU_CLOTH_REALTIME_DESC] = "Avança tecidos e cabelos pelo tempo real também.",
+    [UI_MENU_HEROPATH_REALTIME] = "Caminho do Herói pelo relógio",
+    [UI_MENU_HEROPATH_REALTIME_DESC] = "Avança a repetição do Caminho do Herói no mapa pelo tempo real também.",
     [UI_MENU_HIGHFPS_FIX] = "Correções para alta taxa de quadros",
     [UI_MENU_HIGHFPS_FIX_DESC] = "Corrige a física que se comporta mal acima de 30 quadros por segundo e objetos que ficam transparentes ou invisíveis acima de 60.",
     [UI_MENU_GAME_LANG] = "Idioma do jogo", [UI_MENU_GAME_LANG_DESC] = "Idioma dos textos e das vozes do jogo.",
@@ -1199,12 +1207,13 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
     [UI_MENU_SCREEN_WATCH_LOG] = "Registo de ecrãs",
     [UI_MENU_SCREEN_WATCH_LOG_DESC] = "Escreve uma linha quando o ecrã ou o contexto do esquema muda.",
     [UI_MENU_MENU_CURSOR] = "Mouse nos menus do jogo",
-    [UI_MENU_MENU_CURSOR_DESC] = "Experimental, desligado por omissão (1.4.3). Liberta o ponteiro nos menus do jogo e "
-                                 "lê os nós, mas a escrita que move a caixa de foco do eui ainda não funciona no "
-                                 "1.4.3: passar por cima e clicar não fazem nada.",
+    [UI_MENU_MENU_CURSOR_DESC] = "1.4.3, desligado por omissão. Assume o ponteiro só nos ecrãs listados em "
+                                 "menu_cursor_screens (título, bolsa, listas de saves): a caixa de foco anda até o "
+                                 "item com o d-pad, clique esquerdo é A, direito é B. As barras dentro do mundo ficam "
+                                 "intactas — soltar a captura ali mata a roda.",
     [UI_MENU_MENU_CURSOR_LOG] = "Registo do mouse nos menus",
-    [UI_MENU_MENU_CURSOR_LOG_DESC] = "Escreve os nós de cada ecrã e o teste de acerto do ponteiro, para procurar a "
-                                     "escrita do foco no 1.4.3.",
+    [UI_MENU_MENU_CURSOR_LOG_DESC] = "Escreve os nós de cada ecrã, o teste de acerto do ponteiro e cada direção com "
+                                     "que a caixa de foco é conduzida.",
     [UI_MENU_MOUSE_FLOOD] = "Injeção de contagem do mouse",
     [UI_MENU_MOUSE_FLOOD_DESC] = "Contagens extras de mouse por quadro, para testar um mouse de alta taxa de "
                                  "relatório e o caminho de entrada. 0 desliga.",
@@ -1694,6 +1703,8 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
     [UI_MENU_REALTIME_DESC] = "按真实时间推进游戏，帧率低时游戏速度也不会变慢。",
     [UI_MENU_CLOTH_REALTIME] = "布料跟随时钟",
     [UI_MENU_CLOTH_REALTIME_DESC] = "布料和头发也按真实时间推进。",
+    [UI_MENU_HEROPATH_REALTIME] = "英雄之途跟随时钟",
+    [UI_MENU_HEROPATH_REALTIME_DESC] = "地图上的英雄之途回放也按真实时间推进。",
     [UI_MENU_HIGHFPS_FIX] = "高帧率修正",
     [UI_MENU_HIGHFPS_FIX_DESC] = "修正帧率高于 30 时出现异常的物理效果，"
                                  "以及帧率高于 60 时一直半透明或不可见的物体。",
@@ -1767,10 +1778,11 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
     [UI_MENU_SCREEN_WATCH_LOG] = "屏幕上下文日志",
     [UI_MENU_SCREEN_WATCH_LOG_DESC] = "界面或方案上下文变化时写一行日志。",
     [UI_MENU_MENU_CURSOR] = "游戏菜单鼠标",
-    [UI_MENU_MENU_CURSOR_DESC] = "实验功能，默认关（1.4.3）。会在游戏菜单里释放鼠标指针并读到界面节点，但移动 eui "
-                                 "焦点框的写入在 1.4.3 上还没生效，悬停和点击目前不起作用。",
+    [UI_MENU_MENU_CURSOR_DESC] = "1.4.3，默认关。只在 menu_cursor_screens 列出的界面（默认标题、背包、存档列表、"
+                                 "读档确认）接管鼠标：焦点框用十字键的方式走到指针下方，左键等于 A，右键等于 B。"
+                                 "世界内的快捷条一律不碰——释放捕获会让滚轮失效。",
     [UI_MENU_MENU_CURSOR_LOG] = "游戏菜单鼠标日志",
-    [UI_MENU_MENU_CURSOR_LOG_DESC] = "记录每个菜单界面的节点数与指针命中测试，用于继续排查 1.4.3 的焦点写入。",
+    [UI_MENU_MENU_CURSOR_LOG_DESC] = "记录每个菜单界面的节点数、指针命中结果，以及焦点框每次被哪个方向键移动。",
     [UI_MENU_MOUSE_FLOOD] = "鼠标计数注入",
     [UI_MENU_MOUSE_FLOOD_DESC] = "每帧额外注入的鼠标计数，用于高回报率鼠标与输入路径压测。0 = 关。",
     [UI_MENU_KBM_HELP] = "方案里每个动作的按键，可按上下文或全局设置。选中一行后按新键；Delete 清除覆盖。"

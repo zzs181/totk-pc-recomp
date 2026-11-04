@@ -25,8 +25,8 @@ ROOT = Path(__file__).resolve().parents[1]
 UNI = 'Ж мод'
 
 
-def pick_paths(version):
-    index = json.loads((ROOT / 'build/extracted' / version / 'romfs/index.json').read_text())
+def pick_paths(version, romfs):
+    index = json.loads((romfs / 'index.json').read_text(encoding='utf-8'))
     paths = [f['path'] for f in index['files'] if 1024 <= f['size'] <= 65536]
     have = set(f['path'] for f in index['files'])
     p1 = next(p for p in paths if any(c.isalpha() for c in p.rsplit('/', 1)[-1]))
@@ -83,8 +83,7 @@ def key(path):
     return zlib.crc32((path[:-3] if path.endswith(('.zs', '.mc')) else path).encode())
 
 
-def restbl_case(exe, version, check, tmp):
-    romfs = ROOT / 'build/extracted' / version / 'romfs'
+def restbl_case(exe, version, romfs, check, tmp):
     index = json.loads((romfs / 'index.json').read_text())
     files = {f['path']: f for f in index['files']}
     table_path = next(p for p in files if p.startswith('System/Resource/ResourceSizeTable.') and
@@ -129,8 +128,11 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument('--exe', type=Path, required=True)
     ap.add_argument('--version', choices=('v121', 'v143'), required=True)
+    ap.add_argument('--romfs', type=Path,
+                    default=ROOT / 'build/extracted' / 'v143' / 'romfs',
+                    help='the extracted romfs (its index.json names the real file paths)')
     args = ap.parse_args()
-    p1, p2, p1case = pick_paths(args.version)
+    p1, p2, p1case = pick_paths(args.version, args.romfs)
     fails = 0
 
     def check(ok, what, log=None):
@@ -169,7 +171,7 @@ def main():
         check('mods: Low: 3 files served (2 replaced, 1 added), 0 overridden' in log, 'Low serves P1 and the added file', log)
         check('mods: Top: ' not in log.replace('mods: Top: off', ''), 'a switched-off mod serves nothing', log)
 
-        restbl_case(args.exe, args.version, check, tmp)
+        restbl_case(args.exe, args.version, args.romfs, check, tmp)
     print('mods_romfs_check:', 'FAIL' if fails else 'ok')
     return 1 if fails else 0
 
