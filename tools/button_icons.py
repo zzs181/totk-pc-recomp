@@ -266,7 +266,7 @@ KEYCAP_ICONS = {
 # (tools/make_romfs_patches.py --binds reads the player's own totk.ini and names the keys it finds there).
 KEY_LEGENDS = {
     'Mouse Left': 'LMB', 'Mouse Right': 'RMB', 'Mouse Middle': 'MMB', 'Mouse X1': 'M4', 'Mouse X2': 'M5',
-    'Wheel Up': 'WHL', 'Wheel Down': 'WHL',
+    'Wheel Up': 'WHL\u2191', 'Wheel Down': 'WHL\u2193',   # the tone arrows: the font has them, and a wheel has two ways
     'Esc': 'ESC', 'Escape': 'ESC', 'Enter': 'ENTER', 'Return': 'ENTER', 'Tab': 'TAB', 'Space': 'SPACE',
     'Shift': 'SHIFT', 'Ctrl': 'CTRL', 'Control': 'CTRL', 'Alt': 'ALT',
     'Backspace': 'BKSP', 'Delete': 'DEL', 'Insert': 'INS', 'Home': 'HOME', 'End': 'END',
