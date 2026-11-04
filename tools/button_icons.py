@@ -147,6 +147,41 @@ def polygon(pen, points):
     pen.closePath()
 
 
+def dpad(*lit, advance=640):
+    """(advance, draw) for a cross with an arrow cut into each direction the prompt means: the Xbox set's d-pad and the
+    keyboard set's "the arrows", which Kenney draws as four bare caps with nothing in them (they read as four blobs)."""
+    def draw(pen):
+        cx, length, arm = advance / 2, R, R * 0.40
+        polygon(pen, [(cx + length, CY - arm), (cx + length, CY + arm), (cx + arm, CY + arm), (cx + arm, CY + length),
+                      (cx - arm, CY + length), (cx - arm, CY + arm), (cx - length, CY + arm), (cx - length, CY - arm),
+                      (cx - arm, CY - arm), (cx - arm, CY - length), (cx + arm, CY - length), (cx + arm, CY - arm)])
+        m, t, h = (length + arm) / 2, arm * 0.72, arm * 0.80   # arm centre, half base and height of the arrow
+        heads = {'up': [(cx - t, CY + m - h / 2), (cx, CY + m + h / 2), (cx + t, CY + m - h / 2)],
+                 'down': [(cx + t, CY - m + h / 2), (cx, CY - m - h / 2), (cx - t, CY - m + h / 2)],
+                 'left': [(cx - m + h / 2, CY - t), (cx - m - h / 2, CY), (cx - m + h / 2, CY + t)],
+                 'right': [(cx + m - h / 2, CY + t), (cx + m + h / 2, CY), (cx + m - h / 2, CY - t)]}
+        for d in lit:
+            polygon(pen, heads[d])   # already clockwise: a hole
+    return advance, draw
+
+
+def arrow_pair(advance, vertical=True):
+    """(advance, draw) for a cap of ours with two arrows in it: the d-pad's up and down (or left and right) as one
+    keycap. Kenney's pairs are four blank caps like its "all", which say nothing about direction, and a cross would
+    say the other two directions work too."""
+    def draw(pen):
+        x0 = advance / 2 - KEYCAP_SIZE / 2
+        rounded(pen, x0, Y0, x0 + KEYCAP_SIZE, Y1, KEYCAP_RADIUS)
+        cx, b, h, w = advance / 2, 45, 150, 105        # centre, gap from it, arrow height and half base
+        if vertical:
+            polygon(pen, [(cx - w, CY + b), (cx, CY + b + h), (cx + w, CY + b)])               # up, clockwise
+            polygon(pen, [(cx + w, CY - b), (cx, CY - b - h), (cx - w, CY - b)])               # down
+        else:
+            polygon(pen, [(cx - b, CY - w), (cx - b - h, CY), (cx - b, CY + w)])               # left
+            polygon(pen, [(cx + b, CY + w), (cx + b + h, CY), (cx + b, CY - w)])               # right
+    return advance, draw
+
+
 def xbox_icons(g):
     """Code point -> (advance, draw(pen)) for the buttons an Xbox controller names differently from a Switch: L R = LB
     RB, ZL ZR = LT RT, Plus and Minus = Menu and View, the d-pad as a cross. g: Glyphs for the letters. The face
@@ -175,21 +210,6 @@ def xbox_icons(g):
             rounded(reverse, advance / 2 + 15, CY - s - 15, advance / 2 + s + 15, CY - 15, 16)
         return advance, draw
 
-    def dpad(*lit, advance=640):   # a cross with an arrow cut into each direction the prompt means
-        def draw(pen):
-            cx, length, arm = advance / 2, R, R * 0.40
-            polygon(pen, [(cx + length, CY - arm), (cx + length, CY + arm), (cx + arm, CY + arm), (cx + arm, CY + length),
-                          (cx - arm, CY + length), (cx - arm, CY + arm), (cx - length, CY + arm), (cx - length, CY - arm),
-                          (cx - arm, CY - arm), (cx - arm, CY - length), (cx + arm, CY - length), (cx + arm, CY - arm)])
-            m, t, h = (length + arm) / 2, arm * 0.72, arm * 0.80   # arm centre, half base and height of the arrow
-            heads = {'up': [(cx - t, CY + m - h / 2), (cx, CY + m + h / 2), (cx + t, CY + m - h / 2)],
-                     'down': [(cx + t, CY - m + h / 2), (cx, CY - m - h / 2), (cx - t, CY - m + h / 2)],
-                     'left': [(cx - m + h / 2, CY - t), (cx - m - h / 2, CY), (cx - m + h / 2, CY + t)],
-                     'right': [(cx + m - h / 2, CY + t), (cx + m + h / 2, CY), (cx + m - h / 2, CY - t)]}
-            for d in lit:
-                polygon(pen, heads[d])   # already clockwise: a hole
-        return advance, draw
-
     return {
         0xE044: bumper('LB'), 0xE045: bumper('RB'), 0xE046: trigger('LT'), 0xE047: trigger('RT'),
         0xE04B: menu(), 0xE04C: view(),
@@ -214,12 +234,12 @@ KEYCAP_ICONS = {
     0xE045: 'keyboard_g',                 # R: throw
     0xE046: 'word:RMB',                   # ZL: shield and lock-on
     0xE047: 'keyboard_f',                 # ZR: the bow
-    0xE049: 'keyboard_arrows_all',        # the d-pad as a whole
+    0xE049: 'dpad:up,down,left,right',    # the d-pad as a whole: a cross of arrows, not Kenney's four blank caps
     0xE04B: 'keyboard_escape',            # Plus: the pause menu (Esc, as upstream's scheme has it)
     0xE04C: 'keyboard_m',                 # Minus: the map
     0xE060: 'keyboard_arrow_up', 0xE061: 'keyboard_arrow_down',
     0xE062: 'keyboard_arrow_left', 0xE063: 'keyboard_arrow_right',
-    0xE064: 'keyboard_arrows_vertical', 0xE065: 'keyboard_arrows_horizontal',
+    0xE064: 'arrows:up,down', 0xE065: 'arrows:left,right',   # (Kenney's pairs are four blank caps too)
 }
 # The game's advances (the original glyphs' hmtx): a keycap sits where the button icon sat.
 KEYCAP_ADVANCE = {0xE040: 640, 0xE041: 640, 0xE042: 640, 0xE043: 640, 0xE044: 720, 0xE045: 720, 0xE046: 720,
@@ -249,15 +269,22 @@ def word_cap(text, advance, glyphs):
 
 def keyboard_icons(glyphs=None):
     """Code point -> (advance, draw) for the keyboard set: Kenney's "Input Prompts" (CC0, www.kenney.nl) where it has
-    the key, our own cap with the word in the game's text font where it does not (glyphs: Glyphs for those words), one
-    keycap per button, at the game's own advances so the sentences around them keep their spacing. A E, B shift, X
-    space, Y and ZL the mouse's left and right buttons, L Tab, R G, ZR F, Plus Esc, Minus M, the d-pad the arrow keys:
-    the keys docs/kbm-port.md's table puts on those buttons on foot, which is the reading a font can show (one glyph per
-    button, not one per context). The icons live in tools/data/kenney-input-prompts with their licence; each SVG's own
+    the key, our own shapes where it does not -- the mouse's LMB and RMB, the d-pad as a cross of arrows and its pairs
+    as two arrows on one cap (Kenney draws those as four blank caps with nothing in them) -- one keycap per button, at
+    the game's own advances so the sentences around them keep their spacing. A E, B shift, X space, Y and ZL LMB and
+    RMB, L Tab, R G, ZR F, Plus Esc, Minus M, the single directions Kenney's arrows: the keys docs/kbm-port.md's table
+    puts on those buttons on foot, which is the reading a font can show (one glyph per button, not one per context).
+    glyphs: Glyphs for the words. The icons live in tools/data/kenney-input-prompts with their licence; each SVG's own
     winding already cuts its legend out of the key, so its contours go into the glyph as they are."""
     icons = {}
     for cp, name in KEYCAP_ICONS.items():
         advance = KEYCAP_ADVANCE[cp]
+        if name.startswith('arrows:'):   # two directions on one key: Kenney's pairs are four blank caps
+            icons[cp] = arrow_pair(advance, vertical=name[7:] == 'up,down')
+            continue
+        if name.startswith('dpad:'):   # Kenney's arrows are four bare caps: nothing in them says which way
+            icons[cp] = dpad(*name[5:].split(','), advance=advance)
+            continue
         if name.startswith('word:'):
             assert glyphs is not None, f'{name} needs the text fonts'
             icons[cp] = (advance, word_cap(name[5:], advance, glyphs))
