@@ -22,7 +22,8 @@ The keyboard set (keyboard_icons) is Kenney's: each SVG's outlines go into the g
 the advance the game's own glyph had, so a sentence keeps its spacing. Its keys are the on-foot keys of the PC scheme
 (docs/kbm-port.md): a font has one glyph per button, not one per context. The mouse buttons are not Kenney's: that set
 draws a whole mouse and shades the button it means, and at HUD size that shade is one white blob, so the left and right
-buttons say LMB and RMB on a cap of ours, in the game's own text font, as the Xbox set's LB and RB do.
+buttons say LMB and RMB on a cap of ours, in the game's own text font, as the Xbox set's LB and RB do. The d-pad is
+Kenney's four blank caps again, so it is the keyboard's W A S D here, the four keys where a keyboard has them.
 
 Needs fontTools (tools/requirements-installer.txt, tools/requirements-py314.txt).
 """
@@ -148,8 +149,7 @@ def polygon(pen, points):
 
 
 def dpad(*lit, advance=640):
-    """(advance, draw) for a cross with an arrow cut into each direction the prompt means: the Xbox set's d-pad and the
-    keyboard set's "the arrows", which Kenney draws as four bare caps with nothing in them (they read as four blobs)."""
+    """(advance, draw) for a cross with an arrow cut into each direction the prompt means: the Xbox set's d-pad."""
     def draw(pen):
         cx, length, arm = advance / 2, R, R * 0.40
         polygon(pen, [(cx + length, CY - arm), (cx + length, CY + arm), (cx + arm, CY + arm), (cx + arm, CY + length),
@@ -165,20 +165,21 @@ def dpad(*lit, advance=640):
     return advance, draw
 
 
-def arrow_pair(advance, vertical=True):
-    """(advance, draw) for a cap of ours with two arrows in it: the d-pad's up and down (or left and right) as one
-    keycap. Kenney's pairs are four blank caps like its "all", which say nothing about direction, and a cross would
-    say the other two directions work too."""
+def key_grid(advance, cells, glyphs):
+    """(advance, draw) for one glyph holding a few keycaps, each with its letter cut out: the d-pad drawn as the
+    keyboard's W A S D, in the places those keys have. cells: (letter, column, row), row 0 at the bottom; the caps keep
+    the square shape of a key, so a three-column grid is as wide as one cap and as tall as two."""
+    cols = max(c for _, c, _ in cells) + 1
+    rows = max(r for _, _, r in cells) + 1
+    s = min((KEYCAP_SIZE - (cols - 1) * KEYCAP_GAP) / cols, (KEYCAP_SIZE - (rows - 1) * KEYCAP_GAP) / rows)
+    left = advance / 2 - (cols * s + (cols - 1) * KEYCAP_GAP) / 2
+    bottom = CY - (rows * s + (rows - 1) * KEYCAP_GAP) / 2
+
     def draw(pen):
-        x0 = advance / 2 - KEYCAP_SIZE / 2
-        rounded(pen, x0, Y0, x0 + KEYCAP_SIZE, Y1, KEYCAP_RADIUS)
-        cx, b, h, w = advance / 2, 45, 150, 105        # centre, gap from it, arrow height and half base
-        if vertical:
-            polygon(pen, [(cx - w, CY + b), (cx, CY + b + h), (cx + w, CY + b)])               # up, clockwise
-            polygon(pen, [(cx + w, CY - b), (cx, CY - b - h), (cx - w, CY - b)])               # down
-        else:
-            polygon(pen, [(cx - b, CY - w), (cx - b - h, CY), (cx - b, CY + w)])               # left
-            polygon(pen, [(cx + b, CY + w), (cx + b + h, CY), (cx + b, CY - w)])               # right
+        for letter, col, row in cells:
+            x0, y0 = left + col * (s + KEYCAP_GAP), bottom + row * (s + KEYCAP_GAP)
+            rounded(pen, x0, y0, x0 + s, y0 + s, s * 0.166)
+            glyphs.hole(pen, letter, x0 + s / 2, y0 + s / 2, s * 0.52, s * 0.68)
     return advance, draw
 
 
@@ -225,6 +226,7 @@ KEYCAP_MARGIN = 30          # units of the em left at each side of a cap too wid
 KEYCAP_SIZE = Y1 - Y0       # the square Kenney's 48-unit key draws at: the whole em height
 KEYCAP_RADIUS = 94          # its 8-unit corner at that scale
 KEYCAP_CAP = 260            # the tallest a word's letters may be (its width is the cap's, less a margin)
+KEYCAP_GAP = 18             # between the caps of a grid, such as the d-pad's four
 KEYCAP_ICONS = {
     0xE040: 'keyboard_e',                 # A: interact, confirm
     0xE041: 'keyboard_shift',             # B: sprint, and cancel in a menu
@@ -234,12 +236,11 @@ KEYCAP_ICONS = {
     0xE045: 'keyboard_g',                 # R: throw
     0xE046: 'word:RMB',                   # ZL: shield and lock-on
     0xE047: 'keyboard_f',                 # ZR: the bow
-    0xE049: 'dpad:up,down,left,right',    # the d-pad as a whole: a cross of arrows, not Kenney's four blank caps
+    0xE049: 'wasd',                       # the d-pad: the keyboard's W A S D, where those keys are
     0xE04B: 'keyboard_escape',            # Plus: the pause menu (Esc, as upstream's scheme has it)
     0xE04C: 'keyboard_m',                 # Minus: the map
-    0xE060: 'keyboard_arrow_up', 0xE061: 'keyboard_arrow_down',
-    0xE062: 'keyboard_arrow_left', 0xE063: 'keyboard_arrow_right',
-    0xE064: 'arrows:up,down', 0xE065: 'arrows:left,right',   # (Kenney's pairs are four blank caps too)
+    0xE060: 'word:W', 0xE061: 'word:S', 0xE062: 'word:A', 0xE063: 'word:D',
+    0xE064: 'wasd:up,down', 0xE065: 'wasd:left,right',
 }
 # The game's advances (the original glyphs' hmtx): a keycap sits where the button icon sat.
 KEYCAP_ADVANCE = {0xE040: 640, 0xE041: 640, 0xE042: 640, 0xE043: 640, 0xE044: 720, 0xE045: 720, 0xE046: 720,
@@ -269,21 +270,24 @@ def word_cap(text, advance, glyphs):
 
 def keyboard_icons(glyphs=None):
     """Code point -> (advance, draw) for the keyboard set: Kenney's "Input Prompts" (CC0, www.kenney.nl) where it has
-    the key, our own shapes where it does not -- the mouse's LMB and RMB, the d-pad as a cross of arrows and its pairs
-    as two arrows on one cap (Kenney draws those as four blank caps with nothing in them) -- one keycap per button, at
-    the game's own advances so the sentences around them keep their spacing. A E, B shift, X space, Y and ZL LMB and
-    RMB, L Tab, R G, ZR F, Plus Esc, Minus M, the single directions Kenney's arrows: the keys docs/kbm-port.md's table
-    puts on those buttons on foot, which is the reading a font can show (one glyph per button, not one per context).
-    glyphs: Glyphs for the words. The icons live in tools/data/kenney-input-prompts with their licence; each SVG's own
-    winding already cuts its legend out of the key, so its contours go into the glyph as they are."""
+    the key, our own shapes where it does not -- the mouse's LMB and RMB, and the d-pad as the keyboard's W A S D, where
+    those keys are (Kenney draws it as four blank caps with nothing in them) -- one keycap per button, at the game's own
+    advances so the sentences around them keep their spacing. A E, B shift, X space, Y and ZL LMB and RMB, L Tab, R G,
+    ZR F, Plus Esc, Minus M, the d-pad W A S D: the keys docs/kbm-port.md's table puts on those buttons on foot, which
+    is the reading a font can show (one glyph per button, not one per context). glyphs: Glyphs for the words and the
+    letters. The icons live in tools/data/kenney-input-prompts with their licence; each SVG's own winding already cuts
+    its legend out of the key, so its contours go into the glyph as they are."""
     icons = {}
     for cp, name in KEYCAP_ICONS.items():
         advance = KEYCAP_ADVANCE[cp]
-        if name.startswith('arrows:'):   # two directions on one key: Kenney's pairs are four blank caps
-            icons[cp] = arrow_pair(advance, vertical=name[7:] == 'up,down')
+        if name == 'wasd':   # Kenney draws the arrows as four bare caps: nothing in them says which way
+            icons[cp] = key_grid(advance, [('W', 1, 1), ('A', 0, 0), ('S', 1, 0), ('D', 2, 0)], glyphs)
             continue
-        if name.startswith('dpad:'):   # Kenney's arrows are four bare caps: nothing in them says which way
-            icons[cp] = dpad(*name[5:].split(','), advance=advance)
+        if name == 'wasd:up,down':
+            icons[cp] = key_grid(advance, [('W', 0, 1), ('S', 0, 0)], glyphs)
+            continue
+        if name == 'wasd:left,right':
+            icons[cp] = key_grid(advance, [('A', 0, 0), ('D', 1, 0)], glyphs)
             continue
         if name.startswith('word:'):
             assert glyphs is not None, f'{name} needs the text fonts'
