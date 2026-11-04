@@ -290,10 +290,6 @@ static struct {
         VkImage out, mv;
         VmaAllocation out_mem, mv_mem;
         VkImageView out_view, mv_view;
-        VkImage mask, chars[2];  // the bias mask DLSS reads, the character class mask of this and last frame (R8)
-        VmaAllocation mask_mem, chars_mem[2];
-        VkImageView mask_view, chars_view[2];
-        int chars_cur, chars_ok; // chars[chars_cur] is written next; chars_ok: the other holds last frame's
         NgxHandle *feat;
         uint64_t used;           // evals count when it last ran
     } sizes[3], *last;           // last: the one the previous DLAA frame ran with
@@ -318,12 +314,15 @@ static struct {
     VkPipeline mv_pipe;
     VkSampler mv_samp;
     int mv_ok;                   // -1 not built, 0 failed, 1 ready
-    uint64_t mv_frames, mv_none, masked;   // masked: frames with the characters' bias mask
+    uint64_t mv_frames, mv_none;
     uint64_t why[3];             // history resets: scene size changed, no camera, scene target changed
     int on;                      // the dlaa setting, read at each present (the menu switches it live)
     int scaler_skipped;          // this frame: the game's scaling draw over DLSS's picture was skipped
     uint64_t scaler_missed;      // frames DLSS scaled whose scaling draw was not found (vk_dlaa_skip_draw)
-} D = {.mv_ok = -1};
+    int preset, preset_dirty;    // the DLSS model features are created with (preset_value); a change pending
+    unsigned cfg_seen;           // cfg_version when preset was read
+    uint64_t last_eval_ns;       // plat_now_ns of the previous evaluation (FrameTimeDeltaInMsec)
+} D = {.mv_ok = -1, .cfg_seen = ~0u};
 
 static int dl_active(void) { return N.available && !D.failed && D.on; }
 
@@ -354,12 +353,6 @@ static void free_size(struct Size *e) {
     if (e->mv_view) vkDestroyImageView(c->device, e->mv_view, NULL);
     if (e->out) vmaDestroyImage(c->vma, e->out, e->out_mem);
     if (e->mv) vmaDestroyImage(c->vma, e->mv, e->mv_mem);
-    if (e->mask_view) vkDestroyImageView(c->device, e->mask_view, NULL);
-    if (e->mask) vmaDestroyImage(c->vma, e->mask, e->mask_mem);
-    for (int i = 0; i < 2; i++) {
-        if (e->chars_view[i]) vkDestroyImageView(c->device, e->chars_view[i], NULL);
-        if (e->chars[i]) vmaDestroyImage(c->vma, e->chars[i], e->chars_mem[i]);
-    }
     if (e->feat) N.release(e->feat);
     memset(e, 0, sizeof *e);
 }
@@ -381,13 +374,12 @@ static struct Size *size_for(VkCommandBuffer cb, uint32_t w, uint32_t h, uint32_
     }
     VkImageUsageFlags u = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
                           VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    VkImageUsageFlags u8 = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
     if (!image2d(ow, oh, VK_FORMAT_R16G16B16A16_SFLOAT, u, &e->out, &e->out_mem, &e->out_view) ||
         !image2d(w, h, VK_FORMAT_R16G16_SFLOAT, u, &e->mv, &e->mv_mem, &e->mv_view))
         return NULL;
-    VkImageMemoryBarrier2 ib[5];
-    VkImage im[5] = {e->out, e->mv, e->mask, e->chars[0], e->chars[1]};
-    for (int i = 0; i < 5; i++)
+    VkImageMemoryBarrier2 ib[2];
+    VkImage im[2] = {e->out, e->mv};
+    for (int i = 0; i < 2; i++)
         ib[i] = (VkImageMemoryBarrier2){.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
                                         .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
                                         .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
@@ -396,7 +388,7 @@ static struct Size *size_for(VkCommandBuffer cb, uint32_t w, uint32_t h, uint32_
                                         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                                         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = im[i],
                                         .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}};
-    VkDependencyInfo di = {.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO, .imageMemoryBarrierCount = 5,
+    VkDependencyInfo di = {.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO, .imageMemoryBarrierCount = 2,
                            .pImageMemoryBarriers = ib};
     vkCmdPipelineBarrier2(cb, &di);
     e->w = w, e->h = h, e->ow = ow, e->oh = oh;
@@ -483,7 +475,6 @@ static int mv_pass(VkCommandBuffer cb, const struct Size *e, VkImageView zv, flo
     if (!mv_init() || !D.cam_addr || !vk_usnap_find(D.cam_addr, CAM_BYTES, 4, &cam)) {
         D.mv_none++;
         D.cam_prev_ok = 0;
-        e->chars_ok = 0;
         return 0;
     }
     int s = D.cam_slot, had_prev = D.cam_prev_ok;
@@ -512,9 +503,6 @@ static int mv_pass(VkCommandBuffer cb, const struct Size *e, VkImageView zv, flo
     vkCmdDispatch(cb, (w + 7) / 8, (h + 7) / 8, 1);
     full_barrier(cb);
     D.mv_frames++;
-    if (use) e->chars_cur ^= 1, e->chars_ok = 1, D.masked++;
-    else e->chars_ok = 0;
-    *masked = use;
     return 1;
 }
 
@@ -566,16 +554,6 @@ static int preset_value(void) {
     return c >= 'a' && c <= 'm' ? c - 'a' + 1 : 0;
 }
 
-// How strongly DLSS favours the current frame on characters and where they just were (TOTK_DLSS_CHAR_MASK, percent,
-// live; 0 off). Where a character's vectors are the camera's only (dlaa_objmv = 0, or a draw the per-object pass
-// skips), one that moves on its own drags a faint copy of itself through DLSS's history; the bias mask makes DLSS take
-// less of the history there, at the cost of some of its anti-aliasing on those pixels.
-static float char_bias(void) {
-    const char *v = cfg_get("TOTK_DLSS_CHAR_MASK");
-    long n = v && *v ? strtol(v, NULL, 10) : 65;
-    return n <= 0 ? 0.0f : n >= 100 ? 1.0f : (float)n / 100.0f;
-}
-
 // The quality setting DLSS is created with, from the scene's share of the output width.
 static int perf_quality(uint32_t w, uint32_t ow) {
     if (w >= ow) return NGX_PERFQ_DLAA;
@@ -597,7 +575,7 @@ static void evaluate(VkExec *ex, const VkExecTarget *dst) {
     }
     struct Size *e = size_for(cb, w, h, ow, oh);
     if (!e) return dl_fail("work image creation", 0);
-    if (e != D.last) D.reset = 1, D.why[0]++, e->chars_ok = 0;   // another size's history is from another moment
+    if (e != D.last) D.reset = 1, D.why[0]++;   // another size's history is from another moment
     if (!D.params && !NGX_OK(N.alloc_params(&D.params))) return dl_fail("parameter allocation", 0);
     NgxParam *p = D.params;
     VkImageView zv = vk_exec_target_view(z->img, z->format, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_DEPTH_BIT, z->level,
@@ -645,13 +623,6 @@ static void evaluate(VkExec *ex, const VkExecTarget *dst) {
     p_setf(p, "Jitter.Offset.Y", jy);
     p_setf(p, "Sharpness", 0.0f);
     p_seti(p, "Reset", D.reset);
-    // One bias mask: the reactive one (TOTK_DLSS_REACTIVE, a test) where it ran, else the characters' (mv_pass), else
-    // none. The parameter object is reused, so it is cleared explicitly.
-    NgxResourceVK rk = mk ? res_image(mk->mask_view, mk->mask, VK_FORMAT_R8_UNORM, w, h, VK_IMAGE_ASPECT_COLOR_BIT, 0)
-                          : res_image(e->mask_view, e->mask, VK_FORMAT_R8_UNORM, w, h, VK_IMAGE_ASPECT_COLOR_BIT, 0);
-    p_setp(p, "DLSS.Input.Bias.Current.Color.Mask", mk || masked ? (void *)&rk : NULL);
-    p_setu(p, "DLSS.Input.Bias.Current.Color.Subrect.Base.X", 0);
-    p_setu(p, "DLSS.Input.Bias.Current.Color.Subrect.Base.Y", 0);
     p_setf(p, "MV.Scale.X", 1.0f);
     p_setf(p, "MV.Scale.Y", 1.0f);
     p_setu(p, "DLSS.Render.Subrect.Dimensions.Width", w);
@@ -696,11 +667,6 @@ void vk_dlaa_pass(VkExec *ex) {
     // and DLAA then ran at a small pass ahead of the whole scene, which reached the screen jittered.
     if (ex->pass_ncolor >= 3 && z->image && z->format == VK_FORMAT_D32_SFLOAT && z->width >= 640) {
         D.gbuf = 1, D.armed = 0;
-        // target 0 is the object-class buffer (RGBA8, the scene size): the characters' bias mask reads its green. A
-        // smaller pass of the same shape (640x360, seen while loading) does not replace the scene's in the same frame.
-        if (c->image && c->format == VK_FORMAT_R8G8B8A8_UNORM && c->width == z->width && c->height == z->height &&
-            c->samples <= 1 && !c->is3d && (!D.ids_ok || c->width >= D.ids.width))
-            D.ids = *c, D.ids_ok = 1;
         return;
     }
     // the scene depth is D32F; a D16 target of the scene size also serves one composite pass before the transparents
