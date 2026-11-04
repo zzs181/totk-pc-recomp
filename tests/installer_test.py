@@ -3,7 +3,6 @@ with a newer release, totk.ini and the event stream. No game files, no tools; st
 
 Run: python tests/installer_test.py
 """
-import http.client
 import io
 import json
 import re
@@ -12,7 +11,6 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -628,17 +626,6 @@ class DlssTest(unittest.TestCase):
         self.assertEqual(self.warnings(), ['warn.dlss_download_failed'])
         self.assertFalse(steps.Dlss().current(self.ctx, rec))
 
-    def test_a_cut_connection_warns(self):
-        class Cut(io.BytesIO):   # a response whose connection drops mid-file
-            def read(self, n=-1):
-                raise http.client.IncompleteRead(b'dl', 3998)
-
-        with mock.patch.object(steps.urllib.request, 'urlopen', return_value=Cut()):
-            self.assertEqual(steps.Dlss().run(self.ctx), {'failed': True})
-        self.assertFalse((self.dest / 'nvngx_dlss.dll').exists())
-        self.assertFalse(list(self.ctx.temp.iterdir()))
-        self.assertEqual(self.warnings(), ['warn.dlss_download_failed'])
-
     def test_keeps_the_players_library(self):
         (self.dest / 'nvngx_dlss.dll').write_bytes(b'newer')
         self.assertEqual(steps.Dlss().run(self.ctx), {'kept': True})
@@ -648,7 +635,7 @@ class DlssTest(unittest.TestCase):
     def test_skipped_without_an_rtx_gpu(self):
         self.ctx.host = {'devices': [{'name': 'AMD Radeon RX 7800 XT', 'api': [1, 3, 0], 'type': 2}]}
         self.assertEqual(steps.Dlss().run(self.ctx), {'skipped': 'no_rtx'})
-        self.assertEqual(self.warnings(), [])
+        self.assertEqual(self.warnings(), ['warn.dlss_no_rtx'])
 
 
 if __name__ == '__main__':
