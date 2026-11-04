@@ -135,6 +135,10 @@ void input_cursor_suspend(int on) {
 // Windows can drop the cursor clip (another program, a display change, a remote session). While the mouse camera holds
 // the pointer, put the clip back and keep the pointer near the client centre: the camera reads relative motion, so a
 // pointer that drifts off the window only hurts the settings menu and multi-monitor safety.
+// The mouse camera reads raw deltas (WM_INPUT's lLastX/Y, accumulated below), never the cursor's position, so the
+// captured cursor has nothing to be parked for: re-centering it only showed as the pointer jumping to the middle of
+// the screen whenever a click briefly released the capture and the next frame took it back. The clip stays: it is what
+// keeps a captured session inside the window if another program's clip is lost.
 static DWORD WINAPI cursor_keeper(void *arg) {
     (void)arg;
     for (;;) {
@@ -149,9 +153,6 @@ static DWORD WINAPI cursor_keeper(void *arg) {
         if (!GetClipCursor(&cur) || cur.left != clip.left || cur.top != clip.top || cur.right != clip.right ||
             cur.bottom != clip.bottom)
             ClipCursor(&clip);
-        POINT p;
-        int cx = tl.x + r.right / 2, cy = tl.y + r.bottom / 2;
-        if (GetCursorPos(&p) && (abs(p.x - cx) > r.right / 4 || abs(p.y - cy) > r.bottom / 4)) SetCursorPos(cx, cy);
     }
     return 0;
 }

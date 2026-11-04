@@ -60,6 +60,7 @@ static const struct { const char *action, *zh; } kActionZh[] = {
     {"r_stick_click", "右摇杆按下"}, {"reset_camera", "重置视角"}, {"reset_rotation", "重置旋转"},
     {"right_arm", "右臂"}, {"secondary", "次要"}, {"skip", "跳过"}, {"skip_x", "跳过 X"},
     {"use", "使用"}, {"walk", "走"}, {"x_prompt", "X 提示"}, {"y_prompt", "Y 提示"}, {"zl", "ZL"}, {"zr", "ZR"},
+    {"choice_1", "选项 1"}, {"choice_2", "选项 2"}, {"choice_3", "选项 3"}, {"choice_4", "选项 4"},
 };
 
 static const struct { int scope; const char *zh; } kScopeZh[] = {

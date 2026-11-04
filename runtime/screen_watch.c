@@ -127,10 +127,20 @@ void screen_watch_poll(uint64_t buttons) {
     uint64_t edge = buttons & ~prev;
     prev = buttons;
     // The map has no focus box (the stick moves its own cursor): the game's Minus / the scheme's M toggles it, and B
-    // closes it. The strips are held D-pad directions (right weapons, left shields, up materials) and L the ability
-    // wheel; they are gameplay for the menu cursor but own the scheme's quick-menu rows.
+    // closes it. That is an edge, so it cannot chatter.
+    //
+    // The quick-menu strips are NOT readable here: they never own the box cursor (a play session logs ShortCut zero
+    // times), and guessing "a strip is open" from a held D-pad direction is wrong twice over -- the scheme's own
+    // movement and focus rows carry those bits, and its 70 ms pulse makes a held key appear on one poll and not the
+    // next, which flips the context every frame (433 quickmenu lines against 441 gameplay ones in one session). The
+    // strips therefore stay in the world context; only a real screen change moves it.
+    //
+    // A held bit may still switch the context, but only after it has been held steadily for SW_STEADY_MS: the pulse
+    // alone can then never reach it.
+#define SW_STEADY_MS 150
     if (edge & (1ull << B_MINUS)) map_on = !map_on;
     if (edge & (1ull << B_B)) map_on = 0;
+    static uint64_t aim_since;
     uint64_t scr = focus_screen();
     char nm[48] = "";
     int sc;
@@ -139,12 +149,11 @@ void screen_watch_poll(uint64_t buttons) {
         sc = scope_of(nm);
     } else if (map_on) {
         sc = KBM_SC_MAP;
-    } else if (buttons & ((1ull << B_LEFT) | (1ull << B_UP) | (1ull << B_RIGHT) | (1ull << B_L))) {
-        // A strip is open: its D-pad rows, including the bow strip's while ZR is held (3 = ZR + d-right).
-        sc = KBM_SC_QUICKMENU;
     } else if (buttons & (1ull << B_ZR)) {
-        sc = KBM_SC_AIM;
+        if (!aim_since) aim_since = plat_now_ms();
+        sc = plat_now_ms() - aim_since >= SW_STEADY_MS ? KBM_SC_AIM : g_scope;
     } else {
+        aim_since = 0;
         sc = KBM_SC_WORLD;
     }
     int old = g_scope;

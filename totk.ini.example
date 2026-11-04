@@ -196,12 +196,14 @@
 # patch 0010), so the shader cache is rebuilt once after an update. Read at start.
 # pcss = 0
 
-# NVIDIA DLSS / DLAA for the 3D scene, on NVIDIA RTX GPUs with nvngx_dlss.dll (from NVIDIA's DLSS SDK) next to
-# totk.exe; elsewhere the setting does nothing. The HUD is drawn after it and is not touched. Read at start.
+# NVIDIA DLSS / DLAA for the 3D scene, on NVIDIA RTX GPUs with the DLSS model from NVIDIA's DLSS SDK next to the
+# executable (Windows: nvngx_dlss.dll next to totk.exe; Linux: libnvidia-ngx-dlss.so.<version> next to totk, with the
+# NVIDIA driver's libnvidia-ngx.so.1 installed); elsewhere the setting does nothing. The HUD is drawn after it and is not touched.
+# Read at start.
 # dlaa = 0
 # What DLSS works from: dlaa (the 3D scene at full size), quality, balanced or performance (the scene at 67, 58 or
-# 50 % of the output, scaled up by DLSS; these replace render_scale and sharpen texture filtering to match). With dlaa
-# = 0 the game's own scaling is used at that size. Read at start.
+# 50 % of the output, scaled up by DLSS; these replace render_scale and sharpen texture filtering to match). They apply
+# only with dlaa = 1 and the DLSS model next to the executable; otherwise the scene follows render_scale. Read at start.
 # dlss = dlaa
 # The game's own FXAA after the post effects; with DLAA on it is not needed. Changes while the game runs take effect at
 # once.
@@ -331,18 +333,22 @@
 # screen_watch = 1
 # Logs each screen and the scheme's context when they change (1 on).
 # screen_watch_log = 1
-# EXPERIMENTAL, off by default. The mouse pointer in the game's own menus (1.4.3), from Wintego's PR #605: it reads
-# eui::ScreenMgr, takes the focused screen's layout name and node list, hit-tests the pointer and releases the OS
-# cursor in menus. The write that moves eui's focus box does not take effect on 1.4.3 yet, so hovering and clicking
-# do nothing: 1 only releases the pointer.
+# The mouse pointer in the game's own menus (1.4.3), off by default: it releases the OS cursor and moves the focus box
+# the way the game moves it -- pressing the d-pad direction that closes the gap to the hovered item, one press per step
+# -- because eui recomputes its cursor every frame and ignores direct writes. Left click is A on the hovered item,
+# right click is B. It only takes the cursor in the screens named in menu_cursor_screens: the game's in-world strips
+# keep the pointer captured, because releasing it there would also drop the wheel.
 # menu_cursor = 0
-# Logs each menu screen's nodes and the pointer's hit test (layout coordinates, first box, hit node/none), for
-# finding the 1.4.3 focus write.
+# Comma-separated layout names the pointer is taken for. menu_cursor_log prints each screen's name, so a menu missing
+# here is one name away.
+# menu_cursor_screens = Title_00,Pouch_00,SystemLoadList_00,SystemSaveLoad_00
+# Logs each menu screen's nodes, the pointer's hit test and every d-pad press the pointer drives (layout coordinates,
+# first box, hit node/none, focus there/elsewhere).
 # menu_cursor_log = 0
 # The PC scheme (Weeping of the Empire's context table) in place of the flat table above: 0 off, 1 on. The Keyboard &
 # mouse tab (F1) edits every action's key, globally or per context, and the wheel switches materials while the throw
 # key is held. Off, the Controls tab and the bind_ lines are the layout (docs/controls.md). On, the keyboard and the
-# mouse follow docs/kbm-port.md's table of (context, action) rows; the Controls tab and bind_ do nothing then, and the
+# mouse follow the PC scheme's table of (context, action) rows; the Controls tab and bind_ do nothing then, and the
 # gamepad, its layout, the mouse camera and every other input setting are unchanged. Live: the next poll switches and
 # the log says which path ran ("input: PC scheme on: 255 rows, 0 unknown keys, Esc is the game's menu key"). Esc is the
 # game's pause menu in the world and its back row on the game's own screens (runtime/screen_watch.c); the settings menu

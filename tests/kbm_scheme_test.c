@@ -193,6 +193,54 @@ int main(void) {
     b = frame(10200, 0, 0, 0, 0, &rx, &ry);
     expect_u("... and the step ends", b, 0);
 
+    // G and the wheel: the material page. The first notch takes D-pad up and keeps it (the game holds the page open
+    // only while up is held), later notches flick the right stick inside that hold, and releasing the throw key drops
+    // both -- nothing here presses A, so the player's own release is the confirm.
+    kbm_scheme_set_ctx(KBM_SC_WORLD);
+    frame(11000, 0, 0, 0, 0, 0, 0);
+    b = frame(11010, KEY_G, 0, 0, 0, 0, 0);
+    expect_u("the throw key alone keeps the page shut", b >> B_UP & 1, 0);
+    b = frame(11020, KEY_G, KEY_WHEEL_DOWN, 0, 0, &rx, &ry);
+    expect_u("the first notch takes up", b >> B_UP & 1, 1);
+    expect_i("... without walking the list yet", rx, 0);
+    b = frame(11300, KEY_G, 0, 0, 0, &rx, &ry);
+    expect_u("up is still held 280 ms later", b >> B_UP & 1, 1);
+    b = frame(11310, KEY_G, KEY_WHEEL_DOWN, 0, 0, &rx, &ry);
+    b = frame(11320, KEY_G, 0, 0, 0, &rx, &ry);
+    expect_i("the next notch flicks the stick right", rx, 32767);
+    expect_u("... with the page still held open", b >> B_UP & 1, 1);
+    b = frame(11400, KEY_G, 0, 0, 0, &rx, &ry);
+    expect_i("... and the flick is over", rx, 0);
+    b = frame(11410, KEY_G, KEY_WHEEL_UP, 0, 0, &rx, &ry);
+    b = frame(11420, KEY_G, 0, 0, 0, &rx, &ry);
+    expect_i("a notch back walks the other way", rx, -32767);
+    b = frame(12000, 0, 0, 0, 0, 0, 0);
+    expect_u("releasing the throw drops the page too", b, 0);
+
+    // While the throw key is down the left button belongs to the page and to nothing else: it closes the page (the
+    // material stays in hand), it never reaches the attack, and it stays inert after the page is gone -- the button
+    // comes back with the key. The page's sort is on the middle button while it is up.
+    kbm_scheme_set_ctx(KBM_SC_WORLD);
+    frame(13000, 0, 0, 0, 0, 0, 0);
+    b = frame(13010, KEY_G, KEY_WHEEL_DOWN, 0, 0, &rx, &ry);
+    expect_u("the notch opens the page", b >> B_UP & 1, 1);
+    b = frame(13020, KEY_G, KEY_MOUSE_M, 0, 0, &rx, &ry);
+    expect_u("the middle button sorts with Y", b >> B_Y & 1, 1);   // the stubbed pulse is the press frame only
+    expect_u("... and the page stays up", b >> B_UP & 1, 1);
+    b = frame(13030, KEY_G, 0, 0, 0, &rx, &ry);
+    expect_u("the middle button did not reach the Scope", b >> B_STICK_R & 1, 0);
+    b = frame(13200, KEY_G, KEY_MOUSE_L, 0, 0, &rx, &ry);
+    expect_u("left closes the page", b >> B_UP & 1, 0);
+    expect_u("... without reaching the attack", b >> B_Y & 1, 0);
+    expect_u("... and the throw stays held", b >> B_R & 1, 1);
+    b = frame(13210, KEY_G, KEY_MOUSE_L, 0, 0, &rx, &ry);   // the same press, still down
+    expect_u("... still inert with the key down", b >> B_Y & 1, 0);
+    b = frame(13220, KEY_G, 0, 0, 0, &rx, &ry);
+    expect_u("... and inert after the release", b >> B_Y & 1, 0);
+    b = frame(13300, 0, KEY_MOUSE_L, 0, 0, &rx, &ry);       // the throw key is up: the button is the attack again
+    expect_u("left attacks once the throw key is up", b >> B_Y & 1, 1);
+    frame(14000, 0, 0, 0, 0, 0, 0);
+
     // Whatever is held, in every context, the button word carries buttons only: the stick directions (16..23) are
     // the caller's to derive from the sticks it ends up with (kbm_scheme.h). Every key down is the loudest case.
     kbm_scheme_set_ctx(KBM_SC_WORLD);

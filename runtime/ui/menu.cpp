@@ -347,15 +347,15 @@ static int fonts_up(float scale) {
         ImFontGlyphRangesBuilder b;
         b.AddText(ui_text_in("en", kCjk[i].name));
         ui_text_visit(kCjk[i].lang, add_row_glyphs, &b);
-        // The Keyboard & mouse tab names the scheme's actions and contexts from its own tables, not from catalog
-        // rows, so those strings have to be asked for separately or their glyphs show as boxes.
-        if (!strcmp(kCjk[i].lang, "zh-Hans")) kbm_labels_visit(add_row_glyphs, &b);
         // Text the menu shows that no catalog row holds: a mod's cheat names and its folder name,
         // both read from disk at runtime. Their glyphs would otherwise fall back to the missing-glyph box.
         for (int k = 0; k < cheats_count(); k++)
             if (const CheatInfo *ci = cheats_info(k); ci && ci->name) b.AddText(ci->name);
         for (int k = 0; k < mods_count(); k++)
             if (const ModInfo *mi = mods_at(k); mi) b.AddText(mi->name);
+        // The Keyboard & mouse tab names the scheme's actions and contexts from its own tables, not from catalog
+        // rows, so those strings have to be asked for separately or their glyphs show as boxes.
+        if (!strcmp(kCjk[i].lang, "zh-Hans")) kbm_labels_visit(add_row_glyphs, &b);
         b.BuildRanges(&ranges[i]);
         ImFontConfig mc;
         mc.MergeMode = true;
@@ -857,6 +857,9 @@ static void tab_controls(float scale) {
     opt_slider("TOTK_RUMBLE_STRENGTH", UI_MENU_RUMBLE_STRENGTH, 0, 300, UI_MENU_RUMBLE_STRENGTH_DESC, 10, "%.0f %%");
     opt_slider("TOTK_RUMBLE_CURVE", UI_MENU_RUMBLE_CURVE, 0.2f, 1.5f, UI_MENU_RUMBLE_CURVE_DESC, 0.05f, "%.2f");
     opt_toggle("TOTK_RUMBLE_TRIGGERS", UI_MENU_RUMBLE_TRIGGERS, UI_MENU_RUMBLE_TRIGGERS_DESC);
+    opt_slider("TOTK_MOUSE_SENS", UI_MENU_MOUSE_SENS, 0, 10, UI_MENU_MOUSE_SENS_DESC, 0.1f, "%.1f");
+    row_walk_key();
+    opt_slider("TOTK_WALK_SCALE", UI_MENU_WALK_SCALE, 0.2f, 0.9f, UI_MENU_WALK_SCALE_DESC, 0.01f, "%.2f");
     // Analog sticks: one dead zone row per stick, falling back to TOTK_STICK_DEADZONE (both sticks) while unset. With
     // a gamepad connected each row shows its stick's deflection now, before the dead zone: a drifting stick's resting
     // value, to set it above.
@@ -871,7 +874,6 @@ static void tab_controls(float scale) {
     opt_slider("TOTK_RSTICK_DEADZONE", UI_MENU_RSTICK_DEADZONE, 0, 50, UI_MENU_STICK_DEADZONE_DESC, 1, "%.0f %%",
                pad ? stick_note[1] : nullptr, "TOTK_STICK_DEADZONE");
     opt_slider("TOTK_STICK_SENS", UI_MENU_STICK_SENS, 0.1f, 3, UI_MENU_STICK_SENS_DESC, 0.05f, "%.2f");
-    opt_slider("TOTK_MOUSE_SENS", UI_MENU_MOUSE_SENS, 0, 10, UI_MENU_MOUSE_SENS_DESC, 0.1f, "%.1f");
     opt_slider("TOTK_MOUSE_AIM_SCALE", UI_MENU_MOUSE_AIM_SCALE, 0.1f, 3, UI_MENU_MOUSE_AIM_SCALE_DESC, 0.05f, "%.2f");
     opt_toggle("TOTK_MOUSE_DIRECT", UI_MENU_MOUSE_DIRECT, UI_MENU_MOUSE_DIRECT_DESC);
     opt_slider("TOTK_MOUSE_DIRECT_SENS", UI_MENU_MOUSE_DIRECT_SENS, 0.05f, 10, UI_MENU_MOUSE_DIRECT_SENS_DESC, 0.05f,
@@ -881,8 +883,6 @@ static void tab_controls(float scale) {
     row_motion_key();
     opt_slider("TOTK_MOUSE_MOTION_SPEED", UI_MENU_MOUSE_MOTION_SPEED, 0.05f, 4, UI_MENU_MOUSE_MOTION_SPEED_DESC, 0.05f,
                "%.2f");
-    row_walk_key();
-    opt_slider("TOTK_WALK_SCALE", UI_MENU_WALK_SCALE, 0.2f, 0.9f, UI_MENU_WALK_SCALE_DESC, 0.01f, "%.2f");
     opt_slider("TOTK_KEY_MIN_HOLD_MS", UI_MENU_KEY_MIN_HOLD, 0, 1000, UI_MENU_KEY_MIN_HOLD_DESC, 10, "%.0f ms");
     opt_toggle("TOTK_SPRINT_TOGGLE", UI_MENU_SPRINT_TOGGLE, UI_MENU_SPRINT_TOGGLE_DESC);
     opt_toggle("TOTK_LOCK_TOGGLE", UI_MENU_LOCK_TOGGLE, UI_MENU_LOCK_TOGGLE_DESC);

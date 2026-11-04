@@ -221,6 +221,13 @@ static int step_family(int arg, int *dpad, int *next, int *prev) {
 }
 
 static int g_ctx = KBM_SC_WORLD;
+// G and the wheel: the material page, from screenshots taken frame by frame. With the throw key held, D-pad up opens
+// the page and the page stays only while up is still held; the right stick walks it; letting up go closes it with the
+// highlighted material in hand, and letting the throw key go is what throws it. So the first notch takes UP and keeps
+// it, every later notch only flicks the stick inside that hold, and releasing the throw key drops both. Nothing here
+// presses A or R on its own, so the player's release is the confirm.
+enum { MAT_FLICK_FRAMES = 3 };
+static struct { int open; uint64_t flick_until; int flick; } g_mat;
 static int g_ready;
 static int g_unknown_keys;
 
@@ -485,16 +492,36 @@ void kbm_scheme_frame(const uint8_t down[KEY_COUNT], uint64_t now_ms, uint64_t *
         if (r < 0) continue;
         KbmRow *row = &g_rows[r];
         int held = g_held[r], was = g_was[r];
+        // While the throw key is held the left button belongs to the material page, and to nothing else: it closes the
+        // page (the material stays in hand, so aiming continues) and it never reaches the attack row. The gate is the
+        // throw key, not the page's state, so the rest of a real 50 to 150 ms click cannot leak into the world either --
+        // the button comes back when the key comes up. The page's sort is on the middle button while it is up.
+        if (!strcmp(row->action, "attack") && action_key_held("throw", down)) {
+            if (held && !was && g_mat.open) g_mat.open = 0;
+            continue;
+        }
+        if (!strcmp(row->action, "scope") && g_mat.open) {
+            if (held && !was) pulse_row(r, 1u << B_Y, now_ms, &out);
+            continue;
+        }
         switch ((char)row->kind) {
         case 'H': case 'G': case 'K':
             if (held) out |= row->out;
             break;
         case 'M': {
             int arg = row->arg;
-            // While the throw key is held the wheel steps the material strip (D-pad up) instead of the weapon strip
-            // (D-pad right): the same step macro, the strip the player is looking at.
-            if ((arg == MAC_NEXT || arg == MAC_PREV) && action_key_held("throw", down))
-                arg = arg == MAC_NEXT ? MAC_ARROW_NEXT : MAC_ARROW_PREV;
+            // The throw key turns the wheel into the material page's own walk; see g_mat above.
+            int mat = (arg == MAC_NEXT || arg == MAC_PREV) && action_key_held("throw", down);
+            if (mat) {
+                if (held && !was) {
+                    if (!g_mat.open) g_mat.open = 1;   // the first notch only opens the page: UP goes out from here on
+                    else {
+                        g_mat.flick = arg == MAC_NEXT ? B_SR_RIGHT : B_SR_LEFT;
+                        g_mat.flick_until = now_ms + MAT_FLICK_FRAMES * g_frame_ms;
+                    }
+                }
+                break;
+            }
             int dpad, next, prev;
             int step = step_family(arg, &dpad, &next, &prev);
             if (step) {
@@ -564,6 +591,17 @@ void kbm_scheme_frame(const uint8_t down[KEY_COUNT], uint64_t now_ms, uint64_t *
         uint64_t el = now_ms - g_step.at, open = (uint64_t)KBM_STEP_OPEN_FRAMES * g_step.frame;
         out |= 1u << g_step.dpad;
         if (el >= open && el < open + (uint64_t)KBM_STEP_FLICK_FRAMES * g_step.frame) out |= 1u << g_step.flick;
+    }
+    // The material page's press, held for its own few frames. The page state ends with the throw key: the next time it
+    // is held, the first notch opens the page again rather than stepping a list that is not on screen.
+    // The material page: UP is held for as long as the page is open (the game keeps the page only while it is held --
+    // screenshots: G + up opens it, both held 1.5 s later it is still there, releasing up closes it), and each notch
+    // after the first flicks the right stick inside that hold. The throw key owns the page, and the release is checked
+    // before the bits go out so the frame it comes up lets UP go with it: that is the player's confirm.
+    if (!action_key_held("throw", down)) g_mat.open = 0;   // the throw key owns the page: up and the mouse gate
+    if (g_mat.open) {
+        out |= 1u << B_UP;
+        if (now_ms < g_mat.flick_until) out |= 1u << g_mat.flick;
     }
     for (int r = 0; r < g_nrows; r++) g_was[r] = g_held[r];
 

@@ -1,9 +1,9 @@
 # The PC keyboard and mouse scheme
 
-> Branch state: the scheme, the game-screen watcher (`screen_watch.c`, 1.4.3), the menu pointer (PR #605), the mouse
+> Status: the scheme, the game-screen watcher (`screen_watch.c`, 1.4.3), the menu pointer (PR #605), the mouse
 > gyro (`TOTK_MOUSE_MOTION_KEY`, `runtime/input.c`) and the keyboard keycap prompt set (`prompts = keyboard`) are in.
-> The watcher names the game's screen (title, saves, pause, map, quick menu, Autobuild, camera, scope, shop, recipe,
-> choice, dialogue, options, loading) and ZR selects `AIM`; the player's stance (climb, air, glide, swim, horse,
+> The watcher names the game's screen (title, saves, pause, map, Autobuild, camera, scope, shop, recipe, choice,
+> dialogue, options, loading) and ZR selects `AIM`; the player's stance (climb, air, glide, swim, horse,
 > vehicle) is not read, so those rows still fall back to `GAMEPLAY`.
 
 
@@ -11,8 +11,8 @@ A port of [Weeping of the Empire](https://github.com/daniel-madrid-07/weeping-of
 one table of (context, action) rows decides what the keyboard and the mouse ask the game for, instead of the flat
 key-to-button table in `docs/controls.md`. It is a second path, off by default, so both can be played and compared.
 
-This branch is 0.3.1. Its input layer differs from the branch the scheme was first ported to (0.3.4) in three places
-that the port had to meet; they are listed under "What this branch changes about the port" below.
+The input layer here differs from the one the scheme was first ported to (Weeping's 0.3.4 tree) in three places that
+the port had to meet; they are listed under "What this change adapts" below.
 
 ## Turning it on
 
@@ -56,21 +56,21 @@ single button means. Neither exists here yet, so:
   buttons. `PCOP_MENU_GOTO` and `PCOP_TAB_GOTO` walk a menu's pages through a cursor hook the port lacks, so they
   pulse their row's own bits (the screen still opens, and the player walks it with the stick).
 
-## What this branch changes about the port
+## What this change adapts
 
-1. **`Esc` is the game's key again.** 0.3.1 had no `KEY_ESC`: `Esc` released the cursor and opened the host menu from
+1. **`Esc` is the game's key again.** The input layer had no `KEY_ESC`: `Esc` released the cursor and opened the host menu from
    the window message (`ui/menu_win.cpp`, `ui/menu_sdl.cpp`), so the table's ten `Esc` rows could not fire. The port adds
    the id (`input_map.h`, `KEY_ESC`; `input_win.c` and `input_sdl.c` map it), so `Esc` does what upstream's rows say:
    the pause menu in the world, one level back in a menu, the cancel while aiming, the skip of a cutscene. While the
    scheme runs, the host menu keeps `F1` only and `Esc` no longer releases the cursor (`input_kbm_scheme`), which is
    what makes the two uses coexist. With the scheme off, nothing changes: `Esc` opens the host menu as before, and no
    default binding names it.
-2. **0.3.1's host chords are the pad's under the scheme.** `Minus+Plus` opens or closes the host menu and `L3+R3` steps
+2. **The host chords are the pad's under the scheme.** `Minus+Plus` opens or closes the host menu and `L3+R3` steps
    the performance overlay; both read the merged word by default. Under the scheme the keyboard's `M` is the map and
    `Esc` the pause menu (`Ctrl` and `V` the stick clicks), so `M+Esc` or `Ctrl+V` would fire the host chords. The gates
    take the word the chord is read from (`input_menu_gate`'s last argument) and the poll passes the gamepad's bits
    while the scheme runs: the pad still toggles the menu and the overlay, the keyboard's keys reach the game.
-3. **A wheel notch is an event, not a held key.** 0.3.1 has `KEY_WHEEL_UP` / `KEY_WHEEL_DOWN`, and `input.c` used to
+3. **A wheel notch is an event, not a held key.** The input layer has `KEY_WHEEL_UP` / `KEY_WHEEL_DOWN`, and `input.c` used to
    turn a notch into a key held for two polls. Two polls is not a press: at 144 fps it is 14 ms, under one sample of a
    30 Hz menu, and every notch that arrived during those polls merged into the same one, so a quick scroll stepped once.
    Now a notch is held for 70 ms and rests 70 ms, one notch at a time, with the notches of a quick scroll queued (up to
@@ -81,11 +81,11 @@ single button means. Neither exists here yet, so:
    `pc_gameplay.cpp`). Here a notch on `weapon_next` / `weapon_prev` plays that macro at the pad level (`g_step`),
    counted in game frames the way upstream counts it: the d-pad until the strip is in front (6 frames), a 2-frame
    flick of the right stick, 2 frames more on the d-pad, then the release that equips. The frame length is measured
-   from the presented frames, so the step plays the same at 30, 60 or 120 fps. With a quick menu already open (the
-   player holds its key) the notch only flicks the stick: the strip is open, nothing to press or release.
+   from the presented frames, so the step plays the same at 30, 60 or 120 fps. With the strip already open (the player
+   still holds its D-pad direction) the notch only flicks the stick: nothing to press or release.
    `arrow_next` / `arrow_prev` share the step, with D-pad up; the camera's zoom and the ability wheel's pulls still
    pulse their own bits.
-5. **Every key is already sampled.** 0.3.1 fills `down[]` from every key id, with no "only the bound keys" mask, so the
+5. **Every key is already sampled.** The poll fills `down[]` from every key id, with no "only the bound keys" mask, so the
    scheme's keys of its own (`Alt`, `G`, `V`, the digits) need no branch in the poll loop. `input.c` adds the scheme's
    branch and nothing else.
 
@@ -93,11 +93,14 @@ single button means. Neither exists here yet, so:
 
 `runtime/screen_watch.c` reads `eui::ScreenMgr` at each pad read (the game thread) and selects the focused screen's
 context: `Title_00` is `TITLE`, `Pouch_00`/`Pause*` is `PAUSE`, the save list is `SAVES`, options, shops, dialogue and
-choices get their rows, `AppMap_00` is `MAP`, the strips are `QUICKMENU`, Autobuild is `CONSTRUCT`, the camera and the
-scope are their contexts. The map and the strips have no focus box, so the input fallback uses the game's Minus toggle
-for `MAP` and the held D-pad directions/L for `QUICKMENU`; a held bow key (ZR) selects `AIM`. The host settings menu
-(F1) stays `PAUSE`. `TOTK_SCREEN_WATCH` (default 1) turns the watcher off, and `TOTK_SCREEN_WATCH_LOG` (default 1) logs
-each change (`screen: Pouch_00 -> pause`).
+choices get their rows, `AppMap_00` is `MAP`, Autobuild is `CONSTRUCT`, the camera and the scope are their contexts.
+The map has no focus box, so the input fallback uses the game's Minus toggle for `MAP` (an edge, so it cannot
+chatter). The quick-select strips never own the focus box, so the watcher does not guess them from a held D-pad
+direction: a guess is wrong twice over, the scheme's own movement and focus rows carry those bits and its 70 ms pulses
+make a held key appear on one poll and not the next, which would flip the context every frame -- they stay in the
+world context, and only a real screen change moves it. A held bow key (ZR) selects `AIM` once it has been held
+steadily for 150 ms, for the same reason. The host settings menu (F1) stays `PAUSE`. `TOTK_SCREEN_WATCH` (default 1)
+turns the watcher off, and `TOTK_SCREEN_WATCH_LOG` (default 1) logs each change (`screen: Pouch_00 -> pause`).
 
 ## What still needs a game hook
 
@@ -118,15 +121,24 @@ each change (`screen: Pouch_00 -> pause`).
    mouse gyro aiming path is not part of this patch.
 5. **The Keyboard & mouse tab** (`runtime/ui/kbm_page.cpp`): F1's tab lists every scheme action with one key cell, for
    all contexts or for one context. A captured key is written to `kbm_binds` as `action=key` or `context.action=key`;
-   the context entry wins over the global one, and Delete clears it. While the throw key is held, a wheel notch steps
-   the material strip (the same D-pad-up step macro as the arrow strip) instead of the weapon strip.
+   the context entry wins over the global one, and Delete clears it. While the throw key is held the wheel is the
+   material page's own gesture (`runtime/kbm_scheme.c`, `g_mat`): the first notch takes D-pad up and **keeps it** for as
+   long as the throw key is held -- the page only stays open while up is held -- and every later notch flicks the right
+   stick inside that hold to walk the list. Releasing the throw key drops both, which is the game's own confirm; no A is
+   ever pressed here. Two earlier attempts read as broken on purpose-built screenshots: pulsing up closed the page
+   between notches, and walking the list with D-pad left / right did nothing the page answers to.
 6. **The menu pointer** (`runtime/menu_cursor.c`, Wintego's PR #605 adapted from Weeping's `totk_menu_cursor.cpp`):
-   ported and compiling, and its **read** path is verified on 1.4.3 — the ScreenMgr/BoxCursor chain, the screen's
-   layout name (`Pouch_00`), its node list (45 nodes with own hit panes), the pointer's hit test (`hit node`) and the
-   OS pointer release in menus all work. Its **write** path is not: the three stores `moveBoxCursor` makes do not move
-   the game's focus box on 1.4.3, so hovering does not focus and clicking does not confirm. `TOTK_MENU_CURSOR` is
-   therefore **0 by default**; `TOTK_MENU_CURSOR_LOG=1` prints the pointer's layout coordinates, the node count and
-   the hit result for whoever chases the 1.4.3 offsets next.
+   off by default (`TOTK_MENU_CURSOR`; it takes the pointer only in the screens listed in `TOTK_MENU_CURSOR_SCREENS`).
+   Its **read** path is the port's: the ScreenMgr/BoxCursor chain, the screen's
+   layout name, its node list, the pointer's hit test and the OS pointer release in menus. Its **write** path is not:
+   the three stores `moveBoxCursor` makes leave 1.4.3's box where it is, because eui recomputes the cursor from its own
+   layout graph every frame. What the box does obey is the d-pad, so the hover is reached by pressing the direction that
+   closes the gap -- one press per box move, 90 ms for the animation to land, and the drive stops after three presses
+   that move nothing (so keys and the pad keep a menu they were navigated with, and a screen that ignores the d-pad is
+   named once in the log). Verified on 1.4.3 with the save list's eight rows: hovering the fifth, the first and the
+   fourth walks the box down, up and down again and stops on the pointer's own row, and a left click on a row is A on it
+   (the read confirmation opens on the row clicked); a right click is B. `TOTK_MENU_CURSOR_LOG=1` prints the pointer's
+   numbers, the node count, the hit result and every press the drive makes.
 
 ## What changes for the player
 

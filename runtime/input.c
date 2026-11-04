@@ -995,7 +995,7 @@ static void poll_merged(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx
             int32_t k[2];
             if (scheme) {
                 // The context table decides. The mouse camera stays this file's: no row of the scheme carries it,
-                // and upstream's direct mouse look needs the game-side veneer (docs/kbm-port.md).
+                // and the direct mouse look needs the game-side veneer (docs/kbm-port.md).
                 int32_t kl[2] = {0, 0}, kr[2] = {0, 0};
                 kbm_scheme_set_ctx(screen_watch_ctx(menu_open));
                 kbm_scheme_frame(down, plat_now_ns() / 1000000u, &key_bits, kl, kr);
@@ -1111,8 +1111,8 @@ static int blocked(volatile int32_t *flag, volatile uint64_t *closed, const char
 
 void input_poll(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx, int32_t *ry) {
     poll_merged(buttons, lx, ly, rx, ry);
-    if (!g_block && !g_menu) menu_cursor_poll(buttons);   // the game's menus: hover and click as A/B
     screen_watch_poll(*buttons);   // the game thread's pad read: the eui screen for the scheme's next context
+    if (!g_block && !g_menu) menu_cursor_poll(buttons);   // the game's menus: hover and click as A/B, walked with the d-pad
     const int32_t axes[4] = {*lx, *ly, *rx, *ry};
     int text = blocked(&g_block, &g_block_closed, "text entry", *buttons, axes),
         menu = blocked(&g_menu, &g_menu_closed, "menu", *buttons, axes);

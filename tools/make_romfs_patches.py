@@ -27,10 +27,8 @@ added (tools/button_icons.py, which needs fontTools):
   carries the resource size table (System/Resource/ResourceSizeTable.Product.<n>...rsizetable.zs) with their entries
   raised by as much.
 - keyboard: every button becomes a keycap with the key the PC scheme puts on it (docs/kbm-port.md): E, shift, space,
-  LMB and RMB (words on our own caps, since a whole-mouse outline reads the same for every button at HUD size), Tab, G,
-  F, Esc, M, the d-pad's W A S D and the stick clicks CTRL and MMB (their own caps too: Kenney's four are blank, and
-  the game draws a stick click as an ellipse pressed from above), in the button font and in the button guide's two
-  images. The face buttons are not swapped: a keyboard has no pad layout.
+  the mouse's left and right buttons, Tab, G, F, I, M and the d-pad's arrows, in the button font and in the button
+  guide's two images. The face buttons are not swapped: a keyboard has no pad layout.
 - xbox, for pad_layout = nintendo. That layout plays an Xbox pad by position: the button that does Switch A is
   labelled B, so the face buttons' prompts are swapped to name the labels, A with B and X with Y:
   - the action prompt (blyt/DoCommand_00.bflyt) draws the letter images Nt_KeyTexA/B/X/Y_00 of timg/__Combined.bntx in
@@ -69,9 +67,6 @@ ap.add_argument('--prompts', choices=('xbox', 'xbox-label', 'keyboard'),
                      'xbox-label for pad_layout = xbox or auto (the face buttons keep their letters), keyboard for the '
                      'PC scheme\'s keys as keycaps (docs/kbm-port.md)')
 ap.add_argument('--xbox-prompts', dest='prompts', action='store_const', const='xbox', help='the same as --prompts xbox')
-ap.add_argument('--binds', type=Path,
-                help='a totk.ini whose bind_ lines name the keys the prompts should show, instead of the scheme\'s '
-                     'defaults: a button remapped in the game or on the Controls tab keeps its prompt right')
 args = ap.parse_args()
 args.romfs = args.romfs or root / 'build/extracted' / args.version / 'romfs'
 args.out = args.out or root / 'build' / args.version / (f'romfs-patches-{args.prompts}' if args.prompts else 'romfs-patches')
@@ -206,40 +201,6 @@ def msbt_letters(data, swap):
     return changed
 
 
-def read_binds(path):
-    """button -> the first key its bind_ line names (docs/controls.md: `bind_A = key:R, pad:...`). `key:default` and
-    `pad:` entries are skipped: the scheme's own key is what the prompt shows for those."""
-    out = {}
-    for line in path.read_text(encoding='utf-8', errors='replace').splitlines():
-        line = line.split('#', 1)[0].strip()
-        if not line.lower().startswith('bind_') or '=' not in line:
-            continue
-        name, _, value = line.partition('=')
-        for entry in value.split(','):
-            entry = entry.strip()
-            if entry.lower().startswith('key:') and entry[4:].strip().lower() != 'default':
-                out[name[5:].strip().upper()] = entry[4:].strip()
-                break
-    return out
-
-
-def swap_menu_codepoints(data, lo, hi):
-    """The layout at data[lo:hi] (a bytearray, changed in place) with every button code point it names moved to the
-    menus' spare one (tools/button_icons.py MENU_CODEPOINTS). Returns how many were moved."""
-    moved = 0
-    for old, new in icons.MENU_CODEPOINTS.items():
-        a, b = struct.pack('<H', old), struct.pack('<H', new)
-        i = lo
-        while True:
-            i = data.find(a, i, hi)
-            if i < 0:
-                break
-            data[i:i + 2] = b
-            moved += 1
-            i += 2
-    return moved
-
-
 def sarc_replace(data, new):
     """The SARC data with the members named in new (name -> bytes) replaced. The header, SFAT and SFNT stay; the
     members are laid out again in their old order, each at an offset with at least the alignment its old one had."""
@@ -279,19 +240,6 @@ RESTBL = max((p for p in files if p.startswith('System/Resource/ResourceSizeTabl
              key=lambda p: int((re.search(r'\.(\d+)\.', p) or [0, 0])[1]), default=None)
 by_position = args.prompts == 'xbox'   # the face buttons' prompts swapped to the labels (pad_layout = nintendo)
 keyboard = args.prompts == 'keyboard'  # the face buttons' prompts and letters drawn as keycaps
-# The layouts a menu or a list shows. Their prompts name the menus' keys (a menu's confirm is Enter, its back Esc),
-# which are not the on-foot ones, so their button code points move to the spare ones the button font already has
-# (tools/button_icons.py MENU_CODEPOINTS) and the font carries both readings. Everything else keeps the on-foot set:
-# a layout a menu shown over the world shares (PaActionGuide, the instant tips, the dialogues) would otherwise change
-# its prompts too.
-MENU_LAYOUTS = (
-    'blyt/CameraPointer_00.bflyt', 'blyt/Challenge_00.bflyt', 'blyt/OwnedHorseList_00.bflyt',
-    'blyt/PaAppMapCursor_00.bflyt', 'blyt/PaAppPictureBookDetail_00.bflyt',
-    'blyt/PaGuideKeyPauseMenu_00.bflyt', 'blyt/PaGuideKeyPauseMenuLeftIcon_00.bflyt',
-    'blyt/PaMapFloorTab_00.bflyt', 'blyt/PaMapTab_00.bflyt', 'blyt/PaMessageBtn_00.bflyt',
-    'blyt/PaPauseInfoHaveNum_00.bflyt', 'blyt/PaPouchSlideList_01.bflyt', 'blyt/PaRecipeCard_00.bflyt',
-    'blyt/PaShopPouchSlideList_00.bflyt', 'blyt/Pouch_00.bflyt', 'blyt/ShopMenu_00.bflyt',
-    'blyt/SystemLoadList_00.bflyt', 'blyt/SystemOption_00.bflyt')
 if args.prompts:
     assert FONTS, 'no Font/Font*.Nin_NX_NVN.bfarc.zs in the RomFS'
     assert MALS, 'no Mals/<language>.Product.<version>.sarc.zs in the RomFS'
@@ -356,18 +304,13 @@ if args.prompts:
         return data
     archives = {path: unpack(path) for path in FONTS}
     text = sarc_members(archives[icons.TEXT_ARCHIVE])
-    missing = [name for name in icons.TEXT_FONTS if name not in text]
-    assert not missing, f'no {", ".join(missing)} in {icons.TEXT_ARCHIVE}'
-    glyphs = icons.text_glyphs(archives[icons.TEXT_ARCHIVE][slice(*text[name])] for name in icons.TEXT_FONTS)
-    if keyboard and args.binds:   # the player's own keys, named on the prompts instead of the scheme's defaults
-        for button, key in read_binds(args.binds).items():
-            cp = icons.BUTTON_CODEPOINTS.get(button)
-            if cp is not None:
-                icons.KEYCAP_ICONS[cp] = icons.cap_for(key)
-
-    drawn = icons.keyboard_icons(glyphs) if args.prompts == 'keyboard' else icons.xbox_icons(glyphs)
-    if keyboard:
-        drawn.update(icons.menu_keyboard_icons(glyphs))   # the menus' set, on the spare code points
+    if args.prompts == 'keyboard':   # Kenney's icons bring their own legends: no text font is read
+        drawn = icons.keyboard_icons()
+    else:
+        missing = [name for name in icons.TEXT_FONTS if name not in text]
+        assert not missing, f'no {", ".join(missing)} in {icons.TEXT_ARCHIVE}'
+        glyphs = icons.text_glyphs(archives[icons.TEXT_ARCHIVE][slice(*text[name])] for name in icons.TEXT_FONTS)
+        drawn = icons.xbox_icons(glyphs)
     bntx = members['timg/__Combined.bntx'][0]
     letters = {}
     letter_map = KEY_LETTERS if by_position else icons.FACE_LETTERS
@@ -383,10 +326,6 @@ if args.prompts:
     textures = dict(icons.HUD_TEXTURES)
     if keyboard:
         textures.update(icons.FACE_TEXTURES)   # the action prompt's round A/B/X/Y become keycaps too
-        missing = [m for m in MENU_LAYOUTS if m not in members]
-        assert not missing, f'not in {ARCHIVE}: {", ".join(missing)}'
-        moved = sum(swap_menu_codepoints(blarc, *members[m]) for m in MENU_LAYOUTS)
-        assert moved, 'no menu layout names a button code point'
     hud = icons.bntx_redraw(blarc, bntx, textures, drawn)
     outputs[ARCHIVE] = bytes(blarc)
     fonts = {}   # each distinct font is drawn once (1.4.3's four archives hold the same one)

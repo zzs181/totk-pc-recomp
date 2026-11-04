@@ -104,7 +104,7 @@ bind_Y = pad:north, key:mouse_l
 
 Mouse motion (raw input) becomes right-stick deflection. Each presented frame takes the counts moved since the last frame, divides by the frame time and sets the deflection to `counts per second * TOTK_MOUSE_SENS / 3000` of full, held for that frame, so the turn rate does not depend on the frame rate. This is not mouselook: the game's stick curve and dead zone still apply, so very slow movements do nothing and a fast flick saturates. The mouse deflection competes with the gamepad and arrow keys by the larger-deflection rule.
 
-`TOTK_MOUSE_SENS` (0 to 10, default 1; higher turns faster, 0 turns the mouse camera and the cursor capture off). `TOTK_MOUSE_AIM_SCALE` (0.1 to 3, default 1) multiplies it while ZR is held, for a calmer drawn bow. While the window is the foreground window the cursor is hidden and confined to the client area; a 4 ms keeper puts the clip back and recenters the pointer when Windows drops it.
+`TOTK_MOUSE_SENS` (0 to 10, default 1; higher turns faster, 0 turns the mouse camera and the cursor capture off). `TOTK_MOUSE_AIM_SCALE` (0.1 to 3, default 1) multiplies it while ZR is held, for a calmer drawn bow. While the window is the foreground window the cursor is hidden and confined to the client area; a 4 ms keeper puts that clip back when Windows drops it. It no longer recenters the pointer: the camera reads raw motion (`WM_INPUT`'s deltas), never the cursor's position, and recentering only showed as the pointer jumping to the middle of the screen when a click briefly released the capture.
 
 
 `TOTK_STICK_DEADZONE` (0 to 50, default 8) is the gamepad stick dead zone in percent of full deflection, the same for both sticks. It is round: a stick inside the circle reads centred, and the rest of its travel is scaled to start at 0 at the edge, so full deflection still reaches full. Raise it for a stick that drifts. The game's own dead zone applies after it. `TOTK_LSTICK_DEADZONE` and `TOTK_RSTICK_DEADZONE` (the *Left/Right stick dead zone* rows under *Analog sticks* on the Controls tab) set one stick each and fall back to `TOTK_STICK_DEADZONE` while unset, so a worn stick can get a larger zone than the other. With a gamepad connected each row shows its stick's deflection now, before the dead zone (*stick now*): let go of the stick and set the row a few percent above the value it rests at.
@@ -145,7 +145,13 @@ stress test for a high-report-rate mouse and the input path. `TOTK_KBM_MATERIALS
 PC scheme's material key, held with the throw key. All are on the Controls tab.
 
 The strips 1, 2 and 3 are the pad's own D-pad quick selects (weapons, shields, bows). While the throw key is held, the
-wheel steps the material strip; without it, the wheel walks the weapon strip. While the bow is drawn the game's D-pad
+first wheel notch takes D-pad up and keeps it as long as that key is held -- the material page stays open only while up
+is held -- and every notch after it flicks the right stick inside that hold to walk the list. Two mouse buttons belong
+to that page: the left one closes it **without throwing** (the up bit goes, the throw key stays, so the material remains
+in hand and aiming continues), and the page's sort is on the middle button (it is the Y the left button used to reach,
+and the Scope has nothing to do inside the page). The press that closed the page is eaten while the button stays down,
+so a 50 to 150 ms click cannot also fire the attack. Releasing the throw key drops both and is the game's own throw.
+Without the throw key, the wheel walks the weapon strip. While the bow is drawn the game's D-pad
 means bow and arrow switching instead, so put the bow away (tap `F`) before walking the strips. The scheme has `AIM`
 rows for that state, but the port has no player-stance hook yet, so it keeps the on-foot rows.
 
@@ -156,23 +162,22 @@ select a row and press the new key; Delete clears the override. The tab writes `
 ## The game's own menus (1.4.3)
 
 `TOTK_SCREEN_WATCH` (default 1) reads `eui::ScreenMgr` at each pad read on the game thread and gives the PC scheme the
-screen's context: `Title_00` is `TITLE`, `Pouch_00`/`Pause*` is `PAUSE`, the save list is `SAVES`, options, shops,
-dialogue and choices get their own rows, `AppMap_00` is `MAP`, the strips are `QUICKMENU`, Autobuild is `CONSTRUCT`,
-the camera and the scope are their contexts. With no screen, a held bow key (ZR) selects `AIM`; the AIM rows disable
-1/2 (the pad's D-pad changes bows there) and keep 3 for the bow strip and C for arrow materials. `TOTK_SCREEN_WATCH_LOG`
-(default 1) logs each screen and context (`screen: Pouch_00 -> pause`). The screen read is from Wintego's PR #605 /
-Weeping of the Empire (MIT); the player's stance (climb, air, glide, swim, horse, vehicle) is still not read.
+focused screen's context: `Title_00` is `TITLE`, `Pouch_00`/`Pause*` is `PAUSE`, the save list is `SAVES`, options,
+shops, dialogue and choices get their own rows, `AppMap_00` is `MAP`, Autobuild is `CONSTRUCT`, the camera and the
+scope are their contexts. A held bow key (ZR) selects `AIM` once it has been held steadily for 150 ms, so the scheme's
+own 70 ms pulses never flip the context; the quick-select strips never own the focus box, so they stay in the world
+context on purpose. `TOTK_SCREEN_WATCH_LOG` (default 1) logs each screen and context (`screen: Pouch_00 -> pause`).
+The screen read is from Wintego's PR #605 / Weeping of the Empire (MIT); the player's stance (climb, air, glide, swim,
+horse, vehicle) is still not read.
 
-`TOTK_MENU_CURSOR` (**experimental, off by default**) is Wintego's PR #605 menu pointer, ported to this tree. What is
-verified working on 1.4.3: it reads `eui::ScreenMgr` → `BoxCursorMgr` → the focused screen, takes the screen's layout
-name and node list (the inventory reads 45 nodes with its own hit panes), hit-tests the node under the pointer
-(`hit node` in the log) and releases the OS pointer in the game's menus (`GetCursorInfo` shows it visible). What does
-**not** work yet: the three writes `eui::BoxCursorMgr::moveBoxCursor` makes do not move the game's focus box, so
-hovering does not focus an item and a click confirms nothing — the PR's 1.4.3 field offsets for the reserved node
-(`+0x150`), the request bit (`+0x175`) and the control's target (`+0x60`) are not reproducible here, and the lifted C
-of 1.4.3 has no matching writer. It is therefore off by default; `TOTK_MENU_CURSOR=1` only releases the pointer, and
-`TOTK_MENU_CURSOR_LOG=1` logs the pointer's layout coordinates, the node count and the hit result for the next round
-of digging. The SDL build has no pointer yet (the `ikb_pointer` stubs return 0).
+`TOTK_MENU_CURSOR` (**experimental, off by default**) is Wintego's PR #605 menu pointer, ported to this tree and made
+to work with the game's own cursor: eui recomputes its focus box every frame and ignores direct writes, so the pointer
+moves the box the way the game does -- pressing the d-pad direction that closes the gap to the hovered item, one press
+per box move, and giving up after three presses that move nothing. A left click on the hovered item is A on it, a
+right click is B. It takes the pointer only in the screens named in `TOTK_MENU_CURSOR_SCREENS` (default: the title,
+the pouch and the save/load lists) -- the in-world strips keep the pointer captured, because releasing it there would
+also drop the wheel. `TOTK_MENU_CURSOR_LOG=1` logs each menu screen's nodes, the pointer's hit test and every d-pad
+press the pointer drives. The SDL build has no pointer yet (the `ikb_pointer` stubs return 0).
 
 ## Nintendo Switch 2 controllers
 

@@ -14,9 +14,9 @@
 // the menus (WORLD, AIM, CLIMB...) need the game's player state; kbm_scheme_frame takes whatever the caller pushes
 // and KBM_SC_WORLD is the fallback.
 //
-// Esc is the game's key here, as upstream has it: this branch gives it an id (KEY_ESC) and the host menu keeps F1
-// while the scheme runs (input_kbm_scheme). The table's "pause" opens the game's own pause menu, its "back" leaves a
-// menu, its "quit" cancels an aim, a camera or an ability. See docs/kbm-port.md.
+// Esc is the game's key here: the scheme gives it an id (KEY_ESC) and the host menu keeps F1 while the scheme runs
+// (input_kbm_scheme). The table's "pause" opens the game's own pause menu, its "back" leaves a menu, its "quit"
+// cancels an aim, a camera or an ability. See docs/kbm-port.md.
 #pragma once
 #include <stdint.h>
 
