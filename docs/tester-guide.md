@@ -95,6 +95,36 @@ The log names every mod at the start (`mods: <name>: ...`) and how many of its f
 5. For a bug you can trigger again: a recording of your input (`set TOTK_INPUT_RECORD=input.txt`, see
    [controls.md](controls.md), "Scripted input") and the save you started from.
 
+## Recording frames to catch a glitch
+
+A frame that reverts — an old or half-drawn picture that stays on screen for one present — is easy to miss by eye at
+90 fps and leaves nothing in the log. `TOTK_SHOTS` writes the frames to look at afterwards:
+
+```bat
+set TOTK_SHOTS=600-1200:1
+set TOTK_SHOTS_DIR=shots
+totk.exe
+```
+
+Every present from 600 to 1200 is saved as `shots\f<n>.png`, box-filtered to 480x270 unless `TOTK_SHOTS_FULL=1`. The
+world-clock form `set TOTK_SHOTS=w10-40:0.5` takes the first present at or after every half second instead, which is
+how a short flicker in one spot gets caught.
+
+Then the sequence is judged offline, with no build and no Vulkan:
+
+```
+python tools/glitch_match.py shots --out shots\glitch.json --save-dir shots\trios
+```
+
+It compares each frame with both neighbours and names the ones that differ from both while the neighbours match each
+other: those revert. A camera turn is compensated for (+-8 x +-3 read-back pixels a frame), so a pan is not reported,
+and a cut, a menu change and a fade are not either. `--save-dir` copies each flagged frame with its two neighbours into
+a folder to send back; the JSON also says which older frame the picture matches (its age), which tells a stale frame
+from a torn one. `--min` moves the threshold (default 0.02, the same as `TOTK_GLITCH_MIN`).
+
+Record with step 1 (`:1`): a stride makes every pair differ by more than the threshold and hides the frames worth
+seeing.
+
 ## Steam Deck
 
 Build or install on Linux ([installer.md](installer.md), "Linux release"), in Desktop Mode. The game then runs in either
