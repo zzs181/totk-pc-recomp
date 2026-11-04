@@ -10,7 +10,7 @@
 // The hook pre-sets v = t + (v - t) * q / (1 - k), q = (1 - k)^r (r the frame's 30 Hz ratio), t = s * dir as the caller
 // computes it, so the caller's own step lands on t + (v - t) * q: the 30 Hz ease in game time. It acts at one call
 // only, the getter's return address 0x2413080; every other call of the getter is the original. At 30 fps and below
-// (r >= 1) and while the step is not the real-time one, the original exactly.
+// (r >= 1), and without the real-time step whose ratio it corrects by, the original exactly.
 //
 // The shape and the math are weeping-of-the-empire's totk_swim_ease.cpp (MIT, f2c81da), whose addresses are 1.0.0: the
 // getter main+0x16e4f90, its return address main+0x1d25ac0, the factor main+0x377671c. The 1.4.3 addresses above were
@@ -53,6 +53,10 @@ void swim_ease_hook(Cpu *c, void (*body)(Cpu *)) {
         rt_log("swim ease: the swim velocity is %s", on ? "eased in game time" : "eased per frame, as the game (TOTK_SWIM_EASE=0)");
     }
     if (!on) return;
+    // The ratio comes from the step the game is stepping, which is only measured with the real-time step on. With the
+    // shipping whole-vsync step there is no measurement, and guessing one would ease the swim at a rate the game is not
+    // running at; leave it alone (TOTK_REALTIME=1 is the default above 30 fps).
+    if (!frame_step_realtime()) return;
     const float r = frame_step_ratio();
     if (!(r > 0.01f && r < 1.0f)) return;   // 30 fps and below, or no real-time step: the game's own
     const float k = gf32(MOD_MAIN_BASE + SWIM_FACTOR);
