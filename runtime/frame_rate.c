@@ -108,6 +108,14 @@ void frame_step_init(void) {
 
 int frame_step_realtime(void) { return step_word != NULL; }
 
+// The 30 Hz ratio of the step the game is stepping: 1.0 at 30 fps, 0.5 at 60, 0.25 at 120. A guest constant applied
+// once per frame is expressed in 30 Hz frames, so a hook that wants it in game time raises or lowers it by this
+// (runtime/swim_ease.c).
+float frame_step_ratio(void) {
+    const double r = step_now * 30.0;
+    return (float)(r < 1.0 ? r : 1.0);
+}
+
 // The frame limit (menu, TOTK_FPS_LIMIT, live): 30, 60, 90, 120, 144, any whole rate from 30 to 240, or display (the
 // refresh rate of the window's monitor, at most 240). A higher number gives 240, the rate of the shortest step the
 // game survives (STEP_MIN_S). Unset, the older TOTK_FPS60=0 still means 30. A limit of 30 switches the set

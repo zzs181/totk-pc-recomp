@@ -277,8 +277,10 @@ void rt_patch_disable(int set);                            // before the guest s
 void rt_patch_switch(int set, int on);                     // at run time (live settings): each site takes the new code
                                                            // the next time it runs
 void *rt_patch_page(void);                                 // the page the patched code reads (NULL without the table)
+void rt_hooks_init(void);                                  // after frame_step_init: bind this build's hooks by name
 void frame_step_init(void);                                // after rt_patches_init: the real-time step's first value
 int frame_step_realtime(void);                             // the real-time step is on: presents ignore the interval
+float frame_step_ratio(void);                              // the step's 30 Hz ratio: 1.0 at 30 fps, 0.5 at 60
 uint64_t frame_step_cap_ns(void);                          // with the real-time step: the shortest frame in ns
 double frame_step_limit_hz(void);                         // the frame rate the limit gives (overlay); 0 unknown
 int64_t frame_step_world_us(void);                         // game time since the loaded save's first frame, -1 before

@@ -661,7 +661,8 @@ def main():
     ap.add_argument('--out', type=Path, required=True)
     ap.add_argument('--modules', default='main,subsdk0,sdk')
     ap.add_argument('--jobs', type=int, help='emit workers (default: by free memory and CPU count)')
-    ap.add_argument('--limit', type=int, default=0, help='emit only the first N functions of each module')
+    ap.add_argument('--limit', type=int, default=0, help='emit only the first N functions of each module (a partial '
+                                                         'module does not link: its functions call the ones left out)')
     ap.add_argument('--chunk-fns', type=int, default=3000, help='functions per chunk at most')
     ap.add_argument('--chunk-bytes', type=int, default=3000000, help='estimated bytes of C per chunk')
     ap.add_argument('--big-fn', type=int, default=300000, help='estimated bytes of C from which a function gets '

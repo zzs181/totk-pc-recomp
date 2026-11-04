@@ -45,6 +45,7 @@ TESTS = {
     'kbm_scheme_test':          ('.venv', None, [], ''),
     'pack_shader_cache_test':   ('.venv', None, [], ''),
     'spin_waits_test':          ('.venv', None, [], ''),
+    'swim_ease_test':           ('.venv', None, [], ''),
     'worktree_test':            ('.venv', None, [], ''),
     'installer_test':           ('.venv-py314', None, [], ''),
     'ncz_test':                 ('.venv-py314', None, [], ''),

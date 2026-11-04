@@ -71,6 +71,3 @@ int main(void) {
         printf("\nhook_test: all passed\n");
     return failed != 0;
 }
-
-/* rt_log is the one thing hook.c needs from the host; a test run has no log. */
-void rt_log(const char *fmt, ...) { (void)fmt; }

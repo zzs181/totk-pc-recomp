@@ -346,6 +346,7 @@ void rt_boot(void) {
     rt_patches_init();
     mods_exefs_switch();   // after the patch sets' settings: an enabled mod's ExeFS patches on
     frame_step_init();
+    rt_hooks_init();   // after the frame step: a hook reads its ratio at the call it acts on
     res_init();
     cheats_init();   // after the patch sets: a cheat's set follows its setting
     cb_addr[0] = hostfn_register("<rtld loader_ready>", cb_loader_ready);

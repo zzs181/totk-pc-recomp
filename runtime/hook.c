@@ -10,11 +10,10 @@
 // (weeping-of-the-empire's totk_effect_sway.cpp, totk_footik_ease.cpp, totk_swim_ease.cpp; MIT).
 //
 // The slots and their names come from the generated hooks.h; without it (C generated without --patches) there are none
-// and every wrapper is a plain body call. A hook binds itself at start with rt_hook_bind("<name>", fn), so no guest
+// and every wrapper is a plain body call. rt_hooks_init (runtime/hooks.c) binds each one by name at start, so no guest
 // address appears in the runtime and the same hook serves every game version: a build whose table lacks the hook
 // simply never binds it, and the calls run the game's own code.
 #include "cpu.h"
-#include "host.h"
 #include <stddef.h>
 #include <string.h>
 
@@ -50,7 +49,8 @@ int rt_hook_bind(const char *name, RtHookFn fn) {
 #else
     (void)fn;
 #endif
-    if (i < 0) rt_log("hook: no slot named %s in this build", name);
+    // Silent on purpose: a build without the hook is the normal case (another game version, another table), and the
+    // feature says what it did at its first call. A table that names a hook this build's hooks.c lacks binds nothing.
     return i;
 }
 
