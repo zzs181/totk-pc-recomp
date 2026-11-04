@@ -319,10 +319,7 @@ static struct {
     int on;                      // the dlaa setting, read at each present (the menu switches it live)
     int scaler_skipped;          // this frame: the game's scaling draw over DLSS's picture was skipped
     uint64_t scaler_missed;      // frames DLSS scaled whose scaling draw was not found (vk_dlaa_skip_draw)
-    int preset, preset_dirty;    // the DLSS model features are created with (preset_value); a change pending
-    unsigned cfg_seen;           // cfg_version when preset was read
-    uint64_t last_eval_ns;       // plat_now_ns of the previous evaluation (FrameTimeDeltaInMsec)
-} D = {.mv_ok = -1, .cfg_seen = ~0u};
+} D = {.mv_ok = -1};
 
 static int dl_active(void) { return N.available && !D.failed && D.on; }
 
@@ -543,17 +540,6 @@ static void next_jitter(void) {
     D.jit_ok = !D.hold && !nj;
 }
 
-// The DLSS model (TOTK_DLSS_PRESET, live): default takes NVIDIA's model per mode (evaluate: K for DLAA, Quality and
-// Balanced, M for Performance, L for Ultra Performance), 0 here. A letter a..m takes that model in every mode: k pins
-// K, j is the other transformer model, which NVIDIA describes as slightly less ghosting at the cost of extra flicker, e
-// the older CNN model, cheaper on slower RTX cards. The value is an NVSDK_NGX_DLSS_Hint_Render_Preset (1 A ... 13 M),
-// read when a feature is created; a change recreates the features (preset_check).
-static int preset_value(void) {
-    const char *v = cfg_get("TOTK_DLSS_PRESET");
-    int c = v && v[0] && !v[1] ? v[0] | 0x20 : 0;
-    return c >= 'a' && c <= 'm' ? c - 'a' + 1 : 0;
-}
-
 // The quality setting DLSS is created with, from the scene's share of the output width.
 static int perf_quality(uint32_t w, uint32_t ow) {
     if (w >= ow) return NGX_PERFQ_DLAA;
@@ -568,11 +554,6 @@ static void evaluate(VkExec *ex, const VkExecTarget *dst) {
     uint32_t w = t->width, h = t->height, ow = dst->width, oh = dst->height;
     VkCommandBuffer cb = ex->cb;
     vk_exec_barrier(ex);   // what drew the scene is done (no pass is open here)
-    if (D.preset_dirty) {   // another model: features are created with it, so every size gets a new one
-        for (int i = 0; i < 3; i++)
-            if (D.sizes[i].out) free_size(&D.sizes[i]);
-        D.last = NULL, D.preset_dirty = 0;
-    }
     struct Size *e = size_for(cb, w, h, ow, oh);
     if (!e) return dl_fail("work image creation", 0);
     if (e != D.last) D.reset = 1, D.why[0]++;   // another size's history is from another moment

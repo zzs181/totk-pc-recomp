@@ -196,10 +196,8 @@
 # patch 0010), so the shader cache is rebuilt once after an update. Read at start.
 # pcss = 0
 
-# NVIDIA DLSS / DLAA for the 3D scene, on NVIDIA RTX GPUs with the DLSS model from NVIDIA's DLSS SDK next to the
-# executable (Windows: nvngx_dlss.dll next to totk.exe; Linux: libnvidia-ngx-dlss.so.<version> next to totk, with the
-# NVIDIA driver's libnvidia-ngx.so.1 installed); elsewhere the setting does nothing. The HUD is drawn after it and is not touched.
-# Read at start.
+# NVIDIA DLSS / DLAA for the 3D scene, on NVIDIA RTX GPUs with nvngx_dlss.dll (from NVIDIA's DLSS SDK) next to
+# totk.exe; elsewhere the setting does nothing. The HUD is drawn after it and is not touched. Read at start.
 # dlaa = 0
 # What DLSS works from: dlaa (the 3D scene at full size), quality, balanced or performance (the scene at 67, 58 or
 # 50 % of the output, scaled up by DLSS; these replace render_scale and sharpen texture filtering to match). They apply
