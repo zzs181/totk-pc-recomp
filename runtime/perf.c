@@ -79,6 +79,8 @@ void perf_end(int kind, uint64_t t0) {
 static volatile int64_t other_wait_ns;     // perf_gpu_wait on threads other than the render thread, over the window
 static volatile int64_t render_wait_ns;    // the same on the render thread
 void (*perf_gpu_stats)(PerfGpu *out);
+void (*perf_rec_stats)(PerfRec *out);
+void (*perf_present_stats)(PerfPresent *out);
 
 void perf_gpu_wait(uint64_t t0) {
     if (!t0 || !__atomic_load_n(&perf_on, __ATOMIC_RELAXED)) return;
@@ -134,6 +136,45 @@ static void ft_report(uint64_t now, const char *tag) {
                    w->wait[PERF_TEX] / 1e6, w->wait[PERF_ASTC] / 1e6, w->replay / 1e6,
                    (w->wait[PERF_FENCE] + w->wait[PERF_DRAIN]) / 1e6, w->wait[PERF_PACE] / 1e6);
         }
+    }
+    if (perf_rec_stats && (rt_trace & RT_TRACE_PERF)) {
+        // How much of a core the recorder spends finding out that there is nothing to do. It spins up to 4096 pauses
+        // before it sleeps, so a thread with little work still shows up as busy; spin% is that overhead, busy% the work.
+        PerfRec r;
+        static PerfRec prev;
+        memset(&r, 0, sizeof r);
+        perf_rec_stats(&r);
+        double wall = (now - ft.t0) / 1e9;
+        if (wall > 0.5) {
+            rt_log("replay thread: %.0f wakes/s, %.0f spinouts/s, spin %.0f%% of a core, sleep %.0f%%, busy %.0f%%, "
+                   "%llu records/s",
+                   (r.wakes - prev.wakes) / wall, (r.spinouts - prev.spinouts) / wall,
+                   100.0 * (double)(r.spin_ns - prev.spin_ns) / (double)(now - ft.t0),
+                   100.0 * (double)(r.wait_ns - prev.wait_ns) / (double)(now - ft.t0),
+                   100.0 * (double)(r.busy_ns - prev.busy_ns) / (double)(now - ft.t0),
+                   (unsigned long long)((r.packets - prev.packets) / wall));
+        }
+        prev = r;
+    }
+    if (perf_present_stats && (rt_trace & RT_TRACE_PERF)) {
+        // Where the present path's time went, and which presents the screen really showed (the fence/acquire/record
+        // split answers which side holds a long present; replaced counts mailbox frames the player never saw).
+        PerfPresent p;
+        static PerfPresent pp;
+        memset(&p, 0, sizeof p);
+        perf_present_stats(&p);
+        double wall = (now - ft.t0) / 1e9, np = (double)(p.presents - pp.presents);
+        if (np > 0.5 && wall > 0.5)
+            rt_log("present path: %.0f presents: fence wait %.2f ms, acquire %.2f, swapchain rebuild %.2f, blit+menu "
+                   "record %.2f, host present %.2f, hold to display time %.2f; shown %llu, replaced %llu, dropped %llu, "
+                   "present->shown %.2f ms",
+                   np, (p.fence_ns - pp.fence_ns) / 1e6 / np, (p.acquire_ns - pp.acquire_ns) / 1e6 / np,
+                   (p.rebuild_ns - pp.rebuild_ns) / 1e6 / np, (p.record_ns - pp.record_ns) / 1e6 / np,
+                   (p.flip_ns - pp.flip_ns) / 1e6 / np, (p.hold_ns - pp.hold_ns) / 1e6 / np,
+                   (unsigned long long)(p.shown - pp.shown), (unsigned long long)(p.replaced - pp.replaced),
+                   (unsigned long long)(p.dropped - pp.dropped),
+                   (p.lat_n - pp.lat_n) ? (double)(p.lat_sum_ns - pp.lat_sum_ns) / 1e6 / (double)(p.lat_n - pp.lat_n) : 0.0);
+        pp = p;
     }
     memset(&ft, 0, sizeof ft);
     ft.t0 = now;

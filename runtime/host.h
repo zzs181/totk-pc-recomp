@@ -62,6 +62,32 @@ typedef struct {
     uint64_t idle_gaps, max_gap_ns;             // gaps over 0.5 ms; the longest
 } PerfGpu;
 extern void (*perf_gpu_stats)(PerfGpu *out);
+// Replay thread side of the 60 s summary, filled by vk_rec.c when it set perf_rec_stats. The recorder spins on its ring
+// for up to 4096 pauses before it sleeps, so a thread that is only half busy still burns a core: spin_ns says how much.
+typedef struct {
+    uint64_t spin_ns;       // in the pause loop, waiting for the producer
+    uint64_t wait_ns;       // asleep on the wake event
+    uint64_t busy_ns;       // executing packets
+    uint64_t spinouts;      // pause loops that ran out and slept
+    uint64_t wakes;         // producer event sets
+    uint64_t batches;       // times the consumer found work
+    uint64_t packets;       // ring records executed
+} PerfRec;
+extern void (*perf_rec_stats)(PerfRec *out);
+// Present path side of the 60 s summary, filled by gfx_present.c when it set perf_present_stats: where each present's
+// time went, and which of them the screen really showed. fence: waiting for the frame slot's earlier blit; acquire:
+// vkAcquireNextImageKHR (FIFO holds the present there when the queue is full); rebuild: a swapchain made at this
+// present; record: the blit and menu recording and its submit; flip: vkQueuePresentKHR itself; hold: the present
+// thread's back-edge wait for the frame's display time. shown/replaced/dropped need VK_KHR_present_id +
+// VK_KHR_present_wait (0: unsupported): a present vkWaitForPresentKHR has seen on screen; one that completed with the
+// next present inside 0.5 ms (mailbox: never shown alone); one whose swapchain went away before it answered.
+typedef struct {
+    uint64_t fence_ns, acquire_ns, rebuild_ns, record_ns, flip_ns, hold_ns;
+    uint64_t presents;                     // flip_locked calls: one per present handed to the presentation engine
+    uint64_t shown, replaced, dropped;     // VK_KHR_present_wait; all 0 when unsupported
+    uint64_t lat_sum_ns, lat_n;            // present call to on screen, summed and counted (lat_n: shown only)
+} PerfPresent;
+extern void (*perf_present_stats)(PerfPresent *out);
 // The performance overlay (perfmon.c): mode 0 off, 1 fps, 2 full. While it is on, perf_present hands every frame to
 // perfmon_frame; full also takes the event counts (perf_count) and the GPU timestamps as TOTK_TRACE=perf does.
 void perf_set_overlay(int mode);

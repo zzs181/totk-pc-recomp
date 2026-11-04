@@ -36,7 +36,8 @@ typedef struct VkCtx {
         has_nv_checkpoints,                 // VK_NV_device_diagnostic_checkpoints (TOTK_PASS_CRUMBS=1, vk_crumbs.c)
         has_astc_ldr,                       // textureCompressionASTC_LDR (enabled when reported)
         has_calibrated,                     // VK_KHR/EXT_calibrated_timestamps (GPU idle split in the perf line)
-        has_hdr_metadata;                   // VK_EXT_hdr_metadata (vk_hdr.c vk_hdr_metadata)
+        has_hdr_metadata,                  // VK_EXT_hdr_metadata (vk_hdr.c vk_hdr_metadata)
+        has_present_wait;                   // VK_KHR_present_id + VK_KHR_present_wait (gfx_present.c display times)
     // Feedback loops (maxwell.md 1.9, vk_exec_draw.c feedback_prepare): a draw samples a target of its open pass that
     // an earlier draw of the pass wrote. TOTK_FEEDBACK=0: VK_FEEDBACK_OFF (sampled in GENERAL without a barrier, the
     // old behaviour); VK_FEEDBACK_LAYOUT with VK_EXT_attachment_feedback_loop_layout and dynamicRenderingLocalRead
@@ -138,6 +139,9 @@ void vk_present_image(VkImage src, VkImageLayout layout, VkFormat fmt, int w, in
 // vk_present_image split in two: vk_present_blit submits the blit and leaves the present waiting, vk_present_flip
 // queues it. The next blit or a swapchain rebuild queues a waiting present first.
 void vk_present_blit(VkImage src, VkImageLayout layout, VkFormat fmt, int w, int h, const int crop[4]);
+// The present thread's back-edge wait for the frame's display time, before vk_present_flip (vk_backend.c): ns of hold,
+// counted into the present-path attribution (gfx_present.c, perf.c's 60 s summary).
+void vk_present_hold(uint64_t ns);
 // FSR 1 on the present (vk_fsr.c): records EASU (+ RCAS) of src's crop rectangle {x, y, w, h} into the rectangle out
 // {x, y, w, h} of dst, a swapchain image in TRANSFER_DST; src is in GENERAL and fmt its format. 0 = nothing recorded
 // (the setting says bilinear, no upscale is needed, or FSR is not available): the caller blits.

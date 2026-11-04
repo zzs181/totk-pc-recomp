@@ -217,6 +217,8 @@ typedef struct {
     VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT gpl;
     VkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT fbl;
     VkPhysicalDeviceDynamicRenderingLocalReadFeaturesKHR lr;
+    VkPhysicalDevicePresentIdFeaturesKHR pid;
+    VkPhysicalDevicePresentWaitFeaturesKHR pw;
 } FeatureChain;
 
 static int create_device(void) {
@@ -224,7 +226,7 @@ static int create_device(void) {
     vkEnumerateDeviceExtensionProperties(g_vk.phys, NULL, &ne, NULL);
     VkExtensionProperties *ep = calloc(ne ? ne : 1, sizeof *ep);
     vkEnumerateDeviceExtensionProperties(g_vk.phys, NULL, &ne, ep);
-    const char *ext[48];
+    const char *ext[64];
     uint32_t n_ext = 0;
     for (size_t i = 0; i < sizeof k_required_ext / sizeof *k_required_ext; i++) ext[n_ext++] = k_required_ext[i];
 
@@ -261,8 +263,18 @@ static int create_device(void) {
         CHAIN(fbl, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_FEATURES_EXT);
         CHAIN(lr, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_LOCAL_READ_FEATURES_KHR);
     }
-    vk_dlaa_device_exts(ep, ne, ext, &n_ext, 40);   // NGX's; the eight slots after it stay for the seven below
+    vk_dlaa_device_exts(ep, ne, ext, &n_ext, 40);   // NGX's; the slots after it stay for the nine below
     if (has_ext(ep, ne, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME)) { g_vk.has_memory_budget = 1; ext[n_ext++] = VK_EXT_MEMORY_BUDGET_EXTENSION_NAME; }
+    // Present attribution (gfx_present.c): VK_KHR_present_id names each present, VK_KHR_present_wait tells when the
+    // screen showed it (which ones were replaced in the mailbox and never shown). Both together or neither.
+    int has_pid = 0;
+    if (has_ext(ep, ne, VK_KHR_PRESENT_ID_EXTENSION_NAME) && has_ext(ep, ne, VK_KHR_PRESENT_WAIT_EXTENSION_NAME)) {
+        has_pid = 1;
+        ext[n_ext++] = VK_KHR_PRESENT_ID_EXTENSION_NAME;
+        ext[n_ext++] = VK_KHR_PRESENT_WAIT_EXTENSION_NAME;
+        CHAIN(pid, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR);
+        CHAIN(pw, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR);
+    }
     // GPU timestamps on the CPU clock (vk_sync.c): the perf line splits GPU idle time into waiting for a submission or not.
     if (has_ext(ep, ne, VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)) { g_vk.has_calibrated = 2; ext[n_ext++] = VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME; }
     else if (has_ext(ep, ne, VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)) { g_vk.has_calibrated = 1; ext[n_ext++] = VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME; }
@@ -314,6 +326,7 @@ static int create_device(void) {
     else if (!h->textureCompressionBC) miss = "textureCompressionBC";
     if (miss) { rt_log("vk: required feature missing on %s: %s", g_vk.props.deviceName, miss); free(c); return 0; }
     if (!c->fault.deviceFault) g_vk.has_device_fault = 0;   // vkGetDeviceFaultInfoEXT needs the feature, not just the extension
+    g_vk.has_present_wait = has_pid && c->pid.presentId && c->pw.presentWait;
     g_vk.has_buffer_device_address = c->f12.bufferDeviceAddress;
     g_vk.has_astc_ldr = h->textureCompressionASTC_LDR;
     {

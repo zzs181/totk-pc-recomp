@@ -133,6 +133,129 @@ static int g_cap_w, g_cap_h, g_cap_valid;
 static int g_flip_on;            // vk_present_blit submitted the blit of swapchain image g_flip_idx; vk_present_flip presents it
 static uint32_t g_flip_idx;
 
+// ---- Present attribution (perf.c's 60 s summary, PerfPresent): where each present's time went, and which of them the
+// screen really showed. The path half (fence, acquire, rebuild, record, flip) is taken around the calls in present_image
+// and flip_locked; hold is the present thread's wait for the frame's display time (vk_backend.c, vk_present_hold). The
+// screen half needs VK_KHR_present_id + VK_KHR_present_wait (vk_device.c): each vkQueuePresentKHR carries the next
+// present id, a waiter thread polls vkWaitForPresentKHR and notes when the image reached the screen; a present whose id
+// completes within 0.5 ms of the previous one never had a refresh of its own (mailbox: it was replaced) and counts as
+// replaced instead of shown. All counters are relaxed adds; the render thread reads snapshots through pp_stats.
+static uint64_t pp_fence_ns, pp_acquire_ns, pp_rebuild_ns, pp_record_ns, pp_flip_ns, pp_hold_ns, pp_presents,
+               pp_shown, pp_replaced, pp_dropped, pp_lat_sum, pp_lat_n;
+static void pp_add(uint64_t *p, uint64_t d) { __atomic_fetch_add(p, d, __ATOMIC_RELAXED); }
+
+void vk_present_hold(uint64_t ns) {   // vk_backend.c's present thread: the back-edge wait before vk_present_flip
+    pp_add(&pp_hold_ns, ns);
+}
+
+static void pp_stats(PerfPresent *out) {
+    out->fence_ns = __atomic_load_n(&pp_fence_ns, __ATOMIC_RELAXED);
+    out->acquire_ns = __atomic_load_n(&pp_acquire_ns, __ATOMIC_RELAXED);
+    out->rebuild_ns = __atomic_load_n(&pp_rebuild_ns, __ATOMIC_RELAXED);
+    out->record_ns = __atomic_load_n(&pp_record_ns, __ATOMIC_RELAXED);
+    out->flip_ns = __atomic_load_n(&pp_flip_ns, __ATOMIC_RELAXED);
+    out->hold_ns = __atomic_load_n(&pp_hold_ns, __ATOMIC_RELAXED);
+    out->presents = __atomic_load_n(&pp_presents, __ATOMIC_RELAXED);
+    out->shown = __atomic_load_n(&pp_shown, __ATOMIC_RELAXED);
+    out->replaced = __atomic_load_n(&pp_replaced, __ATOMIC_RELAXED);
+    out->dropped = __atomic_load_n(&pp_dropped, __ATOMIC_RELAXED);
+    out->lat_sum_ns = __atomic_load_n(&pp_lat_sum, __ATOMIC_RELAXED);
+    out->lat_n = __atomic_load_n(&pp_lat_n, __ATOMIC_RELAXED);
+}
+
+// The waiter's queue: one entry per presented id, FIFO. [pw_tail, pw_head) modulo PW_N; flip_locked pushes, the waiter
+// takes from the tail. A swapchain never goes away with an entry unanswered: pw_retire quiets the waiter (its polls are
+// non-blocking) and drops the entries of the old swapchain first, and the generation it bumps ends any wait still
+// running on a copy taken before it.
+typedef struct { uint64_t id, t_present; VkSwapchainKHR sc; unsigned gen; } PwPend;
+#define PW_N 64
+#define PW_GIVEUP_NS 1000000000ull
+static PlatMutex pw_lock = PLAT_MUTEX_INIT;
+static PlatCond pw_cv = PLAT_COND_INIT;
+static PwPend pw_q[PW_N];
+static unsigned pw_head, pw_tail;
+static volatile int pw_busy;            // the waiter is inside a vkWaitForPresentKHR poll (never blocking)
+static unsigned pw_gen;
+static uint64_t pw_next_id, pw_last_seen;
+static PFN_vkWaitForPresentKHR pw_wait_fn;
+static int g_have_pw, pw_started;
+
+// One wait at a time: each poll is a timeout-0 vkWaitForPresentKHR under vk_queue_lock (microseconds; the flip's
+// vkQueuePresentKHR holds that lock too), a generation check before it, 0.5 ms between polls. An id that answers within
+// PW_GIVEUP_NS is shown or replaced; one that never does, or whose swapchain retired, is dropped.
+static void pw_main(void *arg) {
+    (void)arg;
+    for (;;) {
+        plat_mutex_lock(&pw_lock);
+        while (pw_head == pw_tail) plat_cond_wait(&pw_cv, &pw_lock);
+        PwPend e = pw_q[pw_tail % PW_N];
+        plat_mutex_unlock(&pw_lock);
+        VkResult r = VK_TIMEOUT;
+        uint64_t start = kern_now_ns(), t = start;
+        for (;;) {
+            __atomic_store_n(&pw_busy, 1, __ATOMIC_SEQ_CST);   // set before the gen check: pw_retire waits this out
+            plat_mutex_lock(&pw_lock);
+            int retired = e.gen != pw_gen;
+            plat_mutex_unlock(&pw_lock);
+            if (!retired) {
+                vk_queue_lock();
+                r = pw_wait_fn(vk_ctx()->device, e.sc, e.id, 0);
+                vk_queue_unlock();
+                t = kern_now_ns();
+            }
+            __atomic_store_n(&pw_busy, 0, __ATOMIC_SEQ_CST);
+            if (retired || r != VK_TIMEOUT || t - start >= PW_GIVEUP_NS) break;
+            plat_sleep_ns(500000);
+        }
+        plat_mutex_lock(&pw_lock);
+        if (pw_q[pw_tail % PW_N].id == e.id) pw_tail++;   // a retire dropped it from the middle: leave the queue alone
+        plat_mutex_unlock(&pw_lock);
+        if (r == VK_SUCCESS || r == VK_SUBOPTIMAL_KHR) {
+            // On screen. A present that completes within 0.5 ms of the previous one never had a refresh of its own: the
+            // mailbox replaced it. (The player never saw it; its latency belongs to the one that showed.)
+            if (pw_last_seen && t - pw_last_seen < 500000ull) pp_add(&pp_replaced, 1);
+            else {
+                pp_add(&pp_shown, 1);
+                pp_add(&pp_lat_sum, t - e.t_present);
+                pp_add(&pp_lat_n, 1);
+            }
+            pw_last_seen = t;
+        } else pp_add(&pp_dropped, 1);   // retired with its swapchain, or no answer within PW_GIVEUP_NS
+    }
+    return;
+}
+
+// Queues one present for the waiter (flip_locked, g_pl held). The ring is as large as any queue of unshown presents can
+// be (swapchains hold at most 8 images); if it were ever full the oldest entry is dropped as stale.
+static void pw_push(uint64_t id, uint64_t t_present, VkSwapchainKHR sc) {
+    plat_mutex_lock(&pw_lock);
+    unsigned gen = pw_gen;
+    if (pw_head - pw_tail == PW_N) {
+        pw_tail++;
+        pp_add(&pp_dropped, 1);
+    }
+    pw_q[pw_head % PW_N] = (PwPend){id, t_present, sc, gen};
+    pw_head++;
+    plat_cond_broadcast(&pw_cv);
+    plat_mutex_unlock(&pw_lock);
+}
+
+// Retires every entry of sc and makes sure none is polled while it goes away (create_swapchain, gfx_window_release_vk;
+// g_pl held). The busy wait is one poll long; the generation bump ends any wait still running on a copy taken before it.
+static void pw_retire(VkSwapchainKHR sc) {
+    while (__atomic_load_n(&pw_busy, __ATOMIC_SEQ_CST)) plat_sleep_ns(200000);
+    plat_mutex_lock(&pw_lock);
+    pw_gen++;
+    unsigned tail = pw_tail;
+    for (unsigned i = pw_tail; i != pw_head; i++) {
+        if (pw_q[i % PW_N].sc != sc) pw_q[tail++ % PW_N] = pw_q[i % PW_N];
+        else pp_add(&pp_dropped, 1);
+    }
+    pw_tail = tail;
+    plat_cond_broadcast(&pw_cv);
+    plat_mutex_unlock(&pw_lock);
+}
+
 // ---- TOTK_FLIGHT thumbnails (flight.c; g_pl): each present also blits the swapchain image down into slot frame % g_th_n
 // of a host-visible ring. A slot's tag names the frame it holds complete; recording a new frame clears the tag first,
 // and the tag is set once the fence of that present has signalled.
@@ -276,14 +399,27 @@ static void flip_locked(void) {
     if (!g_flip_on) return;
     g_flip_on = 0;
     if (!g_sc) return;
-    VkPresentInfoKHR pi = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR, .waitSemaphoreCount = 1,
-                           .pWaitSemaphores = &g_render_done[g_flip_idx], .swapchainCount = 1, .pSwapchains = &g_sc,
-                           .pImageIndices = &g_flip_idx};
+    // VK_KHR_present_id names the present; the waiter says when it reached the screen. Ids grow across swapchains and
+    // never restart, so a queue entry of a retired swapchain is always an old one.
+    uint64_t id = 0, t0 = kern_now_ns();
+    VkPresentIdKHR pid;
+    if (g_have_pw) {
+        id = ++pw_next_id;
+        pid = (VkPresentIdKHR){.sType = VK_STRUCTURE_TYPE_PRESENT_ID_KHR, .swapchainCount = 1, .pPresentIds = &id};
+    }
+    VkPresentInfoKHR pi = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR, .pNext = id ? &pid : NULL,
+                           .waitSemaphoreCount = 1, .pWaitSemaphores = &g_render_done[g_flip_idx],
+                           .swapchainCount = 1, .pSwapchains = &g_sc, .pImageIndices = &g_flip_idx};
     vk_queue_lock();
     VkResult r = vkQueuePresentKHR(vk_ctx()->gfx_queue, &pi);
     vk_queue_unlock();
+    pp_add(&pp_flip_ns, kern_now_ns() - t0);
     vk_device_fault_report(r);
     if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR) plat_xchg32(&g_dirty, 1);
+    if (r == VK_SUCCESS || r == VK_SUBOPTIMAL_KHR) {
+        pp_add(&pp_presents, 1);
+        if (id) pw_push(id, kern_now_ns(), g_sc);
+    }
 }
 
 static void free_capture(void) {
@@ -346,7 +482,7 @@ static int create_swapchain(void) {
         if (g_sc_view[i]) vkDestroyImageView(c->device, g_sc_view[i], NULL);
         g_sc_view[i] = VK_NULL_HANDLE;
     }
-    if (old) vkDestroySwapchainKHR(c->device, old, NULL);
+    if (old) pw_retire(old), vkDestroySwapchainKHR(c->device, old, NULL);   // the waiter's polls end first
     g_sc_fmt = sf.format;
     g_sc_hdr = hdr;
     vk_hdr_set_active(hdr);
@@ -569,25 +705,36 @@ static void present_image(VkImage src, VkImageLayout layout, VkFormat fmt, int w
     plat_rmutex_lock(&g_pl);
     flip_locked();
     if (!g_sc || plat_cas32(&g_dirty, 0, 0)) {
-        if (!wsys_minimized() && !create_swapchain() && !g_sc) goto out;
+        uint64_t r0 = kern_now_ns();
+        int gone = !wsys_minimized() && !create_swapchain() && !g_sc;   // a rebuild that leaves no swapchain ends here
+        pp_add(&pp_rebuild_ns, kern_now_ns() - r0);
+        if (gone) goto out;
     }
     if (wsys_minimized() || !g_sc) goto out;
 
     unsigned slot = g_frame % FRAMES;
+    uint64_t f0 = kern_now_ns();
     if (vkWaitForFences(c->device, 1, &g_fence[slot], VK_TRUE, 5000000000ull) != VK_SUCCESS) {
+        pp_add(&pp_fence_ns, kern_now_ns() - f0);
         rt_log("gfx: present fence wait timed out");
         goto out;
     }
+    pp_add(&pp_fence_ns, kern_now_ns() - f0);
+    uint64_t a0 = kern_now_ns();
     uint32_t idx = 0;
     VkResult r = vkAcquireNextImageKHR(c->device, g_sc, 1000000000ull, g_acquire[slot], VK_NULL_HANDLE, &idx);
     if (r == VK_ERROR_OUT_OF_DATE_KHR) {
         plat_xchg32(&g_dirty, 1);
-        if (!create_swapchain()) goto out;
+        uint64_t rr0 = kern_now_ns();
+        if (!create_swapchain()) { pp_add(&pp_rebuild_ns, kern_now_ns() - rr0); goto out; }
+        pp_add(&pp_rebuild_ns, kern_now_ns() - rr0);
         r = vkAcquireNextImageKHR(c->device, g_sc, 1000000000ull, g_acquire[slot], VK_NULL_HANDLE, &idx);
     }
     vk_device_fault_report(r);
+    pp_add(&pp_acquire_ns, kern_now_ns() - a0);
     if (r != VK_SUCCESS && r != VK_SUBOPTIMAL_KHR) goto out;     // lost, not ready: skip the frame
     if (r == VK_SUBOPTIMAL_KHR) plat_xchg32(&g_dirty, 1);
+    uint64_t rec0 = kern_now_ns();
     vkResetFences(c->device, 1, &g_fence[slot]);
     if (g_sc_hdr) vk_hdr_metadata(g_sc, 0);   // a changed peak or white goes to the display
     if (g_th_pending[slot]) {   // that fence has signalled: the thumbnail its submission wrote is complete
@@ -722,6 +869,7 @@ static void present_image(VkImage src, VkImageLayout layout, VkFormat fmt, int w
     vk_queue_lock();
     r = vkQueueSubmit2(c->gfx_queue, 1, &si, g_fence[slot]);
     vk_queue_unlock();
+    pp_add(&pp_record_ns, kern_now_ns() - rec0);   // the blit and menu recording, and its submit
     if (r == VK_SUCCESS) {
         g_flip_on = 1;
         g_flip_idx = idx;
@@ -791,7 +939,7 @@ void gfx_window_release_vk(void) {
             g_sc_view[i] = VK_NULL_HANDLE;
         }
         if (g_pool) vkDestroyCommandPool(c->device, g_pool, NULL);
-        if (g_sc) vkDestroySwapchainKHR(c->device, g_sc, NULL);
+        if (g_sc) pw_retire(g_sc), vkDestroySwapchainKHR(c->device, g_sc, NULL);   // the waiter's polls end first
         if (g_surface) vkDestroySurfaceKHR(c->instance, g_surface, NULL);
         g_sc = VK_NULL_HANDLE; g_surface = VK_NULL_HANDLE; g_pool = VK_NULL_HANDLE; g_sc_n = 0;
         g_started = 0;     // the window and its thread stay; the next gfx_window_start makes a new surface
@@ -804,6 +952,15 @@ void gfx_window_start(void) {
     if (!g_started) {
         if (!vk_init()) rt_fatal("gfx: no usable Vulkan device (see the vk: lines above)");
         VkCtx *c = vk_ctx();
+        // Present attribution (perf.c's 60 s summary): the stats entry point, and the present-wait side when the device
+        // has VK_KHR_present_id + VK_KHR_present_wait (the waiter thread starts once and outlives swapchain rebuilds).
+        perf_present_stats = pp_stats;
+        g_have_pw = c->has_present_wait &&
+                    (pw_wait_fn = (PFN_vkWaitForPresentKHR)vkGetDeviceProcAddr(c->device, "vkWaitForPresentKHR")) != NULL;
+        if (g_have_pw && !pw_started) {
+            pw_started = 1;
+            if (!plat_thread_spawn(pw_main, NULL, "present wait", 0)) g_have_pw = 0, pw_started = 0;
+        }
         static int opened;
         if (!opened && !(opened = wsys_open())) rt_fatal("gfx: window creation failed");
         g_surface = wsys_surface(c->instance);

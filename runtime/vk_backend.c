@@ -71,6 +71,7 @@ static void present_main(void *arg) {
         uint64_t t0 = kern_now_ns();
         wait_until(j.at);
         uint64_t t1 = kern_now_ns();
+        vk_present_hold(t1 - t0);   // the back-edge hold, into the present-path attribution (gfx_present.c)
         vk_present_flip();
         // TOTK_TRACE=present: one line per present: the host present's interval, the interval of the game's present
         // calls (when the host present went out before back-edge pacing), the wait and how far past its target it went

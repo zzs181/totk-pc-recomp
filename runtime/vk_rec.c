@@ -34,6 +34,21 @@ static volatile uint64_t part_fence;   // the value of the part being recorded (
 // Producer statistics, logged by rec_stats_log.
 static struct { uint64_t packets, words, drains, fallbacks, drain_ns, full_waits, parts, parts_on; } RS_;
 
+// Consumer statistics, for the 60 s summary (perf.c): how much of a core the recorder burns finding out that there is
+// nothing to do. Written by the recorder thread with relaxed adds, read by the render thread.
+static uint64_t rc_spin_ns, rc_wait_ns, rc_busy_ns, rc_spinouts, rc_wakes, rc_batches, rc_packets;
+static void rc_add(uint64_t *p, uint64_t d) { __atomic_fetch_add(p, d, __ATOMIC_RELAXED); }
+
+static void rec_stats(PerfRec *out) {
+    out->spin_ns = __atomic_load_n(&rc_spin_ns, __ATOMIC_RELAXED);
+    out->wait_ns = __atomic_load_n(&rc_wait_ns, __ATOMIC_RELAXED);
+    out->busy_ns = __atomic_load_n(&rc_busy_ns, __ATOMIC_RELAXED);
+    out->spinouts = __atomic_load_n(&rc_spinouts, __ATOMIC_RELAXED);
+    out->wakes = __atomic_load_n(&rc_wakes, __ATOMIC_RELAXED);
+    out->batches = __atomic_load_n(&rc_batches, __ATOMIC_RELAXED);
+    out->packets = __atomic_load_n(&rc_packets, __ATOMIC_RELAXED);
+}
+
 enum {
     R_PAD, R_BeginQuery, R_BeginRendering, R_BindDescriptorSets, R_BindIndexBuffer, R_BindPipeline, R_BindVertexBuffers2,
     R_BlitImage, R_ClearAttachments, R_ClearColorImage, R_ClearDepthStencilImage, R_CopyBuffer, R_CopyBufferToImage,
@@ -56,29 +71,43 @@ static void exec_packet(uint32_t op, void *p);
 static void rec_main(void *arg) {
     (void)arg;
     plat_thread_priority(rec_prio);
+    perf_rec_stats = rec_stats;
     uint64_t t = 0;
     for (;;) {
         uint64_t h = __atomic_load_n(&head, __ATOMIC_ACQUIRE);
         if (t == h) {
+            uint64_t s0 = now_ns();
             for (int i = 0; i < 4096 && t == h; i++) _mm_pause(), h = __atomic_load_n(&head, __ATOMIC_ACQUIRE);
             if (t == h) {
+                rc_add(&rc_spin_ns, now_ns() - s0);
+                rc_add(&rc_spinouts, 1);
                 __atomic_store_n(&sleeping, 1, __ATOMIC_SEQ_CST);
                 h = __atomic_load_n(&head, __ATOMIC_SEQ_CST);
-                if (t == h) plat_event_wait_ns(&wake_ev, 2000000);   // a missed wake costs at most 2 ms
+                if (t == h) {
+                    uint64_t w0 = now_ns();
+                    plat_event_wait_ns(&wake_ev, 2000000);   // a missed wake costs at most 2 ms
+                    rc_add(&rc_wait_ns, now_ns() - w0);
+                }
                 __atomic_store_n(&sleeping, 0, __ATOMIC_RELAXED);
                 continue;
             }
+            rc_add(&rc_spin_ns, now_ns() - s0);   // found work inside the pause loop
         }
         // TOTK_REC_DELAY_US (debug): the recorder falls this far behind each batch it finds, as on a slow machine,
         // so objects the replay lets go of meet packets it has not made yet (TOTK_REC_CHECK).
         if (rec_delay_ns) plat_sleep_ns(rec_delay_ns);
+        uint64_t b0 = now_ns(), np = 0;
         for (int k = 0; t != h; k++) {
             uint64_t w = ring[t % RING_WORDS];
             uint32_t op = (uint32_t)(w & 0xffff), n = (uint32_t)(w >> 32);
             if (op != R_PAD) exec_packet(op, &ring[t % RING_WORDS + 1]);
             t += n;
+            np++;
             if ((k & 63) == 63) __atomic_store_n(&tail, t, __ATOMIC_RELEASE);
         }
+        rc_add(&rc_busy_ns, now_ns() - b0);
+        rc_add(&rc_batches, 1);
+        rc_add(&rc_packets, np);
         __atomic_store_n(&tail, t, __ATOMIC_RELEASE);
     }
     return;
@@ -88,7 +117,7 @@ static void rec_main(void *arg) {
 
 static void wake(void) {
     __atomic_thread_fence(__ATOMIC_SEQ_CST);
-    if (__atomic_load_n(&sleeping, __ATOMIC_RELAXED)) plat_event_set(&wake_ev);
+    if (__atomic_load_n(&sleeping, __ATOMIC_RELAXED)) plat_event_set(&wake_ev), rc_add(&rc_wakes, 1);
 }
 
 static void wait_space(uint64_t need) {
