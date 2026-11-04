@@ -1019,3 +1019,7 @@ site cascade main 6fad4c 52a86408 @page:x8 b9404d08   # mov w8, #160.0 -> ldr w8
 # the real-time step like cloth: frame_rate.c switches the set off without it.
 set heropath TOTK_HEROPATH_REALTIME 1
 site heropath main 2159e2c bd400140 bd400140 @page:x10 bd400141 1e2e1002 1e227821 1e210800   # ldr s0, [x10]: s1 = ratio (page +0), k = fminnm(ratio, 1.0), step *= k
+
+# The swim velocity keeps the 30 Hz ease at any frame rate (runtime/swim_ease.c; the 1.4.3 addresses and their
+# evidence are in that file). TOTK_SWIM_EASE=0 puts the game's own per-frame ease back.
+hook main 1cfcf90 swim_ease
