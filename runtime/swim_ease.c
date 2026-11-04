@@ -30,9 +30,13 @@
 
 static int on = -1;   // TOTK_SWIM_EASE, read once at the call the hook is for
 
-// A guest float lane of the vector registers (c->v is the low 64 bits of each; a float is the low 32).
+// A guest float lane of the vector registers: the low 32 bits of c->v[n], read as the float they are (not converted
+// from an integer).
 static float vf(const Cpu *c, int n) {
-    return (float)(uint32_t)c->v[n];
+    const uint32_t bits = (uint32_t)c->v[n];
+    float v;
+    memcpy(&v, &bits, sizeof v);
+    return v;
 }
 
 // A guest float at an address: guest addresses are host addresses (host.h), and main's .rodata is mapped.
