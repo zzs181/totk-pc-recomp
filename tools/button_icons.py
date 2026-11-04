@@ -241,10 +241,12 @@ KEYCAP_ICONS = {
     0xE04C: 'keyboard_m',                 # Minus: the map
     0xE060: 'word:W', 0xE061: 'word:S', 0xE062: 'word:A', 0xE063: 'word:D',
     0xE064: 'wasd:up,down', 0xE065: 'wasd:left,right',
+    0xE056: 'word:CTRL',                  # the left stick pressed: crouch
+    0xE057: 'word:MMB',                   # the right stick pressed: the scope, and the menus' wheel click
 }
 # The game's advances (the original glyphs' hmtx): a keycap sits where the button icon sat.
 KEYCAP_ADVANCE = {0xE040: 640, 0xE041: 640, 0xE042: 640, 0xE043: 640, 0xE044: 720, 0xE045: 720, 0xE046: 720,
-                  0xE047: 720, 0xE049: 720, 0xE04B: 600, 0xE04C: 600,
+                  0xE047: 720, 0xE049: 720, 0xE04B: 600, 0xE04C: 600, 0xE056: 960, 0xE057: 960,
                   **{cp: 720 for cp in range(0xE060, 0xE066)}}
 
 

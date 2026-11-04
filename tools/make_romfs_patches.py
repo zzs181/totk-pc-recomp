@@ -28,8 +28,9 @@ added (tools/button_icons.py, which needs fontTools):
   raised by as much.
 - keyboard: every button becomes a keycap with the key the PC scheme puts on it (docs/kbm-port.md): E, shift, space,
   LMB and RMB (words on our own caps, since a whole-mouse outline reads the same for every button at HUD size), Tab, G,
-  F, Esc, M and the d-pad's W A S D (its own caps too: Kenney's four are blank), in the button font and in the button
-  guide's two images. The face buttons are not swapped: a keyboard has no pad layout.
+  F, Esc, M, the d-pad's W A S D and the stick clicks CTRL and MMB (their own caps too: Kenney's four are blank, and
+  the game draws a stick click as an ellipse pressed from above), in the button font and in the button guide's two
+  images. The face buttons are not swapped: a keyboard has no pad layout.
 - xbox, for pad_layout = nintendo. That layout plays an Xbox pad by position: the button that does Switch A is
   labelled B, so the face buttons' prompts are swapped to name the labels, A with B and X with Y:
   - the action prompt (blyt/DoCommand_00.bflyt) draws the letter images Nt_KeyTexA/B/X/Y_00 of timg/__Combined.bntx in
