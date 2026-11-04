@@ -281,11 +281,6 @@ int vk_dlaa_available(void) { return vk_dlaa_wanted() && N.available; }
 // with no depth, and the HUD is drawn over that target at the output size. DLSS runs at the begin of that pass: it
 // reads the light target and its result is blitted into the pass's target, whose scaling draw is then skipped. The
 // HUD, drawn afterwards into the same target, is never jittered nor passed through DLSS.
-// The scaling draw is not always that FXAA shader: at a 1280x720 scene and 1920x1080 output (1.4.3, dlss = quality)
-// the game's tonemap (guest fs 7e114c4330dc212a) reads the light target and writes the output-sized target itself,
-// over DLSS's picture, so the jittered scene reached the screen and the whole picture shook. So from DLSS's evaluation
-// to the frame's end, draws in passes larger than the light target sample DLSS's output in its place
-// (vk_dlaa_swap_img, applied by vk_exec_draw.c tex_info): whichever shader scales, it scales DLSS's picture.
 static struct {
     VkExecTarget color, depth;   // the armed pair, valid in the frame it was armed
     int armed, done, gbuf;       // this frame: armed on the light target, DLAA ran, the G-buffer was drawn
@@ -326,15 +321,9 @@ static struct {
     uint64_t mv_frames, mv_none, masked;   // masked: frames with the characters' bias mask
     uint64_t why[3];             // history resets: scene size changed, no camera, scene target changed
     int on;                      // the dlaa setting, read at each present (the menu switches it live)
-    int preset, preset_dirty;    // the DLSS model features are created with (preset_value); a change pending
-    VkExecTarget ids;            // this frame's G-buffer target 0 (object classes in green), valid with ids_ok
-    int ids_ok;
-    unsigned cfg_seen;           // cfg_version when preset was read
-    uint64_t last_eval_ns;       // plat_now_ns of the previous evaluation (FrameTimeDeltaInMsec)
-} D = {.mv_ok = -1, .cfg_seen = ~0u};
-
-const VkTexImage *vk_dlaa_swap_img;
-VkImageView vk_dlaa_swap_view;
+    int scaler_skipped;          // this frame: the game's scaling draw over DLSS's picture was skipped
+    uint64_t scaler_missed;      // frames DLSS scaled whose scaling draw was not found (vk_dlaa_skip_draw)
+} D = {.mv_ok = -1};
 
 static int dl_active(void) { return N.available && !D.failed && D.on; }
 
@@ -445,19 +434,15 @@ static int mv_init(void) {
     if (D.mv_ok >= 0) return D.mv_ok;
     D.mv_ok = 0;
     const VkCtx *c = vk_ctx();
-    VkDescriptorSetLayoutBinding b[8] = {
+    VkDescriptorSetLayoutBinding b[4] = {
         {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, NULL},
         {1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, NULL},
         {2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, NULL},
-        {3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, NULL},
-        {4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, NULL},
-        {5, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, NULL},
-        {6, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, NULL},
-        {7, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, NULL}};
+        {3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, NULL}};
     VkDescriptorSetLayoutCreateInfo dci = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
                                            .flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR,
-                                           .bindingCount = 8, .pBindings = b};
-    VkPushConstantRange pr = {VK_SHADER_STAGE_COMPUTE_BIT, 0, 24};
+                                           .bindingCount = 4, .pBindings = b};
+    VkPushConstantRange pr = {VK_SHADER_STAGE_COMPUTE_BIT, 0, 16};
     VkSamplerCreateInfo si = {.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO, .magFilter = VK_FILTER_NEAREST,
                               .minFilter = VK_FILTER_NEAREST, .mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST,
                               .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
@@ -521,8 +506,8 @@ static int mv_pass(VkCommandBuffer cb, const struct Size *e, VkImageView zv, flo
         {.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, .dstBinding = 3, .descriptorCount = 1,
          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .pBufferInfo = &prev}};
     vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, D.mv_pipe);
-    rec_push(vk_pipeline_push_fn(), cb, VK_PIPELINE_BIND_POINT_COMPUTE, D.mv_layout, 0, 8, wr);
-    float pc[6] = {(float)w, (float)h, jx, jy, use ? bias : 0.0f, use && e->chars_ok ? 1.0f : 0.0f};
+    rec_push(vk_pipeline_push_fn(), cb, VK_PIPELINE_BIND_POINT_COMPUTE, D.mv_layout, 0, 4, wr);
+    float pc[4] = {(float)w, (float)h, jx, jy};
     vkCmdPushConstants(cb, D.mv_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof pc, pc);
     vkCmdDispatch(cb, (w + 7) / 8, (h + 7) / 8, 1);
     full_barrier(cb);
@@ -687,7 +672,6 @@ static void evaluate(VkExec *ex, const VkExecTarget *dst) {
                      .dstOffsets = {{0, 0, 0}, {(int32_t)ow, (int32_t)oh, 1}}};
     vkCmdBlitImage(cb, e->out, VK_IMAGE_LAYOUT_GENERAL, dst->image, VK_IMAGE_LAYOUT_GENERAL, 1, &b, VK_FILTER_NEAREST);
     full_barrier(cb);
-    if (dst != t) vk_dlaa_swap_img = t->img, vk_dlaa_swap_view = e->out_view;   // the scaling draw reads DLSS's picture
     ex->recorded += 4;
     vk_exec_draw_new_cb();   // NGX bound pipelines and descriptor sets of its own: the next draw binds everything again
     D.jdepth = z->image;
@@ -758,7 +742,10 @@ void vk_dlaa_frame(void) {
     if (D.jit_used && !D.done) D.hold = 60, D.holds++;   // jittered but not resolved: that frame shook
     else if (D.hold) D.hold--;
     if (!D.done) D.jit_ok = 0;
-    D.armed = D.done = D.jit_used = D.gbuf = D.ended = D.up = D.ids_ok = 0;
+    if (D.up && !D.scaler_skipped && ++D.scaler_missed == 1)
+        rt_log("dlaa: the game's scaling draw over DLSS's picture was not found (its fragment shader is not in FXAA_FS): "
+               "the jittered scene reaches the screen and shakes");
+    D.armed = D.done = D.jit_used = D.gbuf = D.ended = D.up = D.scaler_skipped = 0;
     D.cam_addr = 0;
 }
 
@@ -773,8 +760,8 @@ void vk_dlaa_frame(void) {
 // is always drawn, whatever fxaa says (skipping it would leave the 3D picture out), unless DLSS already wrote that
 // target this frame.
 // The stock translator's hash, the one with tools/xlate patch 0010 (PCSS, PR #89) applied, and the one with patches
-// 0010 and 0011 (the shadow filter spread) applied. A scaling draw this list misses still scales DLSS's picture, not
-// the jittered scene: after DLSS ran, passes larger than the light target sample DLSS's output (vk_dlaa_swap_img).
+// 0010 and 0011 (the shadow filter spread) applied. A translator change that gives the shader another hash is reported
+// by vk_dlaa_frame: the game's scaling draw then covers DLSS's picture with the jittered scene, which shakes.
 static const uint64_t FXAA_FS[] = {0xf450003ebeb3dc52ull, 0x0a12f4bc2a9a4fbeull, 0x5c43ae18948d52cbull};
 
 static uint64_t spirv_hash(const GfxShader *s) {
@@ -815,7 +802,7 @@ int vk_dlaa_skip_draw(VkExec *ex, const GfxShader *fs) {
     int known = 0;
     for (size_t i = 0; i < sizeof FXAA_FS / sizeof FXAA_FS[0]; i++) known |= h == FXAA_FS[i];
     if (!known) return 0;
-    if (!ex->depth.image) return D.up;   // the scaling pass, which DLSS replaced
+    if (!ex->depth.image) return D.scaler_skipped = D.up;   // the scaling pass
     if (!fxaa && !fx_found) {
         fx_found = 1;
         rt_log("dlaa: fxaa = 0 skips the game's FXAA (fragment shader %016llx)", (unsigned long long)h);
