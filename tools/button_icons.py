@@ -260,6 +260,36 @@ KEYCAP_ICONS = {
     0xE056: 'word:CTRL',                  # the left stick pressed: crouch
     0xE057: 'word:MMB',                   # the right stick pressed: the scope, and the menus' wheel click
 }
+# ---- the whole keyboard. A key whose legend is its own name (a letter, a digit, a symbol) needs nothing here: the
+# `word:` path draws any text the game's text fonts have, and they have every ASCII letter, digit and symbol. The keys
+# whose legend is not their name are below, so a keycap for a key this port gains later is one line of a bind away
+# (tools/make_romfs_patches.py --binds reads the player's own totk.ini and names the keys it finds there).
+KEY_LEGENDS = {
+    'Mouse Left': 'LMB', 'Mouse Right': 'RMB', 'Mouse Middle': 'MMB', 'Mouse X1': 'M4', 'Mouse X2': 'M5',
+    'Wheel Up': 'WHL', 'Wheel Down': 'WHL',
+    'Esc': 'ESC', 'Escape': 'ESC', 'Enter': 'ENTER', 'Return': 'ENTER', 'Tab': 'TAB', 'Space': 'SPACE',
+    'Shift': 'SHIFT', 'Ctrl': 'CTRL', 'Control': 'CTRL', 'Alt': 'ALT',
+    'Backspace': 'BKSP', 'Delete': 'DEL', 'Insert': 'INS', 'Home': 'HOME', 'End': 'END',
+    'PageUp': 'PGUP', 'PageDown': 'PGDN', 'CapsLock': 'CAPS', 'PrintScreen': 'PRTSC',
+    'Up': 'UP', 'Down': 'DOWN', 'Left': 'LEFT', 'Right': 'RIGHT',
+}
+
+
+def cap_for(key):
+    """The KEYCAP_ICONS entry for a key name as docs/controls.md spells it ('R', 'Mouse Left', 'Wheel Up'): its word
+    from KEY_LEGENDS, or the key's own legend."""
+    if key in KEY_LEGENDS:
+        return 'word:' + KEY_LEGENDS[key]
+    return 'word:' + (key.upper() if len(key) > 1 else key)
+
+
+# The code point of each Switch button a bind line names (docs/controls.md bind_<button>), which is the glyph the
+# game's prompts use for it.
+BUTTON_CODEPOINTS = {'A': 0xE040, 'B': 0xE041, 'X': 0xE042, 'Y': 0xE043, 'L': 0xE044, 'R': 0xE045,
+                     'ZL': 0xE046, 'ZR': 0xE047, 'PLUS': 0xE04B, 'MINUS': 0xE04C,
+                     'UP': 0xE060, 'DOWN': 0xE061, 'LEFT': 0xE062, 'RIGHT': 0xE063,
+                     'LCLICK': 0xE056, 'RCLICK': 0xE057}
+
 # The game's advances (the original glyphs' hmtx): a keycap sits where the button icon sat.
 KEYCAP_ADVANCE = {0xE040: 640, 0xE041: 640, 0xE042: 640, 0xE043: 640, 0xE044: 720, 0xE045: 720, 0xE046: 720,
                   0xE047: 720, 0xE049: 720, 0xE04B: 600, 0xE04C: 600, 0xE056: 960, 0xE057: 960,

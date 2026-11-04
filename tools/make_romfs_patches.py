@@ -69,6 +69,9 @@ ap.add_argument('--prompts', choices=('xbox', 'xbox-label', 'keyboard'),
                      'xbox-label for pad_layout = xbox or auto (the face buttons keep their letters), keyboard for the '
                      'PC scheme\'s keys as keycaps (docs/kbm-port.md)')
 ap.add_argument('--xbox-prompts', dest='prompts', action='store_const', const='xbox', help='the same as --prompts xbox')
+ap.add_argument('--binds', type=Path,
+                help='a totk.ini whose bind_ lines name the keys the prompts should show, instead of the scheme\'s '
+                     'defaults: a button remapped in the game or on the Controls tab keeps its prompt right')
 args = ap.parse_args()
 args.romfs = args.romfs or root / 'build/extracted' / args.version / 'romfs'
 args.out = args.out or root / 'build' / args.version / (f'romfs-patches-{args.prompts}' if args.prompts else 'romfs-patches')
@@ -201,6 +204,23 @@ def msbt_letters(data, swap):
             data[at:at + 2] = new.to_bytes(2, 'little') if isinstance(new, int) else new.encode('utf-16-le')
             changed.append(labels[i])
     return changed
+
+
+def read_binds(path):
+    """button -> the first key its bind_ line names (docs/controls.md: `bind_A = key:R, pad:...`). `key:default` and
+    `pad:` entries are skipped: the scheme's own key is what the prompt shows for those."""
+    out = {}
+    for line in path.read_text(encoding='utf-8', errors='replace').splitlines():
+        line = line.split('#', 1)[0].strip()
+        if not line.lower().startswith('bind_') or '=' not in line:
+            continue
+        name, _, value = line.partition('=')
+        for entry in value.split(','):
+            entry = entry.strip()
+            if entry.lower().startswith('key:') and entry[4:].strip().lower() != 'default':
+                out[name[5:].strip().upper()] = entry[4:].strip()
+                break
+    return out
 
 
 def swap_menu_codepoints(data, lo, hi):
@@ -339,6 +359,12 @@ if args.prompts:
     missing = [name for name in icons.TEXT_FONTS if name not in text]
     assert not missing, f'no {", ".join(missing)} in {icons.TEXT_ARCHIVE}'
     glyphs = icons.text_glyphs(archives[icons.TEXT_ARCHIVE][slice(*text[name])] for name in icons.TEXT_FONTS)
+    if keyboard and args.binds:   # the player's own keys, named on the prompts instead of the scheme's defaults
+        for button, key in read_binds(args.binds).items():
+            cp = icons.BUTTON_CODEPOINTS.get(button)
+            if cp is not None:
+                icons.KEYCAP_ICONS[cp] = icons.cap_for(key)
+
     drawn = icons.keyboard_icons(glyphs) if args.prompts == 'keyboard' else icons.xbox_icons(glyphs)
     if keyboard:
         drawn.update(icons.menu_keyboard_icons(glyphs))   # the menus' set, on the spare code points
