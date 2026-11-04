@@ -1028,6 +1028,10 @@ int vk_exec_record(VkCommandBuffer cb, const uint64_t *handles, int n, uint64_t 
         const char *e = cfg_get("TOTK_OPCENSUS");
         census_on = e && atoi(e) > 0, census_cycles_per_ns();
     }
+    const tex_t *keep[9];   // the render targets carry over to this submission (set_rt compares them by pointer)
+    memcpy(keep, ex->rt.color, sizeof ex->rt.color);
+    keep[8] = ex->rt.depth;
+    nvn_pins_sweep(nvn_submit_count(), keep, 9);
     ex->cb = cb;
     ex->fence = fence;
     ex->recorded = 0;
