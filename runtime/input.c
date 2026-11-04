@@ -18,6 +18,7 @@
 #include "input_map.h"
 #include "input_wsys.h"
 #include "kbm_scheme.h"
+#include "player_state.h"
 #include "screen_watch.h"
 #include "nvn_api.h"
 #include "ui/menu.h"
@@ -538,7 +539,7 @@ static void mouse_motion_feed(int32_t dx, int32_t dy) {
 // the camera speed factor the game runs with (camera_speed.c, cam_speed_applied), which multiplies every right-stick
 // turn rate, so TOTK_MOUSE_SENS alone sets the mouse's speed; below 1 the sample stays within the stick's range, so the
 // mouse's top speed drops with the factor.
-static void mouse_camera(int32_t out[2], int aim, int wheel) {
+static void mouse_camera(int32_t out[2], int aim, int wheel, int as_stick) {
     static uint64_t frame = ~0ull, t0;
     static int32_t held[2];
     uint64_t now = plat_now_ns();
@@ -546,6 +547,9 @@ static void mouse_camera(int32_t out[2], int aim, int wheel) {
     int flood = cfg_int("TOTK_MOUSE_FLOOD");
     int cap = ikb_captured();
     int direct = mouse_direct_get();
+    // The ability's held object reads the pad's right stick, not the camera's processed one: the direct look would
+    // move the view and leave the object still. The counts go through the ordinary stick sample instead (below).
+    if (as_stick) direct = 0;
     if (md_was_on && !direct) mouse_direct_sync();
     md_was_on = direct;
     int motion = mouse_motion_held();
@@ -998,6 +1002,14 @@ static void poll_merged(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx
                 // and the direct mouse look needs the game-side veneer (docs/kbm-port.md).
                 int32_t kl[2] = {0, 0}, kr[2] = {0, 0};
                 kbm_scheme_set_ctx(screen_watch_ctx(menu_open));
+                kbm_scheme_set_ability(player_state_power(), player_state_holding());
+                // The ability's rotate key takes the mouse for itself (upstream's take_mouse): the counts become d-pad
+                // steps and must not also reach the camera or the held object.
+                if (!menu_open && cap && kbm_scheme_mouse_wanted(down)) {
+                    int32_t ddx = 0, ddy = 0;
+                    ikb_mouse_take(&ddx, &ddy);
+                    kbm_scheme_mouse(ddx, ddy);
+                }
                 kbm_scheme_frame(down, plat_now_ns() / 1000000u, &key_bits, kl, kr);
                 pick(&sl[0], &sl[1], kl[0], kl[1]);
                 pick(&sr[0], &sr[1], kr[0], kr[1]);
@@ -1029,7 +1041,9 @@ static void poll_merged(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx
             input_toggles(&key_bits, sl, menu_open);
             b = pad_bits | key_bits;
             // L is the ability wheel: the mouse then pushes a stick that stays (mouse_camera), not a velocity sample.
-            mouse_camera(k, (int)((b >> B_ZR) & 1), (int)((b >> B_L) & 1));
+            // An ability holding an object reads the pad's stick instead of the camera's direct look.
+            int ability_stick = scheme && kbm_scheme_ctx() == KBM_SC_ABILITY && player_state_holding();
+            mouse_camera(k, (int)((b >> B_ZR) & 1), (int)((b >> B_L) & 1), ability_stick);
             pick(&sr[0], &sr[1], k[0], k[1]);
             if (g_flick && plat_now_ns() / 1000000u < g_flick_until) pick(&sr[0], &sr[1], g_flick, 0);
             else g_flick = 0;

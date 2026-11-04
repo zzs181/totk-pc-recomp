@@ -8,3 +8,6 @@
 void screen_watch_poll(uint64_t buttons);
 // The KBM scope for the next scheme frame: the host F1 menu's PAUSE, else the game's screen, else AIM/WORLD.
 int screen_watch_ctx(int host_menu_open);
+// The player state pointer the playerptr patch site stores (0 until that site has run): the anchor the stance
+// contexts are read from.
+uint64_t screen_watch_player(void);

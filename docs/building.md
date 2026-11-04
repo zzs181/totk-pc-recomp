@@ -117,6 +117,12 @@ of them.
    they write `build\<ver>\romfs-patches-xbox` and `romfs-patches-xbox-label` ([controls.md](controls.md), "Xbox
    button prompts"), which `build_game.py` copies next to `totk.exe` like `romfs-patches`.
 
+   `tools\build_gui.py` wraps these commands in a window (PySide6, `tools\requirements-gui.txt`): it ticks through the
+   prompt sets, `build_game.py`, the KBM test and the copy into the game folder, showing the output as it lands and the
+   `[N/M]` count as a bar. Its second tab watches a build another terminal started -- Windows gives no way to read that
+   process's console back, so it counts the `.o` files the ninja graph expects against the ones that exist, and reports
+   the rate and what is left. Its settings are `build\build_gui.json`; `--shot PATH` saves a PNG of the window.
+
 6. Prepare the shaders (once per build folder and translator). It needs `refs\MacNativeGames` (`tools\fetch_refs.sh`)
    for the shared shader list:
 

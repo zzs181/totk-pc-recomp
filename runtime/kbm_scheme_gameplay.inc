@@ -198,10 +198,12 @@ PC_ROW(ABILITY,  "use",           'M', PCOP_NONE, MAC_PRIMARY,   KB_A,        "M
 PC_ROW(ABILITY,  "secondary",     'M', PCOP_NONE, MAC_SECONDARY, KB_A | KB_L,  "Mouse Right")  // Ultrahand release, Recall stop, Fuse: shield (ZL)
 PC_ROW(ABILITY,  "pull",          'M', PCOP_NONE, MAC_PULL,      KB_DU,       "Wheel Up")
 PC_ROW(ABILITY,  "push",          'M', PCOP_NONE, MAC_PUSH,      KB_DD,       "Wheel Down")
-PC_ROW(ABILITY,  "rotate",        'M', PCOP_NONE, MAC_ROTATE,    KB_R | KB_DL | KB_DR, "R")   // R + the mouse: the d-pad (D2 Rotate: Left / Right "Horizontal rotation" names R; Up / Down stay the wheel's)
+PC_ROW(ABILITY,  "rotate",        'M', PCOP_NONE, MAC_ROTATE,    KB_R | KB_DL | KB_DR, "R, G")   // R + the mouse: the d-pad (D2 Rotate: Left / Right "Horizontal rotation" names R; Up / Down stay the wheel's). G too: it is the pad's R on foot, and in this context its own rows have no throw
 PC_VROW(ABILITY,  "reset_rotation",PCVK(2), KB_ZL, "Q")            // D2: ZL "Reset"
-PC_ROW(ABILITY,  "raise",         'M', PCOP_NONE, MAC_RAISE,     0,          "Space")
-PC_ROW(ABILITY,  "lower",         'M', PCOP_NONE, MAC_LOWER,     0,          "Ctrl")
+// Upstream's MAC_RAISE / MAC_LOWER push the right stick while the key is held; this port's rows state the stick bits
+// directly (dirs_to_stick), as the pad does for the pad's up / down on a held object.
+PC_ROW(ABILITY,  "raise",         'M', PCOP_NONE, MAC_RAISE,     KR_U,       "Space")
+PC_ROW(ABILITY,  "lower",         'M', PCOP_NONE, MAC_LOWER,     KR_D,       "Ctrl")
 PC_ROW(ABILITY,  "unstick",       'M', PCOP_NONE, MAC_UNSTICK,   0,          "X")  // X
                                                                 // Backspace was out of its reach)
 PC_NOLAYOUT(ABILITY)

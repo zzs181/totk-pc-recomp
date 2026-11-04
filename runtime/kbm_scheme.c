@@ -184,6 +184,15 @@ static uint8_t g_hold[KBM_ROWS_MAX];           // ... and its held row is in eff
 static uint8_t g_was[KBM_ROWS_MAX];
 static uint8_t g_held[KBM_ROWS_MAX];
 
+// The ability context's rotate macro (upstream MAC_ROTATE): while its key is held the mouse counts step the pad's
+// d-pad, one step per KBM_ROTATE_STEP counts (upstream's default: 40 counts a 45-degree step). input.c takes this
+// poll's counts (kbm_scheme_mouse) so they do not also turn the camera or move the held object.
+enum { KBM_ROTATE_STEP = 40 };
+static int32_t g_mouse_dx, g_mouse_dy;
+static int g_mouse_took;
+static double g_rot_acc[2];
+static int g_ability, g_holding;   // the ABILITY context's SpecialPowerType and Ultrahand's hold (kbm_scheme_set_ability)
+
 // MAC_NEXT / MAC_PREV and MAC_ARROW_NEXT / MAC_ARROW_PREV: the game's quick select is "hold the d-pad and walk the
 // strip with the right stick" (D-pad right for the weapons, ZR + D-pad up for the arrows; docs/controls.md). The pad
 // layer has no next-weapon action here, so a notch plays upstream's macro itself (pc_gameplay.cpp, MAC_NEXT): d-right
@@ -452,6 +461,23 @@ void kbm_scheme_set_ctx(int scope) {
 
 int kbm_scheme_ctx(void) { return g_ctx; }
 
+int kbm_scheme_mouse_wanted(const uint8_t down[KEY_COUNT]) {
+    kbm_scheme_init();
+    if (g_ctx != KBM_SC_ABILITY) return 0;
+    const int a = action_id("rotate");
+    if (a < 0) return 0;
+    const int r = g_active[g_ctx][a];
+    return r >= 0 && g_rows[r].arg == MAC_ROTATE && row_held(&g_rows[r], down);
+}
+
+void kbm_scheme_mouse(int32_t dx, int32_t dy) { g_mouse_dx = dx, g_mouse_dy = dy; }
+int kbm_scheme_mouse_taken(void) { return g_mouse_took; }
+
+void kbm_scheme_set_ability(int ability, int holding) {
+    g_ability = ability;
+    g_holding = holding != 0;
+}
+
 const char *kbm_scheme_scope_name(int scope) {
     if (scope < 0 || scope >= KBM_SC_COUNT) return "?";
     return g_scope_names[scope] ? g_scope_names[scope] : "?";
@@ -484,6 +510,9 @@ void kbm_scheme_frame(const uint8_t down[KEY_COUNT], uint64_t now_ms, uint64_t *
     kbm_scheme_init();
     *buttons = 0;
     left[0] = left[1] = right[0] = right[1] = 0;
+    const int32_t mdx = g_mouse_dx, mdy = g_mouse_dy;
+    g_mouse_dx = g_mouse_dy = 0;
+    g_mouse_took = 0;
     for (int r = 0; r < g_nrows; r++) g_held[r] = (uint8_t)row_held(&g_rows[r], down);
 
     uint32_t out = 0;
@@ -510,6 +539,45 @@ void kbm_scheme_frame(const uint8_t down[KEY_COUNT], uint64_t now_ms, uint64_t *
             break;
         case 'M': {
             int arg = row->arg;
+            // The ability context's rotate (upstream MAC_ROTATE): R held, the mouse steps the d-pad. The counts were
+            // taken from the camera this poll; one axis per step so a diagonal nudge alternates and never doubles.
+            if (arg == MAC_ROTATE) {
+                if (held) {
+                    out |= 1u << B_R;
+                    g_mouse_took = 1;
+                    g_rot_acc[0] += mdx;
+                    g_rot_acc[1] -= mdy;   // screen y grows down, the pad's up is +y
+                    int sx = g_rot_acc[0] >= KBM_ROTATE_STEP ? 1 : g_rot_acc[0] <= -KBM_ROTATE_STEP ? -1 : 0;
+                    int sy = g_rot_acc[1] >= KBM_ROTATE_STEP ? 1 : g_rot_acc[1] <= -KBM_ROTATE_STEP ? -1 : 0;
+                    if (sx) {
+                        g_rot_acc[0] -= (double)KBM_ROTATE_STEP * sx;
+                        pulse_row(r, 1u << (sx > 0 ? B_RIGHT : B_LEFT), now_ms, &out);
+                    } else if (sy) {
+                        g_rot_acc[1] -= (double)KBM_ROTATE_STEP * sy;
+                        pulse_row(r, 1u << (sy > 0 ? B_UP : B_DOWN), now_ms, &out);
+                    }
+                } else {
+                    g_rot_acc[0] = g_rot_acc[1] = 0;
+                }
+                break;
+            }
+            // Upstream's MAC_PRIMARY / MAC_SECONDARY branch on the ability in use (pc_gameplay.cpp): Fuse's pick is Y,
+            // Recall's stop is L, Ultrahand releases with A only while it holds something. The table's own bits stand
+            // when no ability was read (0), as in the other contexts.
+            if (arg == MAC_PRIMARY) {
+                if (held && !was) pulse_row(r, 1u << (g_ability == 2 ? B_Y : B_A), now_ms, &out);
+                break;
+            }
+            if (arg == MAC_SECONDARY) {
+                if (held) {
+                    if (g_ability == 1) out |= g_holding ? 1u << B_A : 0u;
+                    else if (g_ability == 2) out |= 1u << B_ZL;
+                    else if (g_ability == 4) out |= 1u << B_L;
+                    else if (g_ability == 5) out |= 1u << B_A;
+                    else out |= row->out;
+                }
+                break;
+            }
             // The throw key turns the wheel into the material page's own walk; see g_mat above.
             int mat = (arg == MAC_NEXT || arg == MAC_PREV) && action_key_held("throw", down);
             if (mat) {

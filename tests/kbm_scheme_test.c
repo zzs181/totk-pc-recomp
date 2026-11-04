@@ -241,6 +241,51 @@ int main(void) {
     expect_u("left attacks once the throw key is up", b >> B_Y & 1, 1);
     frame(14000, 0, 0, 0, 0, 0, 0);
 
+    // The ability context's rotate: R held, the mouse counts step the pad's d-pad (40 counts a step) and the counts
+    // are reported as taken, so the camera and the held object do not also see them (input.c's take_mouse).
+    kbm_scheme_set_ctx(KBM_SC_ABILITY);
+    frame(15000, 0, 0, 0, 0, 0, 0);
+    expect_i("rotate does not want the mouse without its key", kbm_scheme_mouse_wanted(down), 0);
+    kbm_scheme_mouse(39, 0);
+    b = frame(15010, KEY_R, 0, 0, 0, 0, 0);
+    expect_i("R asks for the mouse", kbm_scheme_mouse_wanted(down), 1);
+    expect_u("R is held as the rotate modifier", b >> B_R & 1, 1);
+    expect_u("39 counts make no step yet", ((b >> B_RIGHT) | (b >> B_LEFT)) & 1, 0);
+    expect_i("the counts are taken", kbm_scheme_mouse_taken(), 1);
+    kbm_scheme_mouse(1, 0);
+    b = frame(15020, KEY_R, 0, 0, 0, 0, 0);
+    expect_u("the 40th count steps right", b >> B_RIGHT & 1, 1);
+    kbm_scheme_mouse(-40, 0);
+    b = frame(15030, KEY_R, 0, 0, 0, 0, 0);
+    expect_u("a left flick steps left", b >> B_LEFT & 1, 1);
+    kbm_scheme_mouse(0, 40);
+    b = frame(15040, KEY_R, 0, 0, 0, 0, 0);
+    expect_u("mouse down is the pad's down", b >> B_DOWN & 1, 1);
+    b = frame(15050, 0, 0, 0, 0, 0, 0);
+    expect_u("releasing R lets go of the pad's R", b >> B_R & 1, 0);
+    expect_i("... and nothing is taken", kbm_scheme_mouse_taken(), 0);
+
+    // The ability decides the mouse buttons' pad bits (upstream MAC_PRIMARY / MAC_SECONDARY): Ultrahand releases only
+    // what it holds, Fuse picks with Y and its shield with ZL.
+    kbm_scheme_set_ctx(KBM_SC_ABILITY);
+    kbm_scheme_set_ability(1, 1);
+    frame(15100, 0, 0, 0, 0, 0, 0);
+    b = frame(15110, KEY_MOUSE_R, 0, 0, 0, 0, 0);
+    expect_u("Ultrahand holding: RMB releases with A", b >> B_A & 1, 1);
+    expect_u("... not the pad's L", b >> B_L & 1, 0);
+    frame(15120, 0, 0, 0, 0, 0, 0);
+    kbm_scheme_set_ability(1, 0);
+    b = frame(15130, KEY_MOUSE_R, 0, 0, 0, 0, 0);
+    expect_u("Ultrahand empty: RMB sends nothing", b, 0);
+    frame(15140, 0, 0, 0, 0, 0, 0);
+    kbm_scheme_set_ability(2, 0);
+    b = frame(15150, KEY_MOUSE_L, 0, 0, 0, 0, 0);
+    expect_u("Fuse picks with Y", b >> B_Y & 1, 1);
+    expect_u("... not A", b >> B_A & 1, 0);
+    b = frame(15160, KEY_MOUSE_R, 0, 0, 0, 0, 0);
+    expect_u("Fuse's shield is ZL", b >> B_ZL & 1, 1);
+    kbm_scheme_set_ability(0, 0);
+
     // Whatever is held, in every context, the button word carries buttons only: the stick directions (16..23) are
     // the caller's to derive from the sticks it ends up with (kbm_scheme.h). Every key down is the loudest case.
     kbm_scheme_set_ctx(KBM_SC_WORLD);

@@ -70,6 +70,18 @@ const char *kbm_scheme_scope_name(int scope);
 void kbm_scheme_frame(const uint8_t down[KEY_COUNT], uint64_t now_ms, uint64_t *buttons, int32_t left[2],
                       int32_t right[2]);
 
+// The rotate macro (R held in the ability context): 1 while its key is held, so input.c takes this poll's mouse counts
+// and hands them to kbm_scheme_mouse instead of the camera. kbm_scheme_mouse_taken, after a frame: the counts became
+// d-pad rotation steps and must not move the camera or the held object as well.
+int kbm_scheme_mouse_wanted(const uint8_t down[KEY_COUNT]);
+void kbm_scheme_mouse(int32_t dx, int32_t dy);
+int kbm_scheme_mouse_taken(void);
+
+// The ability the ABILITY context is in (game::specialpower::SpecialPowerType: 1 Ultrahand, 2 Fuse, 3 Ascend,
+// 4 Recall, 5 Autobuild) and whether Ultrahand holds an object. Upstream's MAC_PRIMARY / MAC_SECONDARY branch on
+// these: Fuse's pick is Y, Recall's stop is L, Ultrahand releases with A only while it holds something.
+void kbm_scheme_set_ability(int ability, int holding);
+
 // The keys of (scope, action), first first, at most max; returns how many, 0 for an action the scope does not
 // have. For diagnostics and the prompt glyphs the port does not draw yet.
 int kbm_scheme_keys(int scope, const char *action, int *keys, int max);
