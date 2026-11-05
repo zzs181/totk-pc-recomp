@@ -177,6 +177,18 @@ void vk_dump_present(uint64_t frame);    // vk_be_present: waits for the dump fr
 void vk_c0_fill(uint8_t bank[VK_C0_BYTES], int stage, const p_bind_buf ssbo[16], const p_bind_buf ubo[16],
                 const uint32_t dispatch[3], uint32_t base_instance);
 
+// Per-op census (TOTK_OPCENSUS=1, vk_exec.c): vk_exec_census_tsc returns a timestamp, or 0 when the census is off, so
+// a caller adds `uint64_t st = vk_exec_census_tsc()` and drops `st` into a segment when it can be 0. The segments below
+// split a graphics draw: 0 lookups (pass, scissor, shader, pipeline), 1 pipeline and dynamic state, 2 descriptors,
+// 3 feedback, vertex buffers and queries, 4 index buffer, 5 vkCmdDrawIndexed itself.
+extern uint64_t vk_exec_census_seg[8], vk_exec_census_seg_n;
+// The same for a descriptor build (bind_resources in vk_exec_draw.c): 0 the signature check (bind_sig), 1 the packed
+// slot fill, 2 the push or bind, 3 the skip bookkeeping. Each per call, skipped builds counting only their signature.
+extern uint64_t vk_exec_census_bind[8], vk_exec_census_bind_n;
+// Where a descriptor comes from: texture memo hit, texture full lookup, ubo snapshot, ubo bind range, texel, storage.
+extern uint64_t vk_exec_census_cnt[8];
+uint64_t vk_exec_census_tsc(void);
+
 // Handler hooks. vk_exec.c defines both WEAK: they stop with rt_fatal naming the op.
 // vk_exec_draw.c: OP_DRAW, OP_DRAW_IDX, OP_DISPATCH, OP_BIND_* (program, state, vattr, vstream, vbuf, ubo, ssbo, tex,
 // samp, img), OP_UPDATE_UB, OP_DRAW_IDX_IND, OP_DISPATCH_IND. payload: nvn_op_payload of the record.

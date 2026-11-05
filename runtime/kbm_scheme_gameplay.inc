@@ -206,6 +206,11 @@ PC_ROW(ABILITY,  "raise",         'M', PCOP_NONE, MAC_RAISE,     KR_U,       "Sp
 PC_ROW(ABILITY,  "lower",         'M', PCOP_NONE, MAC_LOWER,     KR_D,       "Ctrl")
 PC_ROW(ABILITY,  "unstick",       'M', PCOP_NONE, MAC_UNSTICK,   0,          "X")  // X
                                                                 // Backspace was out of its reach)
+// The on-foot keys the player keeps reaching for while an ability is out: E is the game's A (grab, pick, place) and
+// Shift its B (put down, cancel). The leaves inherit only GAMEPLAY, so without these two the on-foot E and Shift go
+// dead the moment the ability context starts -- the grab and the release both stop working.
+PC_VROW(ABILITY,  "interact",     PCVK(4) | PCVK(16), KB_A, "E")
+PC_VROW(ABILITY,  "let_go",       PCVK(5), KB_B, "Shift")
 PC_NOLAYOUT(ABILITY)
 
 // ---- horse (3.6)

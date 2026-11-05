@@ -290,6 +290,24 @@ static const char *const text_en[UI_TEXT_COUNT] = {
     [UI_MENU_MENU_CURSOR_LOG] = "Game menu mouse log",
     [UI_MENU_MENU_CURSOR_LOG_DESC] = "Logs each menu screen's nodes, the pointer's hit test and every direction the "
                                      "focus box is walked with.",
+    [UI_MENU_MENU_CURSOR_SCREENS] = "Mouse menu screens",
+    [UI_MENU_MENU_CURSOR_SCREENS_DESC] = "Which screens take the pointer: a whitelist of the game's layout names. "
+                                         "menu_cursor_screens in totk.ini takes any list, and menu_cursor_log prints a "
+                                         "name for every screen the game opens, so a menu missing here is one name "
+                                         "away. The last two presets are like-kind screens that are not play-tested "
+                                         "yet: go back to the first if one behaves worse.",
+    [UI_MENU_MENU_CURSOR_SCREENS_BASIC] = "Title, pouch, save and load",
+    [UI_MENU_MENU_CURSOR_SCREENS_PLUS_OPTION] = "+ options",
+    [UI_MENU_MENU_CURSOR_SCREENS_PLUS_ALBUM] = "+ options, album and compendium",
+    [UI_MENU_PLAYER_STATE] = "Player stance",
+    [UI_MENU_PLAYER_STATE_DESC] = "1.4.3, on. Reads what Link is doing from the game's own objects -- the action verbs "
+                                  "of his five action slots, the ability in use, whether Ultrahand holds an object -- "
+                                  "and gives the scheme the matching rows: climb, air, glide, swim, horse, vehicle and "
+                                  "the ability's own set. It only ever reads; a stance change must hold the same "
+                                  "answer for 30 ms, and a screen of the game's own menus always wins.",
+    [UI_MENU_PLAYER_STATE_LOG] = "Player stance log",
+    [UI_MENU_PLAYER_STATE_LOG_DESC] = "One line per change of the verbs, the ability and the hold (player_state: verbs "
+                                      "1,61,... power 1 holding 1).",
     [UI_MENU_MOUSE_FLOOD] = "Mouse count injection",
     [UI_MENU_MOUSE_FLOOD_DESC] = "Extra mouse counts per presented frame, for stress-testing a high-report-rate "
                                  "mouse and the input path. 0 is off.",
@@ -809,6 +827,24 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
     [UI_MENU_MENU_CURSOR_LOG] = "Журнал мыши в меню",
     [UI_MENU_MENU_CURSOR_LOG_DESC] = "Пишет узлы экрана, результат попадания указателя и каждое направление, "
                                      "которым ведут рамку фокуса.",
+    [UI_MENU_MENU_CURSOR_SCREENS] = "Экраны с указателем мыши",
+    [UI_MENU_MENU_CURSOR_SCREENS_DESC] = "На каких экранах берётся указатель: белый список имён раскладки игры. "
+                                         "menu_cursor_screens в totk.ini принимает любой список, а menu_cursor_log "
+                                         "печатает имя каждого открытого экрана — недостающему меню одно имя до правки. "
+                                         "Два последних набора — такие же экраны, ещё не проверенные в игре: если на "
+                                         "одном стало хуже, вернитесь к первому.",
+    [UI_MENU_MENU_CURSOR_SCREENS_BASIC] = "Титры, сумка, загрузка и сохранение",
+    [UI_MENU_MENU_CURSOR_SCREENS_PLUS_OPTION] = "+ настройки",
+    [UI_MENU_MENU_CURSOR_SCREENS_PLUS_ALBUM] = "+ настройки, альбом и справочник",
+    [UI_MENU_PLAYER_STATE] = "Состояние игрока",
+    [UI_MENU_PLAYER_STATE_DESC] = "1.4.3, вкл. Читает, что делает Линк, из объектов самой игры — глаголы действий пяти "
+                                  "его слотов, используемая способность, держит ли UltraHand предмет — и даёт схеме "
+                                  "подходящие строки: лазание, воздух, планирование, плавание, конь, транспорт и набор "
+                                  "способности. Только чтение, записи нет; смене состояния надо держать один ответ 30 "
+                                  "мс, а любое меню игры важнее.",
+    [UI_MENU_PLAYER_STATE_LOG] = "Журнал состояния игрока",
+    [UI_MENU_PLAYER_STATE_LOG_DESC] = "Строка на каждое изменение глаголов, способности и удержания (player_state: "
+                                      "verbs 1,61,... power 1 holding 1).",
     [UI_MENU_MOUSE_FLOOD] = "Инъекция отсчётов мыши",
     [UI_MENU_MOUSE_FLOOD_DESC] = "Лишние отсчёты мыши за кадр для проверки мыши с высокой частотой опроса и пути "
                                  "ввода. 0 — выкл.",
@@ -1248,6 +1284,24 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
     [UI_MENU_MENU_CURSOR_LOG] = "Registo do mouse nos menus",
     [UI_MENU_MENU_CURSOR_LOG_DESC] = "Escreve os nós de cada ecrã, o teste de acerto do ponteiro e cada direção com "
                                      "que a caixa de foco é conduzida.",
+    [UI_MENU_MENU_CURSOR_SCREENS] = "Telas do mouse nos menus",
+    [UI_MENU_MENU_CURSOR_SCREENS_DESC] = "Em que telas o ponteiro é assumido: uma lista aberta dos nomes de layout do "
+                                         "jogo. menu_cursor_screens no totk.ini aceita qualquer lista, e menu_cursor_log "
+                                         "imprime o nome de cada tela que o jogo abre — a um menu que falte falta só um "
+                                         "nome. As duas últimas opções são telas do mesmo tipo ainda não testadas a "
+                                         "jogar: se alguma for pior, volte à primeira.",
+    [UI_MENU_MENU_CURSOR_SCREENS_BASIC] = "Título, bolsa, carregar e salvar",
+    [UI_MENU_MENU_CURSOR_SCREENS_PLUS_OPTION] = "+ opções",
+    [UI_MENU_MENU_CURSOR_SCREENS_PLUS_ALBUM] = "+ opções, álbum e enciclopédia",
+    [UI_MENU_PLAYER_STATE] = "Estado do jogador",
+    [UI_MENU_PLAYER_STATE_DESC] = "1.4.3, ligado. Lê o que Link faz dos objetos do próprio jogo — os verbos de ação dos "
+                                  "seus cinco slots, o poder em uso, se o Ultra Mão segura algo — e dá ao esquema as "
+                                  "linhas certas: escalar, ar, planar, nadar, cavalo, veículo e o conjunto do poder. Só "
+                                  "lê, nunca escreve; uma troca de estado precisa da mesma resposta por 30 ms, e uma "
+                                  "tela dos menus do jogo sempre ganha.",
+    [UI_MENU_PLAYER_STATE_LOG] = "Registro do estado do jogador",
+    [UI_MENU_PLAYER_STATE_LOG_DESC] = "Uma linha por mudança de verbos, poder e captura (player_state: verbs 1,61,... "
+                                      "power 1 holding 1).",
     [UI_MENU_MOUSE_FLOOD] = "Injeção de contagem do mouse",
     [UI_MENU_MOUSE_FLOOD_DESC] = "Contagens extras de mouse por quadro, para testar um mouse de alta taxa de "
                                  "relatório e o caminho de entrada. 0 desliga.",
@@ -1830,6 +1884,20 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
                                  "世界内的快捷条一律不碰——释放捕获会让滚轮失效。",
     [UI_MENU_MENU_CURSOR_LOG] = "游戏菜单鼠标日志",
     [UI_MENU_MENU_CURSOR_LOG_DESC] = "记录每个菜单界面的节点数、指针命中结果，以及焦点框每次被哪个方向键移动。",
+    [UI_MENU_MENU_CURSOR_SCREENS] = "鼠标接管的菜单界面",
+    [UI_MENU_MENU_CURSOR_SCREENS_DESC] = "决定指针在哪些界面接管，内容是游戏界面名（blyt 布局名）的白名单。totk.ini 的 "
+                                         "menu_cursor_screens 可以写任意名单；menu_cursor_log 会把游戏每打开一个界面的名字"
+                                         "打印出来，少接管哪个菜单就照日志补哪个名字。后两个预设是同类界面、还没实测过，"
+                                         "如果反而更难用就切回第一个。",
+    [UI_MENU_MENU_CURSOR_SCREENS_BASIC] = "标题、背包、读档、存档",
+    [UI_MENU_MENU_CURSOR_SCREENS_PLUS_OPTION] = "再加设置页",
+    [UI_MENU_MENU_CURSOR_SCREENS_PLUS_ALBUM] = "再加设置、相册与图鉴",
+    [UI_MENU_PLAYER_STATE] = "玩家姿态",
+    [UI_MENU_PLAYER_STATE_DESC] = "1.4.3，默认开。从游戏自己的对象读林克正在做什么——五个动作槽的动词、当前能力、究极手有"
+                                  "没有吸着东西——再把键位切到对应姿态那一套：攀爬、空中、滑翔、游泳、骑马、载具，以及能力"
+                                  "专用键。只读不写；姿态要连续 30 毫秒同一个答案才切，游戏自己的菜单永远优先。",
+    [UI_MENU_PLAYER_STATE_LOG] = "玩家姿态日志",
+    [UI_MENU_PLAYER_STATE_LOG_DESC] = "动词、能力、吸持状态每变化一次记一行（player_state: verbs 1,61,... power 1 holding 1）。",
     [UI_MENU_MOUSE_FLOOD] = "鼠标计数注入",
     [UI_MENU_MOUSE_FLOOD_DESC] = "每帧额外注入的鼠标计数，用于高回报率鼠标与输入路径压测。0 = 关。",
     [UI_MENU_KBM_HELP] = "方案里每个动作的按键，可按上下文或全局设置。选中一行后按新键；Delete 清除覆盖。"

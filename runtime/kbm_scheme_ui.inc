@@ -113,16 +113,20 @@ PC_ROW(MAP,      "inventory",   'O', PCOP_MENU_GOTO, PCMG_LAST, 0,           "I"
 PC_ROW(MAP,      "adventure_log", 'O', PCOP_MENU_GOTO, PCMG_PAD + 1, 0,      "J")
 // (the map's layers, sky / surface / depths, are the D-pad's up / down and the Hero's Path its left / right, held: UI's
 // arrows rows, as the Switch PgUp / PgDn and, 10-30 18:10, provisional)
-PC_ROW(MAP,      "click",       'E', PCOP_NONE,        0, KB_A,         "Mouse Left")         // hle_hid's map: A while held at the reticle (4.29; the mouse scrolls it)
+PC_ROW(MAP,      "click",       'P', PCOP_NONE,        0, KB_A,         "Mouse Left")         // A at the reticle where it stands
 PC_ROW(MAP,      "scroll_up",   'E', PCOP_NONE,        0, 0,           "Wheel Up")           // hle_hid's map: the zoom
 PC_ROW(MAP,      "scroll_down", 'E', PCOP_NONE,        0, 0,           "Wheel Down")
+// Teleport needs A on the marker. MENUS' tab_next owns E (the pad's R), which in the map's own screen only cycles the
+// Purah Pad's pages, so the map gives E to confirm and drops the inherited tab_next; the pages are M / I / J here.
+PC_ROW(MAP,      "confirm",     'O', PCOP_CONFIRM,     0, KB_A,         "Enter, E")
+PC_ROW(MAP,      "tab_next",    'X', PCOP_NONE,        0, 0,           "")
 PC_ROW(DIALOGUE, "click",       'X', PCOP_NONE,        0, 0,           "")                   // (no focus box: the click advances)
-PC_ROW(DIALOGUE, "confirm",     'P', PCOP_NONE,        0, KB_A,         "E, Enter")           // advance / the whole line (Enter: scheme 3.14)
+PC_ROW(DIALOGUE, "confirm",     'P', PCOP_NONE,        0, KB_A,         "E, Enter, Mouse Left")   // advance / the whole line (Enter: scheme 3.14)
 // Esc / RMB: the pad's B, whatever it does in a conversation, never a skip of the scene (the game has none here),
 // with nothing destructive
 PC_ROW(DIALOGUE, "back",        'P', PCOP_NONE,        0, KB_B,         "Esc, Mouse Right")
 PC_ROW(DIALOGUE, "log",         'P', PCOP_NONE,        0, KB_Y,         "T")                  // the conversation's Log (its "Log T" hint, i2c_stable3)
-PC_ROW(CHOICE,   "confirm",     'O', PCOP_CONFIRM,     0, KB_A,         "E, Enter")
+PC_ROW(CHOICE,   "confirm",     'O', PCOP_CONFIRM,     0, KB_A,         "E, Enter, Mouse Left")   // the map's travel prompt is one of these
 PC_ROW(CHOICE,   "choice_1",    'O', PCOP_CHOICE_PICK, 1, 0,           "1")
 PC_ROW(CHOICE,   "choice_2",    'O', PCOP_CHOICE_PICK, 2, 0,           "2")
 PC_ROW(CHOICE,   "choice_3",    'O', PCOP_CHOICE_PICK, 3, 0,           "3")

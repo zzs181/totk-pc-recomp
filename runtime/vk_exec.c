@@ -812,6 +812,107 @@ static int split_n = -1, split_draws, part_start;
 static uint64_t split_ns, part_t0;
 static uint64_t n_parts, n_subs;
 
+// ---- per-op census (TOTK_OPCENSUS=1): counts and times every replayed op, so a frame's ten thousand packets can be
+// attributed to a kind instead of being one number. Recording path only, the split and submit paths are untouched
+// (the split is summed apart, census_split_cyc). Its own overhead, two TSC reads per op, is inside what it reports:
+// read the shares and the per-op means, not the absolute total.
+static int census_on = -1;
+static uint64_t census_n[OP_COUNT_], census_cyc[OP_COUNT_], census_split_cyc, census_split_n;
+static double census_cyc_per_ns;
+uint64_t vk_exec_census_seg[8], vk_exec_census_seg_n;   // a graphics draw's segments, filled by vk_exec_draw.c
+uint64_t vk_exec_census_bind[8], vk_exec_census_bind_n; // inside bind_resources: signature, slot fill, push/bind, rest, then per kind
+// Plain counts of where a descriptor comes from (no timing, so no distortion): 0 texture memo hit, 1 texture full lookup,
+// 2 ubo from the submission's snapshot, 3 ubo through a bind range, 4 texel buffer, 5 storage buffer.
+uint64_t vk_exec_census_cnt[8];
+uint64_t vk_exec_census_rec[4], vk_exec_census_rec_n;   // a submission: preamble, walk, pass end and barrier, postamble
+
+static inline uint64_t census_tsc(void) {
+#if defined(__x86_64__) || defined(__i386__)
+    return __builtin_ia32_rdtsc();
+#else
+    return kern_now_ns();   // other arches: nanoseconds, and the calibration below lands on 1 cycle per ns
+#endif
+}
+
+uint64_t vk_exec_census_tsc(void) { return census_on > 0 ? census_tsc() : 0; }
+
+static double census_cycles_per_ns(void) {
+    if (census_cyc_per_ns > 0) return census_cyc_per_ns;
+    uint64_t n0 = kern_now_ns(), t0 = census_tsc();
+    for (volatile int i = 0; i < 50000; i++) {}
+    uint64_t t1 = census_tsc(), n1 = kern_now_ns();
+    census_cyc_per_ns = (n1 > n0 && t1 > t0) ? (double)(t1 - t0) / (double)(n1 - n0) : 1.0;
+    return census_cyc_per_ns;
+}
+
+static void census_report(void) {
+    uint64_t tot_n = 0, tot_cyc = census_split_cyc;
+    for (int i = 0; i < OP_COUNT_; i++) tot_n += census_n[i], tot_cyc += census_cyc[i];
+    if (!tot_n) return;
+    int idx[OP_COUNT_];   // by cycles, descending: 47 entries, an insertion sort costs nothing here
+    for (int i = 0; i < OP_COUNT_; i++) idx[i] = i;
+    for (int i = 1; i < OP_COUNT_; i++) {
+        int v = idx[i], j = i - 1;
+        while (j >= 0 && census_cyc[idx[j]] < census_cyc[v]) idx[j + 1] = idx[j], j--;
+        idx[j + 1] = v;
+    }
+    double per_ns = census_cycles_per_ns(), tot_ns = (double)tot_cyc / per_ns;
+    char line[1300];
+    int len = snprintf(line, sizeof line, "perf: replayed ops %llu in %.2f ms (mean %.0f ns):",
+                       (unsigned long long)tot_n, tot_ns / 1e6, tot_ns / (double)tot_n);
+    for (int k = 0; k < OP_COUNT_ && k < 12 && len > 0 && len < (int)sizeof line; k++) {
+        int i = idx[k];
+        if (!census_n[i]) continue;
+        len += snprintf(line + len, sizeof line - (size_t)len, " %s %llu/%.0fns", nvn_op_name((uint32_t)i),
+                        (unsigned long long)census_n[i], (double)census_cyc[i] / per_ns / (double)census_n[i]);
+    }
+    if (census_split_n && len > 0 && len < (int)sizeof line)
+        snprintf(line + len, sizeof line - (size_t)len, " | split %llu/%.0fns",
+                 (unsigned long long)census_split_n, (double)census_split_cyc / per_ns / (double)census_split_n);
+    rt_log("%s", line);
+    if (vk_exec_census_seg_n > 1) {
+        double d = (double)vk_exec_census_seg_n;
+        rt_log("perf: a graphics draw %.0f ns: lookups %.0f, pipeline+state %.0f, descriptors %.0f, feedback+vbuf+oq %.0f,"
+               " index buffer %.0f, vkCmdDrawIndexed %.0f",
+               (double)(vk_exec_census_seg[0] + vk_exec_census_seg[1] + vk_exec_census_seg[2] + vk_exec_census_seg[3] +
+                        vk_exec_census_seg[4] + vk_exec_census_seg[5]) / per_ns / d,
+               (double)vk_exec_census_seg[0] / per_ns / d, (double)vk_exec_census_seg[1] / per_ns / d,
+               (double)vk_exec_census_seg[2] / per_ns / d, (double)vk_exec_census_seg[3] / per_ns / d,
+               (double)vk_exec_census_seg[4] / per_ns / d, (double)vk_exec_census_seg[5] / per_ns / d);
+    }
+    if (vk_exec_census_bind_n > 1) {
+        double d = (double)vk_exec_census_bind_n;
+        rt_log("perf: a descriptor build %.0f ns: signature %.0f, slot fill %.0f, push/bind %.0f, skip bookkeeping %.0f",
+               (double)(vk_exec_census_bind[0] + vk_exec_census_bind[1] + vk_exec_census_bind[2] + vk_exec_census_bind[3]) / per_ns / d,
+               (double)vk_exec_census_bind[0] / per_ns / d, (double)vk_exec_census_bind[1] / per_ns / d,
+               (double)vk_exec_census_bind[2] / per_ns / d, (double)vk_exec_census_bind[3] / per_ns / d);
+        rt_log("perf: slot fill of %.0f ns: ubo %.0f, ssbo %.0f, texture %.0f, other %.0f", (double)vk_exec_census_bind[1] / per_ns / d,
+               (double)vk_exec_census_bind[4] / per_ns / d, (double)vk_exec_census_bind[5] / per_ns / d,
+               (double)vk_exec_census_bind[6] / per_ns / d, (double)vk_exec_census_bind[7] / per_ns / d);
+        rt_log("perf: descriptors per build: texture memo hit %.2f full %.2f, ubo snapshot %.2f bind range %.2f, "
+               "texel %.2f, storage %.2f",
+               (double)vk_exec_census_cnt[0] / d, (double)vk_exec_census_cnt[1] / d, (double)vk_exec_census_cnt[2] / d,
+               (double)vk_exec_census_cnt[3] / d, (double)vk_exec_census_cnt[4] / d, (double)vk_exec_census_cnt[5] / d);
+    }
+    memset(vk_exec_census_cnt, 0, sizeof vk_exec_census_cnt);
+    memset(vk_exec_census_seg, 0, sizeof vk_exec_census_seg);
+    vk_exec_census_seg_n = 0;
+    memset(vk_exec_census_bind, 0, sizeof vk_exec_census_bind);
+    vk_exec_census_bind_n = 0;
+    if (vk_exec_census_rec_n > 0) {
+        double d = (double)vk_exec_census_rec_n;
+        rt_log("perf: a submission %.0f ns: preamble %.0f, walk %.0f, pass end+barrier %.0f, postamble %.0f",
+               (double)(vk_exec_census_rec[0] + vk_exec_census_rec[1] + vk_exec_census_rec[2] + vk_exec_census_rec[3]) / per_ns / d,
+               (double)vk_exec_census_rec[0] / per_ns / d, (double)vk_exec_census_rec[1] / per_ns / d,
+               (double)vk_exec_census_rec[2] / per_ns / d, (double)vk_exec_census_rec[3] / per_ns / d);
+    }
+    memset(vk_exec_census_rec, 0, sizeof vk_exec_census_rec);
+    vk_exec_census_rec_n = 0;
+    memset(census_n, 0, sizeof census_n);   // one window each
+    memset(census_cyc, 0, sizeof census_cyc);
+    census_split_cyc = census_split_n = 0;
+}
+
 static void maybe_split(VkExec *ex) {
     if (split_n < 0) {
         split_n = cfg_int("TOTK_SPLIT_DRAWS");
@@ -825,12 +926,14 @@ static void maybe_split(VkExec *ex) {
     if (split_ns && kern_now_ns() - part_t0 < split_ns) return;   // split_draws stays: the next draw asks again
     split_draws = 0;
     if (ex->recorded == part_start) return;
+    uint64_t ct0 = census_on > 0 ? census_tsc() : 0;
     ex->cb = vk_sync_split();
     part_start = ex->recorded;
     part_t0 = kern_now_ns();
     ex->dirty = VK_EXEC_DIRTY_ALL;
     vk_exec_draw_new_cb();
     n_parts++;
+    if (census_on > 0) census_split_cyc += census_tsc() - ct0, census_split_n++;
 }
 
 static void walk(VkExec *ex, const op_hdr *h, int depth) {
@@ -838,6 +941,7 @@ static void walk(VkExec *ex, const op_hdr *h, int depth) {
         if (h->size < sizeof *h || (h->size & 7) || h->op >= OP_COUNT_)
             rt_fatal("vk: corrupt command record at %p: op %u size %u", (const void *)h, h->op, h->size);
         const void *a = nvn_op_payload(h);
+        uint64_t ct0 = census_on > 0 ? census_tsc() : 0;
         switch (h->op) {
         case OP_END: return;
         case OP_BEGIN: break;
@@ -912,6 +1016,7 @@ static void walk(VkExec *ex, const op_hdr *h, int depth) {
         default: rt_fatal("vk: op %s has no replay handler", nvn_op_name(h->op));
         }
         if (split_draws >= split_n) maybe_split(ex);
+        if (census_on > 0) census_n[h->op]++, census_cyc[h->op] += census_tsc() - ct0;   // a CALL also carries its callees
         h = nvn_op_next(h);
     }
 }
@@ -919,6 +1024,10 @@ static void walk(VkExec *ex, const op_hdr *h, int depth) {
 int vk_exec_record(VkCommandBuffer cb, const uint64_t *handles, int n, uint64_t fence) {
     VkExec *ex = &X;
     if (!x_ready) state_reset(ex), vk_dump_init(), x_ready = 1;
+    if (census_on < 0) {   // cfg_get: the census is a debug switch and must not stop a run when the ini omits it
+        const char *e = cfg_get("TOTK_OPCENSUS");
+        census_on = e && atoi(e) > 0, census_cycles_per_ns();
+    }
     ex->cb = cb;
     ex->fence = fence;
     ex->recorded = 0;
@@ -934,14 +1043,20 @@ int vk_exec_record(VkCommandBuffer cb, const uint64_t *handles, int n, uint64_t 
     split_draws = part_start = 0;
     part_t0 = kern_now_ns();
     x_here = 1;
+    uint64_t st = census_on > 0 && n ? census_tsc() : 0;   // submission segments (TOTK_OPCENSUS)
+#define REC_CLOSE(k) do { if (st) { uint64_t n_ = census_tsc(); vk_exec_census_rec[k] += n_ - st, st = n_; } } while (0)
     if (n) vk_mem_mirror_begin(), vk_usnap_begin(handles, n, fence);
+    REC_CLOSE(0);
+    if (st) vk_exec_census_rec_n++;
     for (int i = 0; i < n; i++) {
         if (!handles[i]) rt_fatal("vk: command handle %d of a submission is null", i);
         walk(ex, nvn_op_first(handles[i]), 0);
     }
     vk_exec_pass_end(ex);
     x_here = 0;
+    REC_CLOSE(1);   // the walk
     if (ex->recorded) vk_exec_barrier(ex);   // later submissions see this one's writes
+    REC_CLOSE(2);
     if (n) ex->recorded += vk_mem_mirror_end(ex->cb, fence), vk_usnap_end(fence);   // VRAM mirror bytes the GPU wrote go back to guest memory
     if (ex->nviews) {
         ViewList *l = malloc(sizeof *l + sizeof(VkImageView) * (size_t)ex->nviews);
@@ -952,10 +1067,14 @@ int vk_exec_record(VkCommandBuffer cb, const uint64_t *handles, int n, uint64_t 
         ex->nviews = 0;
     }
     ex->cb = VK_NULL_HANDLE;
+    REC_CLOSE(3);
     if (n) n_subs++;
-    if ((rt_trace & RT_TRACE_PERF) && n_subs >= 240) {
-        rt_log("perf: replay command buffer parts per submission %.2f", (double)(n_subs + n_parts) / (double)n_subs);
+    if (n_subs >= 240 && ((rt_trace & RT_TRACE_PERF) || census_on > 0)) {
+        if (rt_trace & RT_TRACE_PERF)
+            rt_log("perf: replay command buffer parts per submission %.2f", (double)(n_subs + n_parts) / (double)n_subs);
+        census_report();
         n_subs = n_parts = 0;
     }
     return ex->recorded - part_start;   // what the last part holds
+#undef REC_CLOSE
 }

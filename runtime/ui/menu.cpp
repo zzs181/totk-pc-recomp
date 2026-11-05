@@ -847,6 +847,20 @@ static void tab_controls(float scale) {
     opt_toggle("TOTK_SCREEN_WATCH_LOG", UI_MENU_SCREEN_WATCH_LOG, UI_MENU_SCREEN_WATCH_LOG_DESC);
     opt_toggle("TOTK_MENU_CURSOR", UI_MENU_MENU_CURSOR, UI_MENU_MENU_CURSOR_DESC);
     opt_toggle("TOTK_MENU_CURSOR_LOG", UI_MENU_MENU_CURSOR_LOG, UI_MENU_MENU_CURSOR_LOG_DESC);
+    // The pointer's whitelist. The names are the layouts eui reports (menu_cursor_log prints each screen's name the
+    // first time it opens), so a menu missing here is one name away in totk.ini. The two wider presets are like-kind
+    // screens that are not play-tested, which is why the narrow list stays the default.
+    static const char *const screens_lists[] = {
+        "Title_00,Pouch_00,SystemLoadList_00,SystemSaveLoad_00",
+        "Title_00,Pouch_00,SystemLoadList_00,SystemSaveLoad_00,SystemOption_00",
+        "Title_00,Pouch_00,SystemLoadList_00,SystemSaveLoad_00,SystemOption_00,AppAlbum_00,AppPictureBook_00"};
+    const char *screens_names[] = {menu_text(UI_MENU_MENU_CURSOR_SCREENS_BASIC),
+                                   menu_text(UI_MENU_MENU_CURSOR_SCREENS_PLUS_OPTION),
+                                   menu_text(UI_MENU_MENU_CURSOR_SCREENS_PLUS_ALBUM)};
+    opt_choice_list("TOTK_MENU_CURSOR_SCREENS", UI_MENU_MENU_CURSOR_SCREENS, screens_lists, screens_names,
+                    sizeof screens_lists / sizeof *screens_lists, UI_MENU_MENU_CURSOR_SCREENS_DESC);
+    opt_toggle("TOTK_PLAYER_STATE", UI_MENU_PLAYER_STATE, UI_MENU_PLAYER_STATE_DESC);
+    opt_toggle("TOTK_PLAYER_STATE_LOG", UI_MENU_PLAYER_STATE_LOG, UI_MENU_PLAYER_STATE_LOG_DESC);
     static const char *const mat_values[] = {"c", "z", "b", "n"};
     static const char *const mat_names[] = {"C", "Z", "B", "N"};
     opt_choice_list("TOTK_KBM_MATERIALS_KEY", UI_MENU_KBM_MATERIALS_KEY, mat_values, mat_names, 4,

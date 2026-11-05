@@ -33,6 +33,16 @@
 #define MAX_BINDINGS 128
 #define MAX_DESC 1024
 #define CHUNK_BYTES (4u << 20)
+
+// TOTK_OPCENSUS (vk_exec.h, vk_exec.c census_report): closes a draw segment, `st` being the local timestamp the caller
+// took, which is 0 when the census is off. Segments 0-3 are prepare_draw's, 4-5 op_draw_idx's.
+#define SEG_CLOSE(k) do { if (st) { uint64_t n_ = vk_exec_census_tsc(); if (n_) vk_exec_census_seg[k] += n_ - st, st = n_; } } while (0)
+// The same for the four segments of a descriptor build (vk_exec_census_bind in vk_exec.c).
+#define BIND_CLOSE(k) do { if (st) { uint64_t n_ = vk_exec_census_tsc(); if (n_) vk_exec_census_bind[k] += n_ - st, st = n_; } } while (0)
+// And for the slot fill's per-kind branches (4 ubo, 5 ssbo, 6 texture, 7 other). Two timestamps a branch: about 40 cycles,
+// which the report's own share absorbs; it is only read when the census is on.
+#define KIND_T0 uint64_t bt_ = vk_exec_census_tsc()
+#define KIND_T1(k) do { if (bt_) { uint64_t n_ = vk_exec_census_tsc(); if (n_) vk_exec_census_bind[k] += n_ - bt_; } } while (0)
 #define ZERO_BYTES 65536u
 #define SUPPORT_BYTES 1456u   // Ryujinx SupportBuffer (std140): alpha_test, is_bgra[8], viewport_inverse, viewport_size, ...;
                               // 1408 pcss and 1424 shadow_spread (translator patches 0010, 0011), 1440 HDR (support_fill)
@@ -912,9 +922,13 @@ static VkDescriptorBufferInfo ubo_info(VkExec *ex, int st, int slot) {
         const p_bind_buf *b = &ex->ubo[st][slot - 3];
         if (b->size && vk_usnap_find(b->addr, b->size < max ? b->size : max, align, &bi)) {   // as of the submit call
             count_use(VK_MCLS_SCRATCH, VK_MUSE_UBO, bi.range);
+            vk_exec_census_cnt[2]++;
             return bi;
         }
-        if (bind_range(ex, b->addr, b->size, align, max, VK_MUSE_UBO, 0, &bi)) return bi;
+        if (bind_range(ex, b->addr, b->size, align, max, VK_MUSE_UBO, 0, &bi)) {
+            vk_exec_census_cnt[3]++;
+            return bi;
+        }
     }
     return zero_info(max);
 }
@@ -1193,6 +1207,7 @@ static void tex_info_lookup(VkExec *ex, const GfxShaderRes *r, uint64_t h, int s
         *out = m->out;
         out->imageLayout = m->image && ex->nfbl && in_fbl(ex, m->image) ? VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT
                                                                           : VK_IMAGE_LAYOUT_GENERAL;
+        vk_exec_census_cnt[0]++;
         if (td_on == 2) {
             VkDescriptorImageInfo full;
             tex_info_full(ex, r, h, storage, separate, &full, &image);
@@ -1203,6 +1218,7 @@ static void tex_info_lookup(VkExec *ex, const GfxShaderRes *r, uint64_t h, int s
         return;
     }
     uint64_t tok = token_of(h);   // before the lookup
+    vk_exec_census_cnt[1]++;
     tex_info_full(ex, r, h, storage, separate, out, &image);
     *m = (typeof(*m)){.h = h, .tok = tok, .gen = gen, .epoch = ep, .sgen = sg, .type = r->type,
                       .separate = (uint8_t)separate, .valid = 1, .image = image, .out = *out};
@@ -1727,11 +1743,14 @@ static void bind_resources(VkExec *ex, const VkPipeInfo *info) {
     static VkDescSlot d[MAX_DESC];
     static VkBufferView bv[MAX_DESC];
     if (info->n_bindings > MAX_BINDINGS) rt_fatal("vk: %u descriptor bindings exceed the replay's %d", info->n_bindings, MAX_BINDINGS);
+    uint64_t st = vk_exec_census_tsc();   // descriptor build segments (TOTK_OPCENSUS)
+    if (st) vk_exec_census_bind_n++;
     bind_stats(info);
     int gfx = info->bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS;
     int skip = gfx ? bind_skip_on() : 0, same = 0, was_valid = B.res_valid;
     if (skip) {
         same = bind_sig(ex, info);
+        BIND_CLOSE(0);
         if (same && was_valid && skip == 1) {
             for (int i = 0; i < RS.ncnt; i++) vk_mem_count(RS.cnt[i].cls, RS.cnt[i].use, RS.cnt[i].bytes);
             BS.bind_skip++;
@@ -1777,13 +1796,20 @@ static void bind_resources(VkExec *ex, const VkPipeInfo *info) {
             }
             o->buffer = (VkDescriptorBufferInfo){B.sup_buf, B.sup_off, SUPPORT_BYTES};
         } else if (b->kind == GFX_RES_UBO) {
+            KIND_T0;
             for (uint32_t k = 0; k < cnt; k++) o[k].buffer = ubo_info(ex, st, r->slot + (int)k);
+            KIND_T1(4);
         } else if (b->kind == GFX_RES_SSBO) {
+            KIND_T0;
+            vk_exec_census_cnt[5] += cnt;
             for (uint32_t k = 0; k < cnt; k++) o[k].buffer = ssbo_info(ex, st, r, r->flags & 1);
+            KIND_T1(5);
         } else if (b->kind == GFX_RES_TEX || b->kind == GFX_RES_IMG) {
+            KIND_T0;
             int img = b->kind == GFX_RES_IMG;
             if (b->type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER || b->type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
                 kind = 2;
+                vk_exec_census_cnt[4] += cnt;
                 for (uint32_t k = 0; k < cnt; k++) {   // buffer textures are not replayed yet
                     o[k].w[0] = 0, o[k].w[1] = 0, o[k].w[2] = 0;
                     o[k].view = Z.zview;
@@ -1802,6 +1828,7 @@ static void bind_resources(VkExec *ex, const VkPipeInfo *info) {
                 }
                 vk_texture_unlock();
             }
+            KIND_T1(6);
         } else {
             rt_fatal("vk: binding %u has an unknown kind %d", (unsigned)b->binding, (int)b->kind);
         }
@@ -1814,6 +1841,7 @@ static void bind_resources(VkExec *ex, const VkPipeInfo *info) {
         }
         nd += cnt;
     }
+    BIND_CLOSE(1);
     // Under the validation layer, a new graphics layout binds set 1 before set 0 is pushed or bound. The layer (SDK
     // 1.4.363, PipelineLayoutCompatDef::operator==) takes any two INDEPENDENT_SETS layouts as compatible, so
     // vkCmdPushDescriptorSetKHR keeps the push set it made for an earlier layout and drops writes to bindings that
@@ -1877,6 +1905,7 @@ static void bind_resources(VkExec *ex, const VkPipeInfo *info) {
             }
         }
     }
+    BIND_CLOSE(2);
     if (skip) {
         RS.rec = 0;
         // An equal next draw records nothing when every push set holds its push (TOTK_PUSH_SKIP on) and nothing made
@@ -1898,6 +1927,7 @@ static void bind_resources(VkExec *ex, const VkPipeInfo *info) {
         }
         B.res_valid = valid;
     }
+    BIND_CLOSE(3);
     ex->recorded++;
 }
 
@@ -2068,6 +2098,7 @@ static int pipe_memo_on(void) {
 
 // Pass, shaders, pipeline, fixed state and resources for a draw. 0: the draw is skipped.
 static int prepare_draw(VkExec *ex, int prim, int32_t count, int restart) {
+    uint64_t st = vk_exec_census_tsc();
     if (ex->render_disabled) return 0;
     cb_res(ex);
     dummies_init();
@@ -2177,6 +2208,7 @@ static int prepare_draw(VkExec *ex, int prim, int32_t count, int restart) {
     }
     if (pending) return 0;   // a background worker is building it: the draw is skipped until it is ready
     if (!p || !info) return warn_once(W_PIPELINE, "a graphics pipeline could not be created: draws with it are skipped"), 0;
+    SEG_CLOSE(0);   // pass, scissor, shader and pipeline lookups (TOTK_OPCENSUS)
     bind_pipeline(ex, VK_PIPELINE_BIND_POINT_GRAPHICS, p);
     if (!B.st_valid || memcmp(&B.st, &s, sizeof s)) {
         vk_pipeline_set_dynamic(ex->cb, &s);
@@ -2187,13 +2219,16 @@ static int prepare_draw(VkExec *ex, int prim, int32_t count, int restart) {
     vk_dlaa_draw(ex);
     record_fixed(ex);
     repeat_stats(ex, info);
+    SEG_CLOSE(1);
     bind_resources(ex, info);
+    SEG_CLOSE(2);
     if (fbl & ex->fb_dirty) feedback_barrier(ex);
     feedback_written(ex, &s);
     bind_vertex_buffers(ex);
     if (vk_dump_armed) vk_dump_draw(ex, &s, p, info);
     if (vk_hdr_track) vk_hdr_draw(ex, info);
     vk_exec_oq_draw(ex);
+    SEG_CLOSE(3);
     return 1;
 }
 
@@ -2260,6 +2295,7 @@ static void op_draw_idx(VkExec *ex, const p_draw_idx *d) {
     if (d->itype < 0 || d->itype > 2) return warn_once(W_INDEX, "index type %d is unknown: draw skipped", d->itype);
     int restart = restart_for(ex, d->prim, d->itype);
     if (d->count <= 0 || !prepare_draw(ex, d->prim, d->count, restart)) return;
+    uint64_t st = vk_exec_census_tsc();
     vk_exec_frame.draws++;
     uint64_t bytes = (uint64_t)d->count * isize[d->itype];
     VkMemSpan sp;
@@ -2285,8 +2321,11 @@ static void op_draw_idx(VkExec *ex, const p_draw_idx *d) {
         vk_mem_count(sp.cls, VK_MUSE_IB, bytes);
         VK_MEM_BOUND(sp);
     }
+    SEG_CLOSE(4);   // index buffer resolve and bind
     vkCmdDrawIndexed(ex->cb, (uint32_t)d->count, d->instances > 0 ? (uint32_t)d->instances : 1, 0, d->base_vertex,
                      (uint32_t)d->base_instance);
+    SEG_CLOSE(5);
+    vk_exec_census_seg_n++;
     ex->recorded++;
 }
 

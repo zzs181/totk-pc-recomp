@@ -17,7 +17,7 @@ that the port had to meet; they are listed under "What this branch changes about
 ## Turning it on
 
 `TOTK_KBM_SCHEME=1` in `totk.ini` next to `totk.exe`, or in the environment (the environment wins). Live: the next
-input poll switches, and the log says which path ran (`input: PC scheme on: 255 rows, 0 unknown keys, Esc is the
+input poll switches, and the log says which path ran (`input: PC scheme on: 263 rows, 0 unknown keys, Esc is the
 game's menu key`).
 
 With it on, the Controls tab and the `TOTK_BIND_*` lines do nothing: they edit `input_map.c`'s table, which the
@@ -26,7 +26,10 @@ the six-axis, the mouse camera, the walk scale of the flat table) is untouched.
 
 ## What runs today
 
-- The whole upstream table: 255 rows (`PC_ROW` 217 + `PC_VROW` 38) over 28 of the 34 scopes (`runtime/kbm_scheme_ui.inc`,
+- The whole upstream table, 255 rows, plus the rows this branch adds: the four `AIM` rows that turn the inherited
+  strips off while the bow is drawn, the ability's own `E` / `Shift` (the grab and the cancel must survive the stance
+  context) and the map's `confirm` / `tab_next` pair (E teleports instead of paging the Pad): 263 rows (`PC_ROW` 223 +
+  `PC_VROW` 40) over 28 of the 34 scopes (`runtime/kbm_scheme_ui.inc`,
   `runtime/kbm_scheme_gameplay.inc`, unchanged but for a `K` prefix on the pad bits).
 - Row resolution: a context inherits its group's rows (`WORLD` <- `GAMEPLAY` <- `ROOT`, `PAUSE` <- `MENUS` <- `UI` <-
   `ROOT`) and its own rows replace them, so the world's and the menus' keys never meet.
@@ -93,22 +96,48 @@ single button means. Neither exists here yet, so:
 
 `runtime/screen_watch.c` reads `eui::ScreenMgr` at each pad read (the game thread) and selects the focused screen's
 context: `Title_00` is `TITLE`, `Pouch_00`/`Pause*` is `PAUSE`, the save list is `SAVES`, options, shops, dialogue and
-choices get their rows, `AppMap_00` is `MAP`, the strips are `QUICKMENU`, Autobuild is `CONSTRUCT`, the camera and the
-scope are their contexts. The map and the strips have no focus box, so the input fallback uses the game's Minus toggle
-for `MAP` and the held D-pad directions/L for `QUICKMENU`; a held bow key (ZR) selects `AIM`. The host settings menu
-(F1) stays `PAUSE`. `TOTK_SCREEN_WATCH` (default 1) turns the watcher off, and `TOTK_SCREEN_WATCH_LOG` (default 1) logs
-each change (`screen: Pouch_00 -> pause`).
+choices get their rows, `AppMap_00` is `MAP`, the quick-select strips and the Autobuild list are `QUICKMENU`, the
+camera and the scope are their contexts. The map has no focus box, so the input fallback uses the game's Minus toggle
+for `MAP`. With no screen up the player's own stance names the context (next section), and `AIM` is selected once the
+scheme's ZR has been held steadily for 150 ms. The host settings menu (F1) stays `PAUSE`. `TOTK_SCREEN_WATCH` (default
+1) turns the watcher off, and `TOTK_SCREEN_WATCH_LOG` (default 1) logs each change with what chose it
+(`screen: Pouch_00 -> pause (screen)`, `screen: (gameplay) -> ability (ability)`).
+
+## The player's stance
+
+`runtime/player_state.c` reads the player once per presented frame and `screen_watch.c` turns the answer into the
+context. Two ways start the walk, so a table that drifts cannot take the feature down: the game's own GOT chain to the
+player actor, and the fallback the `playerptr` site (`recomp/patches-v143.txt`, main+0x2b0348) leaves in the patch page
+-- the player object the player update (main+0x2adef0) keeps in `x19`. From the actor it is the game's own walk:
+components (+0x228 in 1.4.3) -> the AS component (+0x158) -> its five action slots (+0x1f0) -> each slot's verb (+0x28,
+or +0x4c while +0x28 is 284 Invalid). The ability is the SpecialPower component (+0x478, its current type at +0x6c),
+whose Ultrahand object (+0x28) reads 4 Grabbing / 5 Grabbed at +0x18 while it holds something. Nothing writes game
+memory. `TOTK_PLAYER_STATE=0` stops the walk and every stance stays `WORLD`; `TOTK_PLAYER_STATE_LOG` (default 1) logs
+the verbs, ability and hold once per change.
+
+The verb numbers are 1.0.0's and 1.4.3 keeps them; the sets are upstream's (`flags_of` in Weeping's
+`totk_player_state.cpp`). A play session named them here too: Walk 1, Jump 13, Land 32, Crouch 12, CrouchMove 63, Climb
+70, ParasailGlide 94, Swim 97, UseBow 59, Drawn 57, UseSpecialPower 61 -- and the player state's own action name at
++0x174 (`Wait`, `Move`, `Jump`, `Land`, `UltraHandWaitLower`, `AutoBuilderWaitLower`, ...) agrees with each. `Land` is
+deliberately not in `AIR`, and `RideJump` 27 / `RideJumpAttack` 132 only count as `HORSE` while the horse already was
+the state (upstream's mask: the steering stick's jump-off logs 27 as well).
+
+The router, with no screen up and a player read within the last 250 ms: `ABILITY` (verb 61 in any slot) > `HORSE` >
+`VEHICLE` > `GLIDE` > `AIM` > `SWIM` > `CLIMB` > `AIR` > `WORLD` -- Weeping's `from_player` order, so aiming from the
+saddle, a vehicle or the glider keeps those rows. A change between two gameplay contexts must hold the same answer for
+30 ms (the verbs flicker at a transition); a screen always wins at once.
+
+The ability context is also where the mouse changes hands: while Ultrahand holds an object `input.c` feeds the mouse to
+the pad's right stick instead of the camera's direct look, because the held object reads the stick and the direct look
+only reaches `PlayerCamera`; and with the rotate key (`R`, or `G`) held the scheme takes the mouse counts itself and
+steps the d-pad, one step per 40 counts (upstream's `MAC_ROTATE`), so the object rotates instead of drifting.
 
 ## What still needs a game hook
 
-1. **The player's stance**, to reach `CLIMB`, `AIR`, `GLIDE`, `SWIM`, `HORSE` and `VEHICLE`; `AIM` is selected from
-   ZR and the screen contexts are read. Upstream pushes a `PCP_*` flag word once per game frame (`pc_ctx_player` in its
-   `pc_input.h`). Here that would be a patch site that writes the flags into the patch page, read by
-   `kbm_scheme_set_ctx`.
-2. **The camera veneer**, the direct mouse look: this patch includes it as the `mousedirect` set
+1. **The camera veneer**, the direct mouse look: this patch includes it as the `mousedirect` set
    (`recomp/patches-v143.txt`, docs/mousedirect.md), which adds the mouse to the 1.4.3 PlayerCamera's processed stick
    after the dead zone and curve.
-3. **Keyboard keycap prompts**: included as `prompts = keyboard`, which redraws the game's prompts with the PC scheme's
+2. **Keyboard keycap prompts**: included as `prompts = keyboard`, which redraws the game's prompts with the PC scheme's
    keys (Kenney's CC0 "Input Prompts"; `tools/make_romfs_patches.py --prompts keyboard`). The mouse buttons are the one
    set Kenney's does not fit: its whole-mouse outline shades the button it means, and at HUD size that shade is a blur,
    so the left and right buttons are our own caps reading `LMB` and `RMB` in the game's text font. The d-pad is the
@@ -122,10 +151,10 @@ each change (`screen: Pouch_00 -> pause`).
    prompt's highlighted face button (`Nt_KeyTexA/B/X/Y_00`) is painted as its keycap, and its one-letter diamond panes
    become `E`, `S`, `_` and `L`: the layout's `Normal_00` font has no keycap glyphs, so those three stay text. The game
    reads its fonts once, so this takes a restart after the folder is written.
-4. **Motion mechanics**: a narrow mouse-to-six-axis feed is included (`TOTK_MOUSE_MOTION_KEY`, default `k`): holding the
+3. **Motion mechanics**: a narrow mouse-to-six-axis feed is included (`TOTK_MOUSE_MOTION_KEY`, default `k`): holding the
    key feeds the mouse to the virtual controller's six-axis for the gyro shrines, with the camera paused. The full
    mouse gyro aiming path is not part of this patch.
-5. **The Keyboard & mouse tab** (`runtime/ui/kbm_page.cpp`): F1's tab lists every scheme action with one key cell, for
+4. **The Keyboard & mouse tab** (`runtime/ui/kbm_page.cpp`): F1's tab lists every scheme action with one key cell, for
    all contexts or for one context. A captured key is written to `kbm_binds` as `action=key` or `context.action=key`;
    the context entry wins over the global one, and Delete clears it. While the throw key is held the wheel is the
    material page's own gesture (`runtime/kbm_scheme.c`, `g_mat`): the first notch takes D-pad up and **keeps it** for as
@@ -133,7 +162,7 @@ each change (`screen: Pouch_00 -> pause`).
    stick inside that hold to walk the list. Releasing the throw key drops both, which is the game's own confirm; no A is
    ever pressed here. Two earlier attempts read as broken on purpose-built screenshots: pulsing up closed the page
    between notches, and walking the list with D-pad left / right did nothing the page answers to.
-6. **The menu pointer** (`runtime/menu_cursor.c`, Wintego's PR #605 adapted from Weeping's `totk_menu_cursor.cpp`):
+5. **The menu pointer** (`runtime/menu_cursor.c`, Wintego's PR #605 adapted from Weeping's `totk_menu_cursor.cpp`):
    on by default (`TOTK_MENU_CURSOR`). Its **read** path is the port's: the ScreenMgr/BoxCursor chain, the screen's
    layout name, its node list, the pointer's hit test and the OS pointer release in menus. Its **write** path is not:
    the three stores `moveBoxCursor` makes leave 1.4.3's box where it is, because eui recomputes the cursor from its own

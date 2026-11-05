@@ -1042,9 +1042,24 @@ static void poll_merged(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx
             b = pad_bits | key_bits;
             // L is the ability wheel: the mouse then pushes a stick that stays (mouse_camera), not a velocity sample.
             // An ability holding an object reads the pad's stick instead of the camera's direct look.
-            int ability_stick = scheme && kbm_scheme_ctx() == KBM_SC_ABILITY && player_state_holding();
-            mouse_camera(k, (int)((b >> B_ZR) & 1), (int)((b >> B_L) & 1), ability_stick);
-            pick(&sr[0], &sr[1], k[0], k[1]);
+            int ctx = kbm_scheme_ctx();
+            int ability_stick = scheme && ctx == KBM_SC_ABILITY && player_state_holding();
+            // The map's cursor is the left stick's and the map owns no focus box, so the pointer path cannot reach it:
+            // there the mouse sample goes to the left stick and moves the cursor. Upstream does the same in its pad
+            // shim (its MAP rows name the mouse as the cursor); the camera gets nothing in a screen that has none.
+            int map_cursor = scheme && !menu_open && ctx == KBM_SC_MAP && ikb_captured();
+            // Either way the counts must become a stick sample, not the camera's direct injection: the patch page only
+            // reaches PlayerCamera, and neither an ability's held object nor the map's cursor reads it.
+            mouse_camera(k, (int)((b >> B_ZR) & 1), (int)((b >> B_L) & 1), ability_stick || map_cursor);
+            if (map_cursor) pick(&sl[0], &sl[1], k[0], k[1]);
+            else pick(&sr[0], &sr[1], k[0], k[1]);
+            // The map's zoom is the pad's right stick (Weeping's wheel_read mode 2, hle_hid.cpp: a flick, up = in). The
+            // notch already has wheel_keys' step-and-rest cadence above, so two notches stay two steps; the smallest
+            // wheel step the player set is what the game sees as the hold, as upstream's 120 ms does for the pad.
+            if (scheme && ctx == KBM_SC_MAP) {
+                if (down[KEY_WHEEL_UP]) pick(&sr[0], &sr[1], 0, 32767);
+                else if (down[KEY_WHEEL_DOWN]) pick(&sr[0], &sr[1], 0, -32767);
+            }
             if (g_flick && plat_now_ns() / 1000000u < g_flick_until) pick(&sr[0], &sr[1], g_flick, 0);
             else g_flick = 0;
         } else {

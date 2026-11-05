@@ -345,12 +345,20 @@
 # Logs each menu screen's nodes, the pointer's hit test and every d-pad press the pointer drives (layout coordinates,
 # first box, hit node/none, focus there/elsewhere).
 # menu_cursor_log = 0
+# The player's stance for the scheme's gameplay contexts (1.4.3), on: it reads the action verbs of Link's five action
+# slots, the ability in use and whether Ultrahand holds an object, from the game's own objects, and gives the scheme the
+# climb / air / glide / swim / horse / vehicle / ability rows instead of the on-foot ones. It only ever reads, never
+# writes; a stance change must hold the same answer for 30 ms, and one of the game's own screens always wins
+# (runtime/player_state.c, runtime/screen_watch.c). 0 keeps every stance on the world rows.
+# player_state = 1
+# Logs the verbs, the ability and the hold once per change (player_state: verbs 1,61,0,-1,-1 power 1 holding 1).
+# player_state_log = 1
 # The PC scheme (Weeping of the Empire's context table) in place of the flat table above: 0 off, 1 on. The Keyboard &
 # mouse tab (F1) edits every action's key, globally or per context, and the wheel switches materials while the throw
 # key is held. Off, the Controls tab and the bind_ lines are the layout (docs/controls.md). On, the keyboard and the
 # mouse follow the PC scheme's table of (context, action) rows; the Controls tab and bind_ do nothing then, and the
 # gamepad, its layout, the mouse camera and every other input setting are unchanged. Live: the next poll switches and
-# the log says which path ran ("input: PC scheme on: 255 rows, 0 unknown keys, Esc is the game's menu key"). Esc is the
+# the log says which path ran ("input: PC scheme on: 263 rows, 0 unknown keys, Esc is the game's menu key"). Esc is the
 # game's pause menu in the world and its back row on the game's own screens (runtime/screen_watch.c); the settings menu
 # is F1's and Esc no longer releases the mouse cursor while this is on.
 # kbm_scheme = 0

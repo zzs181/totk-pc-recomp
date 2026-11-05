@@ -56,9 +56,11 @@ int main(void) {
     uint64_t b;
 
     // The whole upstream table is in (255 rows), plus the four AIM rows that turn the inherited strips off while the
-    // bow is drawn (kbm_scheme_gameplay.inc); every key name in it is one this port knows. Ten tokens are Esc, which
-    // this branch gives to the host: they are counted apart, not as unknown.
-    expect_i("rows", kbm_scheme_row_count(), 259);
+    // bow is drawn, the ability's own E / Shift (the grab and the cancel must not go dead when the stance context
+    // starts) and the map's confirm / tab_next pair (E teleports, it does not cycle the Pad's pages); every key name
+    // in it is one this port knows. Ten tokens are Esc, which this branch gives to the host: they are counted apart,
+    // not as unknown.
+    expect_i("rows", kbm_scheme_row_count(), 263);
     expect_i("unknown keys", kbm_scheme_unknown_key_count(), 0);
 
     // WORLD, on foot: W drives the left stick up; Alt (the walk row) scales it; Space is the jump button.
@@ -285,6 +287,26 @@ int main(void) {
     b = frame(15160, KEY_MOUSE_R, 0, 0, 0, 0, 0);
     expect_u("Fuse's shield is ZL", b >> B_ZL & 1, 1);
     kbm_scheme_set_ability(0, 0);
+
+    // The ability context keeps the on-foot grab and cancel: E is the pad's A, Shift its B. The gameplay leaves
+    // inherit only GAMEPLAY, so without rows of their own both keys went dead the moment a stance context started.
+    kbm_scheme_set_ctx(KBM_SC_ABILITY);
+    frame(15200, 0, 0, 0, 0, 0, 0);
+    b = frame(15210, KEY_E, 0, 0, 0, 0, 0);
+    expect_u("E grabs with an ability out", b >> B_A & 1, 1);
+    b = frame(15220, KEY_LSHIFT, 0, 0, 0, 0, 0);
+    expect_u("Shift cancels with an ability out", b >> B_B & 1, 1);
+
+    // The map: E confirms at the cursor (it teleports) rather than cycling the Pad's pages, and the left button does
+    // the same. The pages stay on M / I / J.
+    kbm_scheme_set_ctx(KBM_SC_MAP);
+    frame(15300, 0, 0, 0, 0, 0, 0);
+    b = frame(15310, KEY_E, 0, 0, 0, 0, 0);
+    expect_u("E confirms in the map", b >> B_A & 1, 1);
+    expect_u("... and no longer pages over with the pad's R", b >> B_R & 1, 0);
+    b = frame(15320, KEY_MOUSE_L, 0, 0, 0, 0, 0);
+    expect_u("the left button confirms at the map cursor", b >> B_A & 1, 1);
+    frame(15330, 0, 0, 0, 0, 0, 0);
 
     // Whatever is held, in every context, the button word carries buttons only: the stick directions (16..23) are
     // the caller's to derive from the sticks it ends up with (kbm_scheme.h). Every key down is the loudest case.

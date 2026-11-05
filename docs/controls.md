@@ -161,7 +161,7 @@ and the Scope has nothing to do inside the page). The press that closed the page
 so a 50 to 150 ms click cannot also fire the attack. Releasing the throw key drops both and is the game's own throw.
 Without the throw key, the wheel walks the weapon strip. While the bow is drawn the game's D-pad
 means bow and arrow switching instead, so put the bow away (tap `F`) before walking the strips. The scheme has `AIM`
-rows for that state, but the port has no player-stance hook yet, so it keeps the on-foot rows.
+rows for that state, and the stance read of the next section is what selects them (the bow out, ZR held).
 
 F1's *Keyboard & mouse* tab edits every action's key: pick *All contexts* or one context (world, aim, climb, ...), then
 select a row and press the new key; Delete clears the override. The tab writes `kbm_binds` (`action=key` or
@@ -171,12 +171,36 @@ select a row and press the new key; Delete clears the override. The tab writes `
 
 `TOTK_SCREEN_WATCH` (default 1) reads `eui::ScreenMgr` at each pad read on the game thread and gives the PC scheme the
 focused screen's context: `Title_00` is `TITLE`, `Pouch_00`/`Pause*` is `PAUSE`, the save list is `SAVES`, options,
-shops, dialogue and choices get their own rows, `AppMap_00` is `MAP`, Autobuild is `CONSTRUCT`, the camera and the
-scope are their contexts. A held bow key (ZR) selects `AIM` once it has been held steadily for 150 ms, so the scheme's
-own 70 ms pulses never flip the context; the quick-select strips never own the focus box, so they stay in the world
-context on purpose. `TOTK_SCREEN_WATCH_LOG` (default 1) logs each screen and context (`screen: Pouch_00 -> pause`).
-The screen read is from Wintego's PR #605 / Weeping of the Empire (MIT); the player's stance (climb, air, glide, swim,
-horse, vehicle) is still not read.
+shops, dialogue and choices get their own rows, `AppMap_00` is `MAP`, the quick-select strips and the Autobuild list
+are `QUICKMENU` (its own keys: the left button selects, `Esc` goes back, `T` sorts), `CONSTRUCT` is Mineru's construct,
+and the camera and the scope are their contexts. A held bow key (ZR) selects `AIM` once it has been held steadily for
+150 ms, so the scheme's own 70 ms pulses never flip the context; the quick-select strips never own the focus box, so
+they stay in the world context on purpose. `TOTK_SCREEN_WATCH_LOG` (default 1) logs each screen and context, with what
+chose it (`screen: Pouch_00 -> pause (screen)`, `screen: (gameplay) -> swim (swim)`). The screen read is from Wintego's
+PR #605 / Weeping of the Empire (MIT).
+
+`TOTK_PLAYER_STATE` (default 1) is the same project's player read: `runtime/player_state.c` walks the player's own
+objects once per presented frame -- the five action slots' verbs, the ability in use, and Ultrahand's grab state -- and
+with no screen up `screen_watch.c` gives the scheme the stance rows instead of the on-foot ones: `ABILITY` (an ability
+out) over `HORSE`, `VEHICLE`, `GLIDE`, `AIM`, `SWIM`, `CLIMB` and `AIR`. A stance change must hold the same answer for
+30 ms and the read goes stale after 250 ms (a load, the title), which is `WORLD`. It never writes game memory: the
+`playerptr` patch site only leaves the player object's address in the patch page, and the walk is the game's own
+(main+0x2b0390). Two consequences you can feel: an ability holding an object steers with the mouse (the object reads the
+pad's right stick, so the mouse goes there instead of the camera's direct look), and with the rotate key `R` -- `G`
+works too -- held, the mouse steps the rotation on the pad's d-pad, 40 counts a step. `TOTK_PLAYER_STATE_LOG` (default
+1) logs one line per change of the verbs, ability and hold.
+
+The map is its own case: it has no focus box, so `TOTK_MENU_CURSOR` cannot reach it, and `E` would page the Purah Pad
+(the inherited `tab_next`) instead of confirming, which left fast travel unselectable. `KBM_SC_MAP` therefore owns
+`confirm` on `E` / Enter / the left button and drops the inherited `tab_next` (the Pad's pages stay on `M` / `I` / `J`).
+The map's reticle stays at the centre and the map itself moves, so the mouse does what the left stick does there: its
+motion pans the map (stop the mouse and the map stops), the wheel zooms (one flick of the right stick per notch, up =
+closer -- Weeping's `TOTK_MOUSE_MAP` model, `hle_hid.cpp`), the left button is A at the reticle (a pin, or the selected
+marker's travel prompt) and the right button is B. `W A S D` still pan the map while the mouse is still. A left click
+also advances a talk window and picks a choice, so the travel prompt after a click on a marker is one click too.
+The same reason gives the ability context its own `E` and `Shift`: the gameplay leaves inherit only `GAMEPLAY`, so
+without those rows the on-foot grab (`E` = A) and the cancel (`Shift` = B) would go dead the moment a stance context
+starts.
 
 `TOTK_MENU_CURSOR` (**experimental, off by default**) is Wintego's PR #605 menu pointer, ported to this tree and made
 to work with the game's own cursor: eui recomputes its focus box every frame and ignores direct writes, so the pointer
