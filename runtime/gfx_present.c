@@ -679,6 +679,15 @@ static void save_capture(const char *path) {
 // TOTK_ASPECT=stretch, else (fit, the default) the largest one of the picture's own aspect ratio, centred (a 16:9 picture
 // on the Steam Deck's 1280x800 screen gets bars of 40 rows above and below; a 16:9 picture in a 21:9 window, bars at the
 // sides).
+// Where the last present put the picture, as fractions of the swapchain (x, y, w, h): menu_cursor.c's pointer
+static float g_pic[4];
+static volatile int32_t g_pic_ok;
+int gfx_picture_rect(float out[4]) {
+    if (!__atomic_load_n(&g_pic_ok, __ATOMIC_ACQUIRE)) return 0;
+    memcpy(out, g_pic, sizeof g_pic);
+    return 1;
+}
+
 void gfx_fit_rect(int cw, int ch, int dw, int dh, int out[4]) {
     out[0] = out[1] = 0, out[2] = dw, out[3] = dh;
     if (cw <= 0 || ch <= 0 || !strcmp(cfg_value("TOTK_ASPECT"), "stretch")) return;
@@ -687,15 +696,6 @@ void gfx_fit_rect(int cw, int ch, int dw, int dh, int out[4]) {
     // A side of the window's parity keeps the two bars equal; a picture one pixel short of the window fills it
     out[2] += (dw - out[2]) & 1, out[3] += (dh - out[3]) & 1;
     out[0] = (dw - out[2]) / 2, out[1] = (dh - out[3]) / 2;
-}
-
-// Where the last present put the picture, as fractions of the swapchain (x, y, w, h): menu_cursor.c's pointer
-static float g_pic[4];
-static volatile int32_t g_pic_ok;
-int gfx_picture_rect(float out[4]) {
-    if (!__atomic_load_n(&g_pic_ok, __ATOMIC_ACQUIRE)) return 0;
-    memcpy(out, g_pic, sizeof g_pic);
-    return 1;
 }
 
 static void present_image(VkImage src, VkImageLayout layout, VkFormat fmt, int w, int h, const int crop[4], int defer) {
