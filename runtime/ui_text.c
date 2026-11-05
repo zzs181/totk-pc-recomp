@@ -136,7 +136,18 @@ static const char *const text_en[UI_TEXT_COUNT] = {
                           "and 50 % and let DLSS scale it up, for more frames per second; they replace the 3D render "
                           "scale. Takes effect after a restart.",
     [UI_MENU_DLSS_DLAA] = "DLAA (native)", [UI_MENU_DLSS_QUALITY] = "Quality", [UI_MENU_DLSS_BALANCED] = "Balanced",
-    [UI_MENU_DLSS_PERFORMANCE] = "Performance",
+    [UI_MENU_DLSS_PERFORMANCE] = "Performance", [UI_MENU_DLSS_ULTRA] = "Ultra Performance",
+    [UI_MENU_DLSS_PRESET] = "DLSS model",
+    [UI_MENU_DLSS_PRESET_DESC] = "Automatic follows NVIDIA's advice per mode: K for DLAA, Quality and Balanced, M "
+                                 "for Performance, L for Ultra Performance. K is the sharpest; J leaves less ghosting "
+                                 "behind moving characters.",
+    [UI_MENU_DLSS_PRESET_DEFAULT] = "Automatic", [UI_MENU_DLSS_PRESET_K] = "K (sharpest)",
+    [UI_MENU_DLSS_PRESET_J] = "J (less ghosting)",
+    [UI_MENU_DLSS_CHARS] = "DLSS character trails",
+    [UI_MENU_DLSS_CHARS_DESC] = "Gives DLSS the motion of moving characters, animals and what they hold (per-object "
+                                "motion vectors), so it keeps their history instead of leaving faint trails.",
+    [UI_MENU_DLSS_CHARS_OFF] = "Off", [UI_MENU_DLSS_CHARS_LIGHT] = "Light", [UI_MENU_DLSS_CHARS_MEDIUM] = "Medium",
+    [UI_MENU_DLSS_CHARS_FULL] = "Full",
     [UI_MENU_FXAA] = "Game anti-aliasing (FXAA)",
     [UI_MENU_FXAA_DESC] = "The game's own FXAA edge smoothing. It blurs fine detail a little; with DLAA on it is not needed.",
 
@@ -675,7 +686,18 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
                           "в 67, 58 и 50 % и масштабируют через DLSS ради большего числа кадров; они заменяют масштаб "
                           "3D-отрисовки. Действует после перезапуска.",
     [UI_MENU_DLSS_DLAA] = "DLAA (родное)", [UI_MENU_DLSS_QUALITY] = "Качество", [UI_MENU_DLSS_BALANCED] = "Баланс",
-    [UI_MENU_DLSS_PERFORMANCE] = "Производительность",
+    [UI_MENU_DLSS_PERFORMANCE] = "Производительность", [UI_MENU_DLSS_ULTRA] = "Макс. производительность",
+    [UI_MENU_DLSS_PRESET] = "Модель DLSS",
+    [UI_MENU_DLSS_PRESET_DESC] = "«Автоматически» следует совету NVIDIA для каждого режима: K для DLAA, «Качества» и "
+                                 "«Баланса», M для «Производительности», L для максимальной. K — самая чёткая; J "
+                                 "оставляет меньше шлейфов за движущимися персонажами.",
+    [UI_MENU_DLSS_PRESET_DEFAULT] = "Автоматически", [UI_MENU_DLSS_PRESET_K] = "K (самая чёткая)",
+    [UI_MENU_DLSS_PRESET_J] = "J (меньше шлейфов)",
+    [UI_MENU_DLSS_CHARS] = "Шлейфы персонажей в DLSS",
+    [UI_MENU_DLSS_CHARS_DESC] = "Передаёт DLSS движение персонажей, животных и их ноши (векторы движения объектов), "
+                                "чтобы она держала их историю вместо слабых шлейфов.",
+    [UI_MENU_DLSS_CHARS_OFF] = "Выкл.", [UI_MENU_DLSS_CHARS_LIGHT] = "Слабо", [UI_MENU_DLSS_CHARS_MEDIUM] = "Средне",
+    [UI_MENU_DLSS_CHARS_FULL] = "Полностью",
     [UI_MENU_FXAA] = "Сглаживание игры (FXAA)",
     [UI_MENU_FXAA_DESC] = "Собственное сглаживание FXAA. Слегка размывает мелкие детали; с DLAA оно не нужно.",
 
@@ -1636,7 +1658,18 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
     [UI_MENU_DLSS_DLAA] = "DLAA (nativo)",
     [UI_MENU_DLSS_QUALITY] = "Qualidade",
     [UI_MENU_DLSS_BALANCED] = "Equilibrado",
-    [UI_MENU_DLSS_PERFORMANCE] = "Desempenho",
+    [UI_MENU_DLSS_PERFORMANCE] = "Desempenho", [UI_MENU_DLSS_ULTRA] = "Ultra Desempenho",
+    [UI_MENU_DLSS_PRESET] = "Modelo do DLSS",
+    [UI_MENU_DLSS_PRESET_DESC] = "Automático segue o conselho da NVIDIA por modo: K para DLAA, Qualidade e "
+                                 "Equilibrado, M para Desempenho, L para Ultra. K é o mais nítido; J deixa menos "
+                                 "rastros atrás de personagens em movimento.",
+    [UI_MENU_DLSS_PRESET_DEFAULT] = "Automático", [UI_MENU_DLSS_PRESET_K] = "K (mais nítido)",
+    [UI_MENU_DLSS_PRESET_J] = "J (menos rastros)",
+    [UI_MENU_DLSS_CHARS] = "Rastros de personagens no DLSS",
+    [UI_MENU_DLSS_CHARS_DESC] = "Dá ao DLSS o movimento de personagens, animais e o que carregam (vetores por "
+                                "objeto), para que guarde a história deles em vez de rastros fracos.",
+    [UI_MENU_DLSS_CHARS_OFF] = "Desligado", [UI_MENU_DLSS_CHARS_LIGHT] = "Leve", [UI_MENU_DLSS_CHARS_MEDIUM] = "Médio",
+    [UI_MENU_DLSS_CHARS_FULL] = "Completo",
     [UI_MENU_FXAA] = "Antisserrilhado do jogo (FXAA)",
     [UI_MENU_FXAA_DESC] = "A suavização de bordas FXAA do próprio jogo. Borra um pouco os detalhes finos; com o DLAA "
                           "ligado não é necessária.",
@@ -2286,7 +2319,15 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
     [UI_MENU_DLSS_DLAA] = "DLAA（原生）",
     [UI_MENU_DLSS_QUALITY] = "质量",
     [UI_MENU_DLSS_BALANCED] = "平衡",
-    [UI_MENU_DLSS_PERFORMANCE] = "性能",
+    [UI_MENU_DLSS_PERFORMANCE] = "性能", [UI_MENU_DLSS_ULTRA] = "最高性能",
+    [UI_MENU_DLSS_PRESET] = "DLSS 模型",
+    [UI_MENU_DLSS_PRESET_DESC] = "自动按 NVIDIA 对各档的建议选择模型：DLAA、质量与平衡用 K，性能用 M，最高性能用 L。K 最锐利；J 在移动角色身后留下的拖影更少。",
+    [UI_MENU_DLSS_PRESET_DEFAULT] = "自动", [UI_MENU_DLSS_PRESET_K] = "K（最锐利）",
+    [UI_MENU_DLSS_PRESET_J] = "J（拖影更少）",
+    [UI_MENU_DLSS_CHARS] = "DLSS 角色拖影",
+    [UI_MENU_DLSS_CHARS_DESC] = "把角色、动物及其手持物的自身运动（逐物体运动矢量）交给 DLSS，让它保留它们的历史，而不是留下淡淡的拖影。",
+    [UI_MENU_DLSS_CHARS_OFF] = "关闭", [UI_MENU_DLSS_CHARS_LIGHT] = "轻", [UI_MENU_DLSS_CHARS_MEDIUM] = "中",
+    [UI_MENU_DLSS_CHARS_FULL] = "全部",
     [UI_MENU_FXAA] = "游戏抗锯齿（FXAA）",
     [UI_MENU_FXAA_DESC] = "游戏自身的 FXAA 边缘平滑。会让细节略微模糊；开启 DLAA 时不需要。",
     [UI_MENU_TAB_CHEATS] = "金手指",
