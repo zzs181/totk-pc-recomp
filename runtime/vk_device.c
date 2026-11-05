@@ -11,6 +11,7 @@
 #include "vk.h"
 #include "platform/platform.h"
 #include "vk_dlaa.h"
+#include "vk_dlssg.h"
 
 static VkCtx g_vk;
 static int g_ready;
@@ -68,7 +69,7 @@ static void mesa_cache_beside_exe(void) {
 
 static int create_instance(void) {
     mesa_cache_beside_exe();
-    const char *ext[12];
+    const char *ext[16];
     uint32_t n_ext = (uint32_t)gfx_window_vk_extensions(ext, 7);
     const char *layers[] = {"VK_LAYER_KHRONOS_validation"};
     int validate = cfg_bool("TOTK_VK_VALIDATION");
@@ -79,7 +80,7 @@ static int create_instance(void) {
     if (validate) ext[n_ext++] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
     if (vk_hdr_wanted() && instance_ext_present(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME))   // HDR10 surface formats
         ext[n_ext++] = VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME;
-    vk_dlaa_instance_exts(ext, &n_ext, 12);
+    vk_dlaa_instance_exts(ext, &n_ext, 16);
     VkApplicationInfo app = {.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO, .pApplicationName = "TotK Recomp",
                              .pEngineName = "TotK Recomp", .apiVersion = VK_API_VERSION_1_3};
     VkInstanceCreateInfo ci = {.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, .pApplicationInfo = &app,
@@ -263,7 +264,7 @@ static int create_device(void) {
         CHAIN(fbl, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_FEATURES_EXT);
         CHAIN(lr, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_LOCAL_READ_FEATURES_KHR);
     }
-    vk_dlaa_device_exts(ep, ne, ext, &n_ext, 40);   // NGX's; the slots after it stay for the nine below
+    vk_dlaa_device_exts(ep, ne, ext, &n_ext, 48);   // NGX's (DLAA and frame generation); the slots after it stay for the nine below
     if (has_ext(ep, ne, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME)) { g_vk.has_memory_budget = 1; ext[n_ext++] = VK_EXT_MEMORY_BUDGET_EXTENSION_NAME; }
     // Present attribution (gfx_present.c): VK_KHR_present_id names each present, VK_KHR_present_wait tells when the
     // screen showed it (which ones were replaced in the mailbox and never shown). Both together or neither.
@@ -410,7 +411,7 @@ int vk_init(void) {
     plat_mutex_lock(&g_lock);
     if (!g_ready) {
         memset(&g_vk, 0, sizeof g_vk);
-        if (create_instance() && pick_device() && create_device()) g_ready = 1, vk_headroom_start(), vk_dlaa_init();
+        if (create_instance() && pick_device() && create_device()) g_ready = 1, vk_headroom_start(), vk_dlaa_init(), vk_dlssg_init();
         else destroy_all();
     }
     int ok = g_ready;

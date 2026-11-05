@@ -148,6 +148,13 @@ static const char *const text_en[UI_TEXT_COUNT] = {
                                 "motion vectors), so it keeps their history instead of leaving faint trails.",
     [UI_MENU_DLSS_CHARS_OFF] = "Off", [UI_MENU_DLSS_CHARS_LIGHT] = "Light", [UI_MENU_DLSS_CHARS_MEDIUM] = "Medium",
     [UI_MENU_DLSS_CHARS_FULL] = "Full",
+    [UI_MENU_DLSS_FG] = "DLSS frame generation",
+    [UI_MENU_DLSS_FG_DESC] = "Interpolates extra frames between two rendered ones with DLSS, so the picture runs at a "
+                             "multiple of the frame rate. Needs a GeForce RTX 40 or newer, dlss on, and "
+                             "nvngx_dlssg.dll next to the executable. The game's HUD is interpolated too.",
+    [UI_MENU_DLSS_FG_MULT] = "Frames per rendered frame",
+    [UI_MENU_DLSS_FG_MULT_DESC] = "2x shows one frame generated between two rendered ones; 3x to 6x ask for more and "
+                                  "only an unlocked runtime produces them, otherwise it falls back to 2x.",
     [UI_MENU_FXAA] = "Game anti-aliasing (FXAA)",
     [UI_MENU_FXAA_DESC] = "The game's own FXAA edge smoothing. It blurs fine detail a little; with DLAA on it is not needed.",
 
@@ -698,6 +705,13 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
                                 "чтобы она держала их историю вместо слабых шлейфов.",
     [UI_MENU_DLSS_CHARS_OFF] = "Выкл.", [UI_MENU_DLSS_CHARS_LIGHT] = "Слабо", [UI_MENU_DLSS_CHARS_MEDIUM] = "Средне",
     [UI_MENU_DLSS_CHARS_FULL] = "Полностью",
+    [UI_MENU_DLSS_FG] = "Генерация кадров DLSS",
+    [UI_MENU_DLSS_FG_DESC] = "Вставляет дополнительные кадры между двумя отрисованными с помощью DLSS, и картинка "
+                             "идёт кратно чаще. Нужны GeForce RTX 40 или новее, включённый dlss и nvngx_dlssg.dll "
+                             "рядом с исполняемым файлом. Интерфейс игры тоже интерполируется.",
+    [UI_MENU_DLSS_FG_MULT] = "Кадров на отрисованный",
+    [UI_MENU_DLSS_FG_MULT_DESC] = "2x — один кадр между двумя отрисованными; 3x–6x требуют разблокированного "
+                                  "рантайма, иначе он откатывается к 2x.",
     [UI_MENU_FXAA] = "Сглаживание игры (FXAA)",
     [UI_MENU_FXAA_DESC] = "Собственное сглаживание FXAA. Слегка размывает мелкие детали; с DLAA оно не нужно.",
 
@@ -1670,6 +1684,13 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
                                 "objeto), para que guarde a história deles em vez de rastros fracos.",
     [UI_MENU_DLSS_CHARS_OFF] = "Desligado", [UI_MENU_DLSS_CHARS_LIGHT] = "Leve", [UI_MENU_DLSS_CHARS_MEDIUM] = "Médio",
     [UI_MENU_DLSS_CHARS_FULL] = "Completo",
+    [UI_MENU_DLSS_FG] = "Geração de quadros DLSS",
+    [UI_MENU_DLSS_FG_DESC] = "Interpola quadros extras entre dois renderizados com o DLSS, e a imagem corre a um "
+                             "múltiplo da taxa. Requer GeForce RTX 40 ou mais nova, dlss ligado e nvngx_dlssg.dll ao "
+                             "lado do executável. O HUD do jogo também é interpolado.",
+    [UI_MENU_DLSS_FG_MULT] = "Quadros por quadro renderizado",
+    [UI_MENU_DLSS_FG_MULT_DESC] = "2x mostra um quadro gerado entre dois renderizados; 3x a 6x pedem um runtime "
+                                  "desbloqueado, senão ele volta para 2x.",
     [UI_MENU_FXAA] = "Antisserrilhado do jogo (FXAA)",
     [UI_MENU_FXAA_DESC] = "A suavização de bordas FXAA do próprio jogo. Borra um pouco os detalhes finos; com o DLAA "
                           "ligado não é necessária.",
@@ -2328,6 +2349,10 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
     [UI_MENU_DLSS_CHARS_DESC] = "把角色、动物及其手持物的自身运动（逐物体运动矢量）交给 DLSS，让它保留它们的历史，而不是留下淡淡的拖影。",
     [UI_MENU_DLSS_CHARS_OFF] = "关闭", [UI_MENU_DLSS_CHARS_LIGHT] = "轻", [UI_MENU_DLSS_CHARS_MEDIUM] = "中",
     [UI_MENU_DLSS_CHARS_FULL] = "全部",
+    [UI_MENU_DLSS_FG] = "DLSS 帧生成",
+    [UI_MENU_DLSS_FG_DESC] = "用 DLSS 在两个真实帧之间插入额外帧，让画面以成倍的帧率运行。需要 GeForce RTX 40 或更新显卡、开启 dlss，且 exe 旁边有 nvngx_dlssg.dll。游戏 HUD 也会被一起插帧。",
+    [UI_MENU_DLSS_FG_MULT] = "每渲染帧生成帧数",
+    [UI_MENU_DLSS_FG_MULT_DESC] = "2x 在两个真实帧之间生成一帧；3x–6x 需要解锁版运行时，否则运行时会回落到 2x。",
     [UI_MENU_FXAA] = "游戏抗锯齿（FXAA）",
     [UI_MENU_FXAA_DESC] = "游戏自身的 FXAA 边缘平滑。会让细节略微模糊；开启 DLAA 时不需要。",
     [UI_MENU_TAB_CHEATS] = "金手指",

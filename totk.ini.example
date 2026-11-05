@@ -208,6 +208,13 @@
 # The game's own FXAA after the post effects; with DLAA on it is not needed. Changes while the game runs take effect at
 # once.
 # fxaa = 1
+#
+# DLSS frame generation: interpolates extra frames between two rendered ones, so the picture runs at a multiple of the
+# frame rate (2x shows one generated frame per rendered one). Needs a GeForce RTX 40 or newer, dlss on, and the
+# frame-generation model from NVIDIA next to the executable (Windows: nvngx_dlssg.dll next to totk.exe). The game's
+# HUD is interpolated too. Read at start; the multiplier applies at once.
+# dlss_fg = 0
+# dlss_fg_mult = 2
 
 # HDR output: hdr = 1 sends the picture as HDR10 (needs HDR on in Windows, "Use HDR", or a Wayland compositor with
 # colour management; without it the picture stays SDR). The game's tonemap keeps highlights up to hdr_peak_nits (your

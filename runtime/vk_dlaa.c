@@ -25,84 +25,18 @@
 #include "platform/platform.h"
 #include "vk.h"
 #include "vk_dlaa.h"
+#include "vk_dlssg.h"
 #include "vk_fsr31.h"
 #include "vk_exec.h"
+#include "vk_ngx.h"
 #include "vk_rec.h"
 #include "dlaa_mv_spv.h"
 
-typedef int NgxResult;   // NVSDK_NGX_Result: 1 success, 0xBAD00000 | n failures
-#define NGX_OK(r) (((unsigned)(r) & 0xFFF00000u) != 0xBAD00000u)
-#define NGX_VERSION_API 0x15
-#define NGX_FEATURE_SUPERSAMPLING 1
 #define NGX_PERFQ_DLAA 5   // NVSDK_NGX_PerfQuality_Value: 0 performance, 1 balanced, 2 quality, 3 ultra performance
-typedef struct NgxParam NgxParam;
-typedef struct NgxHandle NgxHandle;
-typedef struct { void *slot[17]; } NgxParamVtbl;
-struct NgxParam { const NgxParamVtbl *vt; };
-typedef struct {   // NVSDK_NGX_ImageViewInfo_VK
-    VkImageView view;
-    VkImage image;
-    VkImageSubresourceRange range;
-    VkFormat format;
-    unsigned width, height;
-} NgxImageView;
-typedef struct {   // NVSDK_NGX_Resource_VK
-    union { NgxImageView img; struct { VkBuffer buffer; unsigned bytes; } buf; } r;
-    int type;      // 0 image view, 1 buffer
-    _Bool rw;
-} NgxResourceVK;
 
-typedef NgxResult (*PFN_Init)(unsigned long long app, const wchar_t *path, VkInstance, VkPhysicalDevice, VkDevice,
-                              PFN_vkGetInstanceProcAddr, PFN_vkGetDeviceProcAddr, int version, const void *info);
-typedef NgxResult (*PFN_ReqExt)(unsigned *ni, const char ***ie, unsigned *nd, const char ***de);
-typedef NgxResult (*PFN_Params)(NgxParam **);
-typedef NgxResult (*PFN_DestroyParams)(NgxParam *);
-typedef NgxResult (*PFN_Create)(VkCommandBuffer, int feature, NgxParam *, NgxHandle **);
-typedef NgxResult (*PFN_Evaluate)(VkCommandBuffer, const NgxHandle *, const NgxParam *, void *callback);
-typedef NgxResult (*PFN_Release)(NgxHandle *);
+#define DLSS_MODEL NGX_DLSS_MODEL
 
-static struct {
-    void *core;   // the NGX core library (an HMODULE on Windows)
-    PFN_Init init;
-    PFN_ReqExt req_ext;
-    PFN_Params caps, alloc_params;
-    PFN_DestroyParams destroy_params;
-    PFN_Create create;
-    PFN_Evaluate evaluate;
-    PFN_Release release;
-    int tried, loaded, available;
-    int wanted;   // -1 not read yet
-} N = {.wanted = -1};
-
-typedef void (*SetI)(NgxParam *, const char *, int);
-typedef void (*SetU)(NgxParam *, const char *, unsigned);
-typedef void (*SetF)(NgxParam *, const char *, float);
-typedef void (*SetP)(NgxParam *, const char *, void *);
-typedef NgxResult (*GetI)(const NgxParam *, const char *, int *);
-typedef NgxResult (*GetU)(const NgxParam *, const char *, unsigned *);
-typedef NgxResult (*GetF)(const NgxParam *, const char *, float *);
-typedef NgxResult (*GetP)(const NgxParam *, const char *, void **);
-// The SDK declares Set(u64), Set(float), Set(double), Set(u32), Set(int), Set(ID3D11Resource *), Set(ID3D12Resource *),
-// Set(void *), then the Get overloads in the same order, then Reset.
-#ifdef _WIN32
-enum { S_P = 0, S_D12, S_D11, S_I, S_U32, S_D, S_F, S_U64, G_P, G_D12, G_D11, G_I, G_U32, G_D, G_F, G_U64 };
-#else
-enum { S_U64 = 0, S_F, S_D, S_U32, S_I, S_D11, S_D12, S_P, G_U64, G_F, G_D, G_U32, G_I, G_D11, G_D12, G_P };
-#endif
-static void p_seti(NgxParam *p, const char *n, int v) { ((SetI)p->vt->slot[S_I])(p, n, v); }
-static void p_setu(NgxParam *p, const char *n, unsigned v) { ((SetU)p->vt->slot[S_U32])(p, n, v); }
-static void p_setf(NgxParam *p, const char *n, float v) { ((SetF)p->vt->slot[S_F])(p, n, v); }
-static void p_setp(NgxParam *p, const char *n, void *v) { ((SetP)p->vt->slot[S_P])(p, n, v); }
-static int p_geti(const NgxParam *p, const char *n, int *v) { return NGX_OK(((GetI)p->vt->slot[G_I])(p, n, v)); }
-static int p_getu(const NgxParam *p, const char *n, unsigned *v) { return NGX_OK(((GetU)p->vt->slot[G_U32])(p, n, v)); }
-static int p_getf(const NgxParam *p, const char *n, float *v) { return NGX_OK(((GetF)p->vt->slot[G_F])(p, n, v)); }
-static int p_getp(const NgxParam *p, const char *n, void **v) { return NGX_OK(((GetP)p->vt->slot[G_P])(p, n, v)); }
-
-#ifdef _WIN32
-#define DLSS_MODEL "nvngx_dlss.dll"
-#else
-#define DLSS_MODEL "libnvidia-ngx-dlss.so.<version>"
-#endif
+static int g_dlss_available;   // NGX came up and reported DLSS available on this device (vk_dlaa_init)
 
 // NGX is brought up only when dlaa is on at start: its device extensions can only be asked for at device creation, and
 // loading the driver's NGX core on every NVIDIA machine would cost start time and change the device with DLAA off. So
@@ -111,52 +45,6 @@ int vk_dlaa_wanted(void) {
     static int wanted = -1;
     if (wanted < 0) wanted = cfg_bool("TOTK_DLAA") || vk_fsr31_wanted();
     return wanted;
-}
-
-static int core_load(void) {
-    if (N.tried) return N.loaded;
-    N.tried = 1;
-#ifdef _WIN32
-    char dir[MAX_PATH] = {0}, path[MAX_PATH + 32];
-    DWORD n = sizeof dir;
-    if (RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\NVIDIA Corporation\\Global\\NGXCore", "FullPath", RRF_RT_REG_SZ,
-                     NULL, dir, &n) != ERROR_SUCCESS) {
-        rt_log("dlaa: the driver has no NGX core (registry NGXCore missing): DLAA off");
-        return 0;
-    }
-    snprintf(path, sizeof path, "%s\\_nvngx.dll", dir);
-    N.core = LoadLibraryA(path);
-    if (!N.core) {
-        rt_log("dlaa: cannot load %s (error %lu): DLAA off", path, GetLastError());
-        return 0;
-    }
-#define FN(f, name) N.f = (void *)GetProcAddress((HMODULE)N.core, name)
-#else
-    // The driver's NGX core; the dynamic loader finds it where the driver put it (/usr/lib, /usr/lib/x86_64-linux-gnu).
-    const char *path = "libnvidia-ngx.so.1";
-    N.core = plat_lib_open(path);
-    if (!N.core) {
-        rt_log("dlaa: cannot load %s (not an NVIDIA driver, or one without NGX): DLAA off", path);
-        return 0;
-    }
-#define FN(f, name) N.f = plat_lib_sym(N.core, name)
-#endif
-    FN(init, "NVSDK_NGX_VULKAN_Init_Ext2");
-    FN(req_ext, "NVSDK_NGX_VULKAN_RequiredExtensions");
-    FN(caps, "NVSDK_NGX_VULKAN_GetCapabilityParameters");
-    FN(alloc_params, "NVSDK_NGX_VULKAN_AllocateParameters");
-    FN(destroy_params, "NVSDK_NGX_VULKAN_DestroyParameters");
-    FN(create, "NVSDK_NGX_VULKAN_CreateFeature");
-    FN(evaluate, "NVSDK_NGX_VULKAN_EvaluateFeature");
-    FN(release, "NVSDK_NGX_VULKAN_ReleaseFeature");
-#undef FN
-    if (!N.init || !N.req_ext || !N.caps || !N.alloc_params || !N.create || !N.evaluate || !N.release) {
-        rt_log("dlaa: the NGX core %s lacks Vulkan entry points: DLAA off", path);
-        return 0;
-    }
-    N.loaded = 1;
-    rt_log("dlaa: NGX core %s", path);
-    return 1;
 }
 
 static int listed(const char *const *list, uint32_t n, const char *s) {
@@ -168,7 +56,7 @@ static int listed(const char *const *list, uint32_t n, const char *s) {
 void vk_dlaa_instance_exts(const char **ext, uint32_t *n, uint32_t max) {
     unsigned ni = 0, nd = 0;
     const char **ie = NULL, **de = NULL;
-    if (!vk_dlaa_wanted() || vk_fsr31_wanted() || !core_load() || !NGX_OK(N.req_ext(&ni, &ie, &nd, &de))) return;
+    if (!vk_ngx_load() || !NGX_OK(vk_ngx_required_exts(&ni, &ie, &nd, &de))) return;
     for (unsigned i = 0; i < ni; i++)
         if (!listed(ext, *n, ie[i]) && *n < max) ext[(*n)++] = ie[i];
 }
@@ -177,7 +65,7 @@ void vk_dlaa_device_exts(const VkExtensionProperties *have, uint32_t nhave, cons
                          uint32_t max) {
     unsigned ni = 0, nd = 0;
     const char **ie = NULL, **de = NULL;
-    if (!vk_dlaa_wanted() || vk_fsr31_wanted() || !core_load() || !NGX_OK(N.req_ext(&ni, &ie, &nd, &de))) return;
+    if (!vk_ngx_load() || !NGX_OK(vk_ngx_required_exts(&ni, &ie, &nd, &de))) return;
     for (unsigned i = 0; i < nd; i++) {
         int ok = 0;
         for (uint32_t k = 0; k < nhave && !ok; k++) ok = !strcmp(have[k].extensionName, de[i]);
@@ -186,90 +74,25 @@ void vk_dlaa_device_exts(const VkExtensionProperties *have, uint32_t nhave, cons
     }
 }
 
-static int vtable_ok(void) {
-    NgxParam *p = NULL;
-    if (!NGX_OK(N.alloc_params(&p)) || !p) return 0;
-    int i = 0;
-    unsigned u = 0;
-    float f = 0;
-    void *v = NULL;
-    p_seti(p, "TotK.Test.I", -12345);
-    p_setu(p, "TotK.Test.U", 4000000000u);
-    p_setf(p, "TotK.Test.F", 1.25f);
-    p_setp(p, "TotK.Test.P", (void *)p);
-    int ok = p_geti(p, "TotK.Test.I", &i) && i == -12345 && p_getu(p, "TotK.Test.U", &u) && u == 4000000000u &&
-             p_getf(p, "TotK.Test.F", &f) && f == 1.25f && p_getp(p, "TotK.Test.P", &v) && v == (void *)p;
-    if (N.destroy_params) N.destroy_params(p);
-    if (!ok) rt_log("dlaa: NGX parameter layout check failed (i=%d u=%u f=%g p=%p): DLAA off", i, u, f, v);
-    return ok;
-}
-
-#ifndef _WIN32
-// UTF-8 to UTF-32 wchar_t, without the C library's locale (the runtime never sets one, so mbstowcs would stop at the
-// first non-ASCII byte). Returns 0 on malformed input or when out has no room.
-static int utf8_to_wide(const char *in, wchar_t *out, size_t cap) {
-    const unsigned char *u = (const unsigned char *)in;
-    size_t n = 0;
-    while (*u) {
-        unsigned c = *u++, more = c < 0x80 ? 0 : c >= 0xF0 ? 3 : c >= 0xE0 ? 2 : c >= 0xC0 ? 1 : 4;
-        if (more == 4) return 0;
-        if (more) c &= 0x3F >> more;
-        for (unsigned k = 0; k < more; k++, u++) {
-            if ((*u & 0xC0) != 0x80) return 0;
-            c = c << 6 | (*u & 0x3F);
-        }
-        if (n + 1 >= cap) return 0;
-        out[n++] = (wchar_t)c;
-    }
-    out[n] = 0;
-    return 1;
-}
-#endif
-
 void vk_dlaa_init(void) {
-    if (!vk_dlaa_wanted()) return;
+    if (!vk_dlaa_wanted() && !vk_dlssg_wanted()) return;
     if (vk_fsr31_wanted()) {   // FSR 3.1 takes the scene pass: no NGX, no device extensions
         rt_log("dlaa: FSR 3.1 in place of NGX (fsr31 = 1)");
         return;
     }
-    if (!core_load()) return;
-#ifdef _WIN32
-    wchar_t wdir[MAX_PATH];
-    DWORD len = GetModuleFileNameW(NULL, wdir, MAX_PATH);
-    while (len && wdir[len - 1] != L'\\') len--;
-    wdir[len] = 0;
-#else
-    // The executable's folder, where NGX looks for libnvidia-ngx-dlss.so and writes its logs, as a wchar_t string:
-    // 32-bit code points here, as the Linux core expects.
-    char dir[PLAT_PATH_MAX];
-    wchar_t wdir[PLAT_PATH_MAX];
-    char *cut = plat_exe_path(dir, sizeof dir) ? plat_last_sep(dir) : NULL;
-    if (!cut || !utf8_to_wide((cut[1] = 0, dir), wdir, PLAT_PATH_MAX)) {
-        rt_log("dlaa: cannot name the executable's folder for NGX: DLAA off");
-        return;
-    }
-#endif
-    // 231313132: the application id NVIDIA's DLSS samples use for builds without an NVIDIA-issued id
-    const VkCtx *c = vk_ctx();
-    NgxResult r = N.init(231313132ull, wdir, c->instance, c->phys, c->device, vkGetInstanceProcAddr,
-                         vkGetDeviceProcAddr, NGX_VERSION_API, NULL);
-    if (!NGX_OK(r)) {
-        rt_log("dlaa: NGX init failed (%08x): DLAA off", (unsigned)r);
-        return;
-    }
-    if (!vtable_ok()) return;
-    NgxParam *caps = NULL;
+    if (!vk_ngx_init()) return;
+    NgxParam *caps = vk_ngx_caps();
     int avail = 0, driver = 0;
-    if (NGX_OK(N.caps(&caps)) && caps) {
+    if (caps) {
         p_geti(caps, "SuperSampling.Available", &avail);
         p_geti(caps, "SuperSampling.NeedsUpdatedDriver", &driver);
     }
-    N.available = avail != 0;
+    g_dlss_available = avail != 0;
     rt_log("dlaa: NGX up; DLSS %s%s", avail ? "available" : "NOT available (is " DLSS_MODEL " next to the executable?)",
            driver ? "; the driver needs an update" : "");
 }
 
-int vk_dlaa_available(void) { return vk_dlaa_wanted() && (N.available || vk_fsr31_wanted()); }
+int vk_dlaa_available(void) { return vk_dlaa_wanted() && (g_dlss_available || vk_fsr31_wanted()); }
 
 // ---------------------------------------------------------------- where DLAA runs in TotK's frame
 // Measured (TOTK_DUMP, frame 2100 at Lookout Landing, 2560x1440 scene): the G-buffer passes draw into five targets with
@@ -347,7 +170,7 @@ static struct {
 const VkTexImage *vk_dlaa_swap_img;
 VkImageView vk_dlaa_swap_view;
 
-static int dl_active(void) { return (N.available || vk_fsr31_wanted()) && !D.failed && D.on; }
+static int dl_active(void) { return (g_dlss_available || vk_fsr31_wanted()) && !D.failed && D.on; }
 
 static void dl_fail(const char *what, NgxResult r) {
     rt_log("dlaa: %s failed (%08x): DLAA off for this run", what, (unsigned)r);
@@ -382,7 +205,7 @@ static void free_size(struct Size *e) {
         if (e->chars_view[i]) vkDestroyImageView(c->device, e->chars_view[i], NULL);
         if (e->chars[i]) vmaDestroyImage(c->vma, e->chars[i], e->chars_mem[i]);
     }
-    if (e->feat) N.release(e->feat);
+    if (e->feat) vk_ngx_handle_release(e->feat);
     memset(e, 0, sizeof *e);
 }
 
@@ -988,7 +811,7 @@ static void evaluate(VkExec *ex, const VkExecTarget *dst) {
     if (!e) return dl_fail("work image creation", 0);
     if (e != D.last) D.reset = 1, D.why[0]++, e->chars_ok = 0;   // another size's history is from another moment
     // NGX parameter allocation is the DLSS path only: with FSR 3.1 taking the pass, all NGX entry points are NULL.
-    if (!vk_fsr31_wanted() && !D.params && !NGX_OK(N.alloc_params(&D.params)))
+    if (!vk_fsr31_wanted() && !D.params && !(D.params = vk_ngx_alloc()))
         return dl_fail("parameter allocation", 0);
     NgxParam *p = D.params;
     VkImageView zv = vk_exec_target_view(z->img, z->format, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_DEPTH_BIT, z->level,
@@ -1060,7 +883,7 @@ static void evaluate(VkExec *ex, const VkExecTarget *dst) {
         p_setu(p, "DLSS.Hint.Render.Preset.Balanced", (unsigned)pk);
         p_setu(p, "DLSS.Hint.Render.Preset.Performance", (unsigned)pm);
         p_setu(p, "DLSS.Hint.Render.Preset.UltraPerformance", (unsigned)pl);
-        NgxResult r = N.create(cb, NGX_FEATURE_SUPERSAMPLING, p, &e->feat);
+        NgxResult r = vk_ngx_create(cb, NGX_FEATURE_SUPERSAMPLING, p, &e->feat);
         if (!NGX_OK(r) || !e->feat) return dl_fail("DLSS feature creation", r);
         D.reset = 1;
         int q = perf_quality(w, ow), pr = q == 0 ? pm : q == 3 ? pl : pk;
@@ -1100,7 +923,7 @@ static void evaluate(VkExec *ex, const VkExecTarget *dst) {
     D.last_eval_ns = now;
     p_setf(p, "FrameTimeDeltaInMsec", dt > 0 && dt < 100 ? (float)dt : 16.67f);
     c0 = timed ? kern_now_ns() : 0;
-    NgxResult r = N.evaluate(cb, e->feat, p, NULL);
+    NgxResult r = vk_ngx_evaluate(cb, e->feat, p);
     if (timed) T.cpu_ngx += kern_now_ns() - c0;
     if (!NGX_OK(r)) return dl_fail("DLSS evaluation", r);
     if (timed) times_mark(cb, T_DL1);   // through the recorder, after NGX's own commands

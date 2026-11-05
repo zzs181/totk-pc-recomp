@@ -692,6 +692,10 @@ static void tab_screen(float scale) {
     static const UiTextId dlss_chars[] = {UI_MENU_DLSS_CHARS_OFF, UI_MENU_DLSS_CHARS_LIGHT, UI_MENU_DLSS_CHARS_MEDIUM,
                                           UI_MENU_DLSS_CHARS_FULL};
     opt_choice("TOTK_DLSS_CHAR_MASK", UI_MENU_DLSS_CHARS, dlss_chars, 4, UI_MENU_DLSS_CHARS_DESC);
+    opt_toggle("TOTK_DLSS_FG", UI_MENU_DLSS_FG, UI_MENU_DLSS_FG_DESC);
+    static const char *const fg_mult[] = {"2", "3", "4", "5", "6"};
+    static const char *const fg_names[] = {"2x", "3x", "4x", "5x", "6x"};
+    opt_choice_list("TOTK_DLSS_FG_MULT", UI_MENU_DLSS_FG_MULT, fg_mult, fg_names, 5, UI_MENU_DLSS_FG_MULT_DESC);
     opt_toggle("TOTK_FXAA", UI_MENU_FXAA, UI_MENU_FXAA_DESC);
     rows_color();
     opt_group(UI_MENU_HDR_GROUP);
