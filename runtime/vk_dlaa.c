@@ -25,6 +25,7 @@
 #include "platform/platform.h"
 #include "vk.h"
 #include "vk_dlaa.h"
+#include "vk_fsr31.h"
 #include "vk_exec.h"
 #include "vk_rec.h"
 #include "dlaa_mv_spv.h"
@@ -108,7 +109,7 @@ static int p_getp(const NgxParam *p, const char *n, void **v) { return NGX_OK(((
 // dlaa applies after a restart; switched off, nothing else of DLAA runs.
 int vk_dlaa_wanted(void) {
     static int wanted = -1;
-    if (wanted < 0) wanted = cfg_bool("TOTK_DLAA");
+    if (wanted < 0) wanted = cfg_bool("TOTK_DLAA") || vk_fsr31_wanted();
     return wanted;
 }
 
@@ -167,7 +168,7 @@ static int listed(const char *const *list, uint32_t n, const char *s) {
 void vk_dlaa_instance_exts(const char **ext, uint32_t *n, uint32_t max) {
     unsigned ni = 0, nd = 0;
     const char **ie = NULL, **de = NULL;
-    if (!vk_dlaa_wanted() || !core_load() || !NGX_OK(N.req_ext(&ni, &ie, &nd, &de))) return;
+    if (!vk_dlaa_wanted() || vk_fsr31_wanted() || !core_load() || !NGX_OK(N.req_ext(&ni, &ie, &nd, &de))) return;
     for (unsigned i = 0; i < ni; i++)
         if (!listed(ext, *n, ie[i]) && *n < max) ext[(*n)++] = ie[i];
 }
@@ -176,7 +177,7 @@ void vk_dlaa_device_exts(const VkExtensionProperties *have, uint32_t nhave, cons
                          uint32_t max) {
     unsigned ni = 0, nd = 0;
     const char **ie = NULL, **de = NULL;
-    if (!vk_dlaa_wanted() || !core_load() || !NGX_OK(N.req_ext(&ni, &ie, &nd, &de))) return;
+    if (!vk_dlaa_wanted() || vk_fsr31_wanted() || !core_load() || !NGX_OK(N.req_ext(&ni, &ie, &nd, &de))) return;
     for (unsigned i = 0; i < nd; i++) {
         int ok = 0;
         for (uint32_t k = 0; k < nhave && !ok; k++) ok = !strcmp(have[k].extensionName, de[i]);
@@ -226,7 +227,12 @@ static int utf8_to_wide(const char *in, wchar_t *out, size_t cap) {
 #endif
 
 void vk_dlaa_init(void) {
-    if (!vk_dlaa_wanted() || !core_load()) return;
+    if (!vk_dlaa_wanted()) return;
+    if (vk_fsr31_wanted()) {   // FSR 3.1 takes the scene pass: no NGX, no device extensions
+        rt_log("dlaa: FSR 3.1 in place of NGX (fsr31 = 1)");
+        return;
+    }
+    if (!core_load()) return;
 #ifdef _WIN32
     wchar_t wdir[MAX_PATH];
     DWORD len = GetModuleFileNameW(NULL, wdir, MAX_PATH);
@@ -263,7 +269,7 @@ void vk_dlaa_init(void) {
            driver ? "; the driver needs an update" : "");
 }
 
-int vk_dlaa_available(void) { return vk_dlaa_wanted() && N.available; }
+int vk_dlaa_available(void) { return vk_dlaa_wanted() && (N.available || vk_fsr31_wanted()); }
 
 // ---------------------------------------------------------------- where DLAA runs in TotK's frame
 // Measured (TOTK_DUMP, frame 2100 at Lookout Landing, 2560x1440 scene): the G-buffer passes draw into five targets with
@@ -341,7 +347,7 @@ static struct {
 const VkTexImage *vk_dlaa_swap_img;
 VkImageView vk_dlaa_swap_view;
 
-static int dl_active(void) { return N.available && !D.failed && D.on; }
+static int dl_active(void) { return (N.available || vk_fsr31_wanted()) && !D.failed && D.on; }
 
 static void dl_fail(const char *what, NgxResult r) {
     rt_log("dlaa: %s failed (%08x): DLAA off for this run", what, (unsigned)r);
@@ -981,7 +987,9 @@ static void evaluate(VkExec *ex, const VkExecTarget *dst) {
     struct Size *e = size_for(cb, w, h, ow, oh);
     if (!e) return dl_fail("work image creation", 0);
     if (e != D.last) D.reset = 1, D.why[0]++, e->chars_ok = 0;   // another size's history is from another moment
-    if (!D.params && !NGX_OK(N.alloc_params(&D.params))) return dl_fail("parameter allocation", 0);
+    // NGX parameter allocation is the DLSS path only: with FSR 3.1 taking the pass, all NGX entry points are NULL.
+    if (!vk_fsr31_wanted() && !D.params && !NGX_OK(N.alloc_params(&D.params)))
+        return dl_fail("parameter allocation", 0);
     NgxParam *p = D.params;
     VkImageView zv = vk_exec_target_view(z->img, z->format, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_DEPTH_BIT, z->level,
                                          z->base_layer, 1, 0);
@@ -999,6 +1007,29 @@ static void evaluate(VkExec *ex, const VkExecTarget *dst) {
     VkImageView cv = vk_exec_target_view(t->img, t->format, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT, t->level,
                                          t->base_layer, 1, 0);
     struct Snap *mk = D.mv_samp ? mask_pass(cb, cv, w, h) : NULL;
+    if (D.last_color != t->image) D.reset = 1, D.why[2]++, D.last_color = t->image;
+    if (vk_fsr31_wanted()) {   // FFX instead of NGX: the same inputs, its own context and dispatch
+        VkImage bias = mk ? mk->mask : e->mask;
+        if (!vk_fsr31_evaluate(cb, t->image, t->format, z->image, z->format, e->mv, e->out, w, h, ow, oh, bias, jx, jy,
+                               D.reset))
+            return dl_fail("FSR 3.1 evaluation", 0);
+        VkImageBlit b = {.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
+                         .srcOffsets = {{0, 0, 0}, {(int32_t)ow, (int32_t)oh, 1}},
+                         .dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, dst->level, dst->base_layer, 1},
+                         .dstOffsets = {{0, 0, 0}, {(int32_t)ow, (int32_t)oh, 1}}};
+        vkCmdBlitImage(cb, e->out, VK_IMAGE_LAYOUT_GENERAL, dst->image, VK_IMAGE_LAYOUT_GENERAL, 1, &b, VK_FILTER_NEAREST);
+        full_barrier(cb);
+        if (dst != t) vk_dlaa_swap_img = t->img, vk_dlaa_swap_view = e->out_view;
+        ex->recorded += 4;
+        vk_exec_draw_new_cb();
+        D.jdepth = z->image;
+        next_jitter(w, ow);
+        D.reset = 0, D.last = e, e->used = D.evals + 1, D.evals++;
+        if (D.evals == 1 || D.evals % 3600 == 0)
+            rt_log("dlaa: %llu frames upscaled by FSR 3.1 (scene %ux%u, output %ux%u)", (unsigned long long)D.evals, w, h,
+                   ow, oh);
+        return;
+    }
     int timed = T.on > 0 && T.used[T.slot];   // mv_pass began this frame's slot
     if (timed) times_mark(cb, T_DL0);
     uint64_t c0 = timed ? kern_now_ns() : 0;
@@ -1190,7 +1221,7 @@ void vk_dlaa_frame(void) {
     vk_dlaa_swap_img = NULL, vk_dlaa_swap_view = VK_NULL_HANDLE;
     dlss_mode();
     preset_check();
-    int on = N.available && cfg_bool("TOTK_DLAA");
+    int on = vk_dlaa_available() && (cfg_bool("TOTK_DLAA") || vk_fsr31_wanted());
     if (on != D.on) {
         rt_log("dlaa: %s", on ? "on" : "off");
         D.on = on;
