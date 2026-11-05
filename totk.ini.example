@@ -300,6 +300,9 @@
 # mouse is not clamped to the stick's radius and the free camera takes degrees directly; Ultrahand's held object gets
 # its own input too. 1 = on, and mouse_direct above is then off. 1.4.3 only.
 # mouse_orbit = 0
+# The abilities' vertical camera speed follows the frame rate in the game (2x at 60 fps while Ultrahand is held); 1
+# scales it to the Switch's degrees per second at any rate, 0 keeps the game's own step (1.4.3 only).
+# ability_pitch = 1
 # Hold-to-tilt for the gyro shrines: while this key is held the mouse feeds the virtual controller's six-axis and the
 # direct mouse look is paused; none disables. A gamepad with motion sensors keeps its own six-axis.
 # mouse_motion_key = k

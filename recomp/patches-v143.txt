@@ -130,6 +130,16 @@ site mouseorbit main 18e444 f9400408 94e546db   # bl page+0xfb0, orbit_begin (ld
 site mouseorbit main 18f108 bd4047ec 94e543a6   # bl page+0xfa0, orbit_angles (ldr s12, [sp, #0x44])
 site mouseorbit main 1d59460 b9004be8 94761acc  # bl page+0xf90, hand_input (str w8, [sp, #0x48])
 
+# The abilities' camera pitch (upstream Weeping of the Empire v0.1.9.1 #66: the vertical speed while Ultrahand is held
+# grew with the frame rate, 2x at 60 fps). The camera's special-power update adds processed stick * LatStickScale to the
+# pitch once per frame, with no dt (main+0x450144..0x45016c: pitch at camera+0xc2c, the scale at +0xc34). The site
+# multiplies that step by the 30 Hz ratio (at most 1) that frame_rate.c keeps on the patch page +0x118, so the pitch turns
+# at the Switch's degrees per second at any rate. x0 is loaded again by the next instruction and s1 by the one after, so
+# both are free here. TOTK_ABILITY_PITCH=0 runs the game's own step; the 1.4.3 offsets are ours (WOTE's 1.4.3 build lays
+# its camera out differently, its getter is called directly there).
+set abilitypitch TOTK_ABILITY_PITCH 1
+site abilitypitch main 450158 1e220800 1e220800 @page:x0 bd411801 1e210800   # fmul s0, s0, s2, then s0 *= page+0x118
+
 # The game's zstd decoder (BSD zstd, statically linked into main) through the host's libzstd (runtime/ov_zstd.c):
 # every call of ZSTD_decompressMultiFrame (main+0x3a1f0: dctx, dst, capacity, src, size, dict, dict size, ddict) and of
 # its wrapper ZSTD_decompress_usingDDict (main+0x3a1e0, which tail-branches to it) goes to a host function on the patch

@@ -64,6 +64,8 @@
 static _Atomic uint64_t *step_word;   // patch page +0: ratio (low float), seconds (high float)
 static double step_now = STEP_FIRST_S;   // the step the patch page holds: what the game steps each frame
 static _Atomic uint32_t *step_interval;   // patch page +8: seconds * 60 (patches-v143.txt realtime)
+static _Atomic uint32_t *step_pitch;      // patch page +0x118: the 30 Hz ratio at most 1, for per-frame constants
+                                          // (patches-v143.txt abilitypitch)
 static uint64_t last_ns;
 static double samples[STEP_SAMPLES];
 static unsigned sample_count, sample_next;
@@ -100,6 +102,13 @@ void frame_step_init(void) {
         step_word = (_Atomic uint64_t *)rt_patch_page();
         step_interval = (_Atomic uint32_t *)((uint8_t *)rt_patch_page() + 8);
         step_store((float)STEP_FIRST_S);
+    }
+    if (rt_patch_page()) {   // without the real-time step the game steps 1/60 s a frame: half a 30 Hz frame
+        step_pitch = (_Atomic uint32_t *)((uint8_t *)rt_patch_page() + 0x118);
+        float v = step_word ? 0.5f : 0.5f;
+        uint32_t b;
+        memcpy(&b, &v, 4);
+        atomic_store_explicit(step_pitch, b, memory_order_relaxed);
     }
     frame_limit_live();   // TOTK_FPS_LIMIT decides the set fps60 from the start
     rt_log("frame rate: present interval %s, %s", rt_patch_enabled(fps60) ? "1..3 (above 30 fps)" : "2..3 (shipping 30 fps)",
@@ -277,8 +286,22 @@ static void world_clock(double dt, double step) {
     atomic_store_explicit(&world_us, w + (int64_t)(step * 1e6 + 0.5), memory_order_relaxed);
 }
 
+// TOTK_ABILITY_PITCH: the abilities' camera pitch is a per-frame add in the game (main+0x450158); the
+// abilitypitch site multiplies it by this page value, so it turns at the Switch's degrees per second at any frame
+// rate. Live, default on; 0 runs the game's own step.
+static int ability_set = -2;
+static unsigned ability_seen;
+static void ability_pitch_live(void) {
+    unsigned ver = cfg_version();
+    if (ver == ability_seen) return;
+    ability_seen = ver;
+    if (ability_set == -2) ability_set = rt_patch_set("abilitypitch");
+    if (ability_set >= 0) rt_patch_switch(ability_set, cfg_bool("TOTK_ABILITY_PITCH"));
+}
+
 void frame_step_present(uint64_t display_ns, int interval) {
     frame_limit_live();
+    ability_pitch_live();
     double step = 0, dt = last_ns ? (double)(display_ns - last_ns) * 1e-9 : 0;
     if (step_word && last_ns) {
         if (dt > STEP_RESET_S || dt < 0.001) {
@@ -292,6 +315,13 @@ void frame_step_present(uint64_t display_ns, int interval) {
             step = sum / sample_count;
             if (step < STEP_MIN_S) step = STEP_MIN_S;
             step_store((float)step);
+            if (step_pitch) {
+                float r = (float)(step * 30.0);
+                if (r > 1) r = 1;
+                uint32_t b;
+                memcpy(&b, &r, 4);
+                atomic_store_explicit(step_pitch, b, memory_order_relaxed);
+            }
         }
     }
     last_ns = display_ns;

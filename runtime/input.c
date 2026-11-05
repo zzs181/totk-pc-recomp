@@ -427,7 +427,8 @@ static void mouse_direct_sync(void) {
     memcpy(page + MD_K, &zero, sizeof zero);
 }
 
-static void mouse_direct_frame(int32_t dx, int32_t dy, int aim) {    uint8_t *page = rt_patch_page();
+static void mouse_direct_frame(int32_t dx, int32_t dy, int aim) {
+    uint8_t *page = rt_patch_page();
     if (!page) return;
     uint32_t tx = md_load(page, MD_TOTAL_X) + (uint32_t)dx;
     uint32_t ty = md_load(page, MD_TOTAL_Y) + (uint32_t)dy;
