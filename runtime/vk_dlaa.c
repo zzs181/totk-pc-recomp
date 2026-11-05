@@ -1009,7 +1009,10 @@ static void evaluate(VkExec *ex, const VkExecTarget *dst) {
     struct Snap *mk = D.mv_samp ? mask_pass(cb, cv, w, h) : NULL;
     if (D.last_color != t->image) D.reset = 1, D.why[2]++, D.last_color = t->image;
     if (vk_fsr31_wanted()) {   // FFX instead of NGX: the same inputs, its own context and dispatch
+        // The reactive / characters' mask is off by default: bound as FFX's reactive input it GPU-faults
+        // (write invalid at 0, device lost; bisected with FSR31_NOREACTIVE). FSR31_REACTIVE=1 puts it back (test).
         VkImage bias = mk ? mk->mask : e->mask;
+        if (!rt_knob("FSR31_REACTIVE", "0")) bias = VK_NULL_HANDLE;
         if (!vk_fsr31_evaluate(cb, t->image, t->format, z->image, z->format, e->mv, e->out, w, h, ow, oh, bias, jx, jy,
                                D.reset))
             return dl_fail("FSR 3.1 evaluation", 0);

@@ -231,8 +231,11 @@ int vk_fsr31_evaluate(VkCommandBuffer cb, VkImage color, VkFormat cfmt, VkImage 
                       VkImage out, uint32_t w, uint32_t h, uint32_t ow, uint32_t oh, VkImage bias, float jx, float jy,
                       int reset) {
     if (!vk_fsr31_wanted() || F.fails > 3) return 0;
-    uint32_t flags = FFX_UPSCALE_ENABLE_AUTO_EXPOSURE | FFX_UPSCALE_ENABLE_DYNAMIC_RESOLUTION |
-                     FFX_UPSCALE_ENABLE_HIGH_DYNAMIC_RANGE;
+    // fault bisection knobs (each defaults on; TOTK_FSR31_NOEXPOSURE / _NODYNRES / _NOHDR = 1 off)
+    uint32_t flags = 0;
+    if (!rt_knob("FSR31_NOEXPOSURE", "0")) flags |= FFX_UPSCALE_ENABLE_AUTO_EXPOSURE;
+    if (!rt_knob("FSR31_NODYNRES", "0")) flags |= FFX_UPSCALE_ENABLE_DYNAMIC_RESOLUTION;
+    if (!rt_knob("FSR31_NOHDR", "0")) flags |= FFX_UPSCALE_ENABLE_HIGH_DYNAMIC_RANGE;
     if (!S.ctx || S.ow != ow || S.oh != oh || S.flags != flags || w > S.rw || h > S.rh) {
         uint32_t rw = (S.ctx && S.ow == ow && S.oh == oh && S.rw > w) ? S.rw : w;
         uint32_t rh = (S.ctx && S.ow == ow && S.oh == oh && S.rh > h) ? S.rh : h;
