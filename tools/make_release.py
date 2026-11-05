@@ -395,7 +395,7 @@ def runtime_lib(out, llvm):
         if p.suffix in RUNTIME_SUFFIXES and p.is_file():
             (rt / p.relative_to(ROOT / 'runtime')).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(p, rt / p.relative_to(ROOT / 'runtime'))
-    for name in ('romfs.c', 'patches.c', 'ov_zstd.c'):   # build_game.py INSTALL_SIDE
+    for name in ('romfs.c', 'patches.c', 'ov_zstd.c', 'mouse_direct.c', 'hook.c'):   # build_game.py INSTALL_SIDE
         shutil.copy2(ROOT / 'runtime' / name, rt / name)
 
 

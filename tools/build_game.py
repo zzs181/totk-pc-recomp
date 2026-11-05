@@ -154,11 +154,11 @@ def vma_include():
 LLVM_LINK_LIBS = ['-lpsapi', '-lbcrypt', '-luser32', '-lgdi32', '-ldwmapi', '-limm32', '-lwinmm', '-lole32', '-lshell32', '-luuid', '-lvulkan-1', '-lSDL3', '-lopus',
                   '-l:libvpx.a', '-l:libzstd.a', '-l:libc++.a', '-l:libc++abi.a', '-l:libunwind.a', '-l:libwinpthread.a']
 DEFAULT_DEPS = ROOT / 'toolchain' / 'deps-mingw'
-# Runtime sources compiled per install, not in the library: romfs.c includes romfs_config.h, patches.c and ov_zstd.c
-# the patches.h of the player's game version (its patch page is the page after that version's main; ov_zstd.c's host
-# functions sit on it), and hook.c its hooks.h (the slots of the table's `hook` lines: the library build has no table
-# and would compile every slot out).
-INSTALL_SIDE = {'romfs.c', 'patches.c', 'ov_zstd.c', 'hook.c'}
+# Runtime sources compiled per install, not in the library: romfs.c includes romfs_config.h, patches.c, ov_zstd.c and
+# mouse_direct.c the patches.h of the player's game version (its patch page is the page after that version's main;
+# ov_zstd.c's and mouse_direct.c's host functions sit on it), and hook.c its hooks.h (the slots of the table's `hook`
+# lines: the library build has no table and would compile every slot out).
+INSTALL_SIDE = {'romfs.c', 'patches.c', 'ov_zstd.c', 'mouse_direct.c', 'hook.c'}
 LIB_NAME = 'libtotkrt.a'
 AR = UCRT / 'llvm-ar.exe' if WIN else on_path('llvm-ar')
 WINDRES = UCRT / 'windres.exe'   # runtime/totk.rc: the manifest of totk.exe
@@ -879,6 +879,12 @@ def main():
     runtime_lib = args.runtime_lib.resolve() if args.runtime_lib else None
     if runtime_lib and not runtime_lib.is_file():
         sys.exit(f'{runtime_lib} not found: build it with --make-runtime-lib')
+    # The library leaves INSTALL_SIDE out, so a release that ships without one of them links with undefined symbols
+    # (0.3.10's installer missed mouse_direct.c this way).
+    missing = sorted(n for n in INSTALL_SIDE - skip if not (RUNTIME / n).is_file())
+    if runtime_lib and missing:
+        sys.exit(f'build_game: {", ".join(missing)} missing from runtime/: the release must ship every INSTALL_SIDE '
+                 f'source beside {runtime_lib.name}')
     text, objs, exe = ninja_file(gen, out, mods, jobs, skip, pairs is not None, runtime_lib,
                                  args.make_runtime_lib)
     write_if_changed(out / 'build.ninja', text)

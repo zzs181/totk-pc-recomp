@@ -369,7 +369,7 @@ static int mouse_direct_get(void) {
     unsigned ver = cfg_version();
     if (on < 0 || ver != seen) {
         seen = ver;
-        on = cfg_bool("TOTK_MOUSE_DIRECT");
+        on = cfg_bool("TOTK_MOUSE_DIRECT") && !cfg_bool("TOTK_MOUSE_ORBIT");
         int set = rt_patch_set("mousedirect");
         if (set >= 0) rt_patch_switch(set, on);
     }
@@ -427,8 +427,7 @@ static void mouse_direct_sync(void) {
     memcpy(page + MD_K, &zero, sizeof zero);
 }
 
-static void mouse_direct_frame(int32_t dx, int32_t dy, int aim) {
-    uint8_t *page = rt_patch_page();
+static void mouse_direct_frame(int32_t dx, int32_t dy, int aim) {    uint8_t *page = rt_patch_page();
     if (!page) return;
     uint32_t tx = md_load(page, MD_TOTAL_X) + (uint32_t)dx;
     uint32_t ty = md_load(page, MD_TOTAL_Y) + (uint32_t)dy;
@@ -457,6 +456,41 @@ static void mouse_direct_frame(int32_t dx, int32_t dy, int aim) {
     memcpy(page + MD_K, &k, sizeof k);
     float gain = mouse_direct_pitch_get();
     memcpy(page + MD_PITCH, &gain, sizeof gain);
+}
+
+// ---- the orbit engine (runtime/mouse_direct.c): the same settings, shaped in C rather than in the patch page.
+// The engine's sites call into the runtime on the game thread; these two answer with the numbers input.c has cached for
+// this frame, and the suspension flag tells the hook to leave the counts to the wheel, the motion tilt or the map.
+static int mouse_aim_now;
+static int orbit_suspend;   // written and read across threads with __atomic_*
+
+float input_mouse_sens_now(void) {
+    return mouse_sens_get() * (mouse_aim_now ? mouse_aim_get() : 1.0f) * mouse_direct_sens_get();
+}
+
+float input_mouse_direct_k(void) {
+    float k = 0.01f * input_mouse_sens_now(), speed = cam_speed_applied();
+    if (speed > 0) k /= speed;
+    return k;
+}
+
+int input_mouse_orbit_suspended(void) { return __atomic_load_n(&orbit_suspend, __ATOMIC_RELAXED); }
+
+// TOTK_MOUSE_ORBIT, live: the set of patch sites is on and the settings ask for it. input.c owns the switch, because
+// the engine's own sites only run once the set is on: the first read here turns it on and the asm set off.
+static int mouse_orbit_get(void) {
+    static int on = -1;
+    static unsigned seen;
+    unsigned ver = cfg_version();
+    if (on < 0 || ver != seen) {
+        seen = ver;
+        int want = cfg_bool("TOTK_MOUSE_ORBIT");
+        int set = rt_patch_set("mouseorbit"), asm_set = rt_patch_set("mousedirect");
+        if (set >= 0) rt_patch_switch(set, want);
+        if (want && asm_set >= 0) rt_patch_switch(asm_set, 0);
+        on = want && rt_patch_enabled(set);
+    }
+    return on;
 }
 
 // Hold-to-tilt: the mouse feeds the virtual controller's six-axis for the game's motion mechanics (the gyro shrines)
@@ -546,7 +580,9 @@ static void mouse_camera(int32_t out[2], int aim, int wheel, int as_stick) {
     int32_t dx = 0, dy = 0;
     int flood = cfg_int("TOTK_MOUSE_FLOOD");
     int cap = ikb_captured();
-    int direct = mouse_direct_get();
+    int orbit = mouse_orbit_get();
+    int direct = mouse_direct_get() && !orbit;
+    mouse_aim_now = aim;
     // The ability's held object reads the pad's right stick, not the camera's processed one: the direct look would
     // move the view and leave the object still. The counts go through the ordinary stick sample instead (below).
     if (as_stick) direct = 0;
@@ -554,6 +590,7 @@ static void mouse_camera(int32_t out[2], int aim, int wheel, int as_stick) {
     md_was_on = direct;
     int motion = mouse_motion_held();
     if (!motion && mm_live) mouse_motion_stop();
+    __atomic_store_n(&orbit_suspend, orbit && (as_stick || wheel || motion), __ATOMIC_RELAXED);
     if (motion && cap) {
         uint64_t fr = __atomic_load_n(&gfx_counters.frames, __ATOMIC_RELAXED);
         if (fr != frame) {
@@ -585,6 +622,15 @@ static void mouse_camera(int32_t out[2], int aim, int wheel, int as_stick) {
         }
         out[0] = wheel_stick[0], out[1] = wheel_stick[1];
         camlog(dx, dy, wheel_stick, cap, 0, aim);
+        return;
+    }
+    if (orbit && cap) {
+        // The engine's sites read the counts on the game thread (mouse_direct.c): leave them for it, and hand the game
+        // no stick sample at all. The wheel, the motion tilt and the map suspended it above and keep the path below.
+        held[0] = held[1] = 0;
+        frame = ~0ull;
+        out[0] = out[1] = 0;
+        camlog(0, 0, held, cap, 4, aim);
         return;
     }
     wheel_stick[0] = wheel_stick[1] = 0;

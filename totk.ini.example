@@ -32,9 +32,9 @@
 # A thread waiting for a virtual core interrupts the owner when it runs game code: 1 = on, 2 = priority inheritance
 # without the interrupt, 0 = off (the old scheduling).
 # async_preempt = 1
-# Replay NVN submissions on their own thread, at most one frame behind the game, 0 or 1. Default: on. Adds up to a
-# frame of latency; 0 replays them on the game thread.
-# replay_async = 1
+# Replay NVN submissions on their own thread, at most one frame behind the game, 0 or 1. Default: off (a GTX 1660 Ti
+# reported uneven motion with it on, #659). Adds up to a frame of latency; 1 overlaps the replay with the game threads.
+# replay_async = 0
 # EXPERIMENTAL, THE GAME CRASHES WITH 1. 1 lifts the virtual core gate: guest threads run without the console's limit
 # of one thread per core, and the game keeps per-core data without locks. With 1, 1.2.1 and 1.4.3 crash or hang,
 # usually at start (#212). Keep 0 to play.
@@ -296,6 +296,10 @@
 # Direct mouse look pitch shaping: the vertical motion is sign(v) * sqrt(gain * |v|), which turns the game's
 # quadratic pitch (51 y |y|) into the same response as yaw (70 x). 1.3725 = 70/51; 0.2 to 4.
 # mouse_direct_pitch = 1.3725
+# The orbit engine (experimental, the other direct mouse look): five host callbacks instead of the asm patch, so the
+# mouse is not clamped to the stick's radius and the free camera takes degrees directly; Ultrahand's held object gets
+# its own input too. 1 = on, and mouse_direct above is then off. 1.4.3 only.
+# mouse_orbit = 0
 # Hold-to-tilt for the gyro shrines: while this key is held the mouse feeds the virtual controller's six-axis and the
 # direct mouse look is paused; none disables. A gamepad with motion sensors keeps its own six-axis.
 # mouse_motion_key = k

@@ -118,6 +118,18 @@ site fov    main b4342c bd4066c0 f81f0fea @page:x10 bd4066c0 bd403d48 1e280800 f
 set mousedirect TOTK_MOUSE_DIRECT 0
 site mousedirect main 874cb4 bd042289 @page:x8 3945228b 5301056b 530002aa 2a0a016b 5280002a 4b0b014b 1e220162 bd411101 1e220821 b9410109 b941090a b9010909 4b0a0129 1e220120 1e210800 1e202929 b9410509 b9410d0a b9010d09 4b0a0129 1e220120 1e210800 bd411503 1e20c002 1e230842 1e21c042 1e260009 531f7d2a 5301014a 1e26004b 4a0a016b 1e270162 1e22394a bd042289   # str s9, [x20, #0x420]
 
+# The orbit engine (set mouseorbit, runtime/mouse_direct.c): the same store as the asm patch above, but the site calls a
+# host function with the guest's registers, so the mouse skips the stick's radius and the game's pitch curve. Upstream's
+# five sites (task/kbm): the camera input update after its dead zone, clamp and StickExponent; its input-activity flags;
+# the free camera's begin and its spherical-angle output; and Ultrahand's held-object input after its power curves. Only
+# one of mouseorbit and mousedirect runs at a time (input.c switches mousedirect off while this one is on).
+set mouseorbit TOTK_MOUSE_ORBIT 0
+site mouseorbit main 874cb4 bd042289 94c9acc7   # bl page+0xfd0, camera_input (str s9, [x20, #0x420])
+site mouseorbit main 874d7c 6d40a3e9 94c9ac91   # bl page+0xfc0, camera_activity (ldp d9, d8, [sp, #8])
+site mouseorbit main 18e444 f9400408 94e546db   # bl page+0xfb0, orbit_begin (ldr x8, [x0, #8])
+site mouseorbit main 18f108 bd4047ec 94e543a6   # bl page+0xfa0, orbit_angles (ldr s12, [sp, #0x44])
+site mouseorbit main 1d59460 b9004be8 94761acc  # bl page+0xf90, hand_input (str w8, [sp, #0x48])
+
 # The game's zstd decoder (BSD zstd, statically linked into main) through the host's libzstd (runtime/ov_zstd.c):
 # every call of ZSTD_decompressMultiFrame (main+0x3a1f0: dctx, dst, capacity, src, size, dict, dict size, ddict) and of
 # its wrapper ZSTD_decompress_usingDDict (main+0x3a1e0, which tail-branches to it) goes to a host function on the patch
