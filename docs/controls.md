@@ -174,7 +174,8 @@ with at least 32 ms of neutral between them. At sensitivity 1, 32 horizontal cou
 cannot queue continued scrolling after the mouse stops. Vertical movement is ignored in these lists. Switching or
 releasing a selector resets its cursor/step state without sending the last movement to the camera. Selector input is
 not consumed by the direct camera or Ultrahand hooks.
-To detach a fused part from what Ultrahand holds, shake the mouse left and right, or press G (`bind_SHAKE`). A press
+To detach a fused part from what Ultrahand holds, shake the mouse left and right (a key can be bound to the
+SHAKE action in the Controls tab; none is bound by default). A press
 swings the right stick left and right for 0.8 s, holding the key keeps it swinging. With `mouse_mode = direct` a shake
 of the mouse while Ultrahand holds an object swings the right stick with it: once the swings (10 degrees of camera turn
 or more each, 125 counts at sensitivity 1) change direction twice within 0.35 s, the stick goes full tilt the
