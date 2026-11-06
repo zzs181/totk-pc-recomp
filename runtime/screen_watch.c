@@ -293,6 +293,8 @@ void screen_watch_poll(uint64_t buttons) {
     }
 }
 
+int screen_watch_on(void) { return enabled(); }
+
 int screen_watch_ctx(int host_menu_open) {
     if (host_menu_open) return KBM_SC_PAUSE;
     if (!enabled()) return KBM_SC_WORLD;

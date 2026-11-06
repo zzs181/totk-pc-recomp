@@ -976,15 +976,19 @@ static void poll_merged(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx
             if (scheme || (selector && menu_cursor_shortcut() == 0)) selector = 0;
             mouse_camera(k, selector);
             // On the map the left stick moves the cursor: the mouse's sample goes there. Under the scheme the map
-            // context says the same (the map owns no focus box, so the pointer path cannot reach it).
+            // context says the same; with TOTK_SCREEN_WATCH=0 that context never leaves WORLD, so the scheme falls
+            // back on menu_cursor's own screen-list detection (the map owns no focus box either way).
             int ctx = kbm_scheme_ctx();
-            int as_left = scheme && !menu_open && ctx == KBM_SC_MAP;
+            int sw_on = screen_watch_on();
+            int sw_map = scheme && ctx == KBM_SC_MAP;
             int map = menu_cursor_map();
+            int as_left = scheme && !menu_open && (sw_map || (!sw_on && map));
             if (as_left || (map && !scheme)) pick(&sl[0], &sl[1], k[0], k[1]);
             else pick(&sr[0], &sr[1], k[0], k[1]);
             // The map's zoom is the pad's right stick. Without the scheme the notches pulse the stick themselves
-            // (map_zoom_stick); under the scheme the wheel keys carry it, so a notch also reaches the binds.
-            if (!scheme) {
+            // (map_zoom_stick); under the scheme the wheel keys carry it (the KBM_SC_MAP rows), except with the
+            // screen watch off, where those rows never fire and the notch pulses the stick as without the scheme.
+            if (!scheme || (!sw_on && map)) {
                 int32_t zoom = map_zoom_stick(wheel, map);
                 if (zoom) pick(&sr[0], &sr[1], 0, zoom);
             } else if (ctx == KBM_SC_MAP) {
