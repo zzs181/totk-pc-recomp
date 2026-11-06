@@ -32,7 +32,7 @@ enum { LYT_NAME = 0x30 };
 static uint64_t main_lo, main_hi;
 
 static int ok_at(uint64_t p, uint64_t n) {
-    return p >= 0x10000 && p < (1ull << 47) && (p & 7) == 0 && plat_mem_readable(p, n);
+    return p >= 0x10000 && p < (1ull << 47) && (p & 7) == 0 && mem_guest_readable(p, n);
 }
 static uint64_t rd64(uint64_t a) { uint64_t v; memcpy(&v, (const void *)(uintptr_t)a, 8); return v; }
 static uint32_t rd32(uint64_t a) { uint32_t v; memcpy(&v, (const void *)(uintptr_t)a, 4); return v; }
@@ -70,7 +70,7 @@ static uint64_t focus_screen(void) {
 static void layout_name(uint64_t scr, char *out, size_t n) {
     out[0] = 0;
     uint64_t lyt = rd64(scr + SCR_LAYOUT), name = ok_at(lyt, LYT_NAME + 8) ? rd64(lyt + LYT_NAME) : 0;
-    if (name < 0x10000 || name >= (1ull << 47) || !plat_mem_readable(name, n)) return;
+    if (name < 0x10000 || name >= (1ull << 47) || !mem_guest_readable(name, n)) return;
     memcpy(out, (const void *)(uintptr_t)name, n - 1);
     out[n - 1] = 0;
     for (char *q = out; *q; q++)
@@ -167,7 +167,7 @@ static void player_dump_poll(uint64_t now) {
         ptr = g_player, have = 0;
         rt_log("player_dump: watching %p", (void *)(uintptr_t)ptr);
     }
-    if (!plat_mem_readable(ptr, DUMP_BYTES)) {
+    if (!mem_guest_readable(ptr, DUMP_BYTES)) {
         rt_log("player_dump: %p is not readable", (void *)(uintptr_t)ptr);
         return;
     }

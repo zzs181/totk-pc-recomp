@@ -52,20 +52,11 @@ static int g_power, g_holding, g_from_page;
 static uint32_t g_flags;     // last walk's PS_* bits
 static uint64_t g_ok_ms;     // when that walk found a player (0: never)
 
-// Readability, with a small cache: plat_mem_readable is a VirtualQuery (a kernel call), and the walk touches a dozen
-// pointers in the same few heap pages. Only the containing page is cached, so a cache hit is never less safe than the
-// query it replaces.
+// Readability: mem_guest_readable answers from the heap and module layout (memory.c), so the walk's dozen pointers a
+// frame cost compares, not VirtualQuery kernel calls. Outside the layout it still asks the OS.
 static int ok(uint64_t p, uint64_t n) {
     if (p < 0x10000 || p >= (1ull << 47) || (p & 3) || n > 0x1000) return 0;
-    static struct { uint64_t lo, hi; } cache[8];
-    static int next;
-    for (int i = 0; i < 8; i++)
-        if (cache[i].hi && p >= cache[i].lo && p + n <= cache[i].hi) return 1;
-    if (!plat_mem_readable(p, n)) return 0;
-    int slot = next++ & 7;   // (one index for both halves: next++ inside the two subscripts split them)
-    cache[slot].lo = p & ~0xfffull;
-    cache[slot].hi = (p + n + 0xfff) & ~0xfffull;
-    return 1;
+    return mem_guest_readable(p, n);
 }
 static uint64_t rd64(uint64_t a) { uint64_t v = 0; memcpy(&v, (const void *)(uintptr_t)a, 8); return v; }
 static uint32_t rd32(uint64_t a) { uint32_t v = 0; memcpy(&v, (const void *)(uintptr_t)a, 4); return v; }
