@@ -566,6 +566,14 @@ static const char *const text_en[UI_TEXT_COUNT] = {
     [UI_MENU_MODS_EXEFS_ON] = "Code patches in use: %d files.",
     [UI_MENU_MODS_REPLACES_BUILTIN] = "Code patches in use: %d files. They replace the port's own patch %s, which "
                                       "stays off while this mod is on.",
+    [UI_MENU_MOVIE_ASPECT] = "Movie shape",
+    [UI_MENU_MOVIE_ASPECT_DESC] = "When the game resolution is not 16:9, keep the cutscene movies' own shape with black "
+                                  "bars, or stretch them over the whole picture. Applies from the next movie.",
+    [UI_MENU_FRAME_QUEUE] = "Frame queue",
+    [UI_MENU_FRAME_QUEUE_DESC] = "The game starts a frame while the previous one waits for its turn on screen: far fewer "
+                                 "dropped frames at the limit, up to one frame more input delay. Applies at once.",
+[UI_MENU_MOVIE_ASPECT_KEEP] = "Black bars",
+[UI_MENU_MOVIE_ASPECT_STRETCH] = "Stretch",
 };
 
 
@@ -1212,6 +1220,19 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
     [UI_MENU_MODS_EXEFS_OTHER] = "它的代码补丁（exefs）是为其他游戏版本制作的。",
     [UI_MENU_MODS_EXEFS_ON] = "正在使用的代码补丁：%d 个文件。",
     [UI_MENU_MODS_REPLACES_BUILTIN] = "正在使用的代码补丁：%d 个文件。它们取代本移植自带的补丁 %s，此模组开启时该补丁保持关闭。",
+    [UI_MENU_MOVIE_ASPECT] = "视频画面比例",
+    [UI_MENU_MOVIE_ASPECT_DESC] = "当游戏分辨率不是 16:9 时：用黑边保持过场视频的原有比例，或拉伸铺满整个画面。"
+                                  "从下一段视频起生效。",
+    [UI_MENU_MOVIE_ASPECT_KEEP] = "黑边",
+    [UI_MENU_MOVIE_ASPECT_STRETCH] = "拉伸",
+    [UI_MENU_FRAME_QUEUE] = "帧队列",
+    [UI_MENU_FRAME_QUEUE_DESC] = "前一帧等待显示时游戏就开始绘制下一帧：在帧率上限下掉帧大幅减少，输入延迟最多增加一帧。立即生效。",
+[UI_MENU_AUDIO_CHANNELS] = "Speakers",
+[UI_MENU_AUDIO_CHANNELS_DESC] = "Stereo or 5.1 surround output. Automatic picks 5.1 when the Windows speaker setup "
+                                    "has six or more channels. Applies after a restart.",
+[UI_MENU_CHANNELS_AUTO] = "Automatic",
+[UI_MENU_CHANNELS_STEREO] = "Stereo",
+[UI_MENU_CHANNELS_51] = "5.1 surround",
 };
 
 #define SWKBD_ONLY(name, ...) static const char *const name[UI_TEXT_COUNT] = {SWKBD(__VA_ARGS__)}
@@ -1271,7 +1292,10 @@ int ui_text_defined(const char *lang, UiTextId id) {
 
 const char *ui_text_in(const char *lang, UiTextId id) {
     if ((unsigned)id >= UI_TEXT_COUNT) return "";
-    return ui_text_defined(lang, id) ? find_row(lang)->text[id] : rows[0].text[id];
+    const Row *r = find_row(lang);
+    if (r && r->text[id] && *r->text[id]) return r->text[id];
+    const char *t = rows[0].text[id];   // English fallback; an id with no string shows empty, never NULL
+    return t && *t ? t : "";
 }
 
 const char *ui_text(UiTextId id) { return ui_text_in(ui_text_lang(ov_language()), id); }
