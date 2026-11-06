@@ -37,7 +37,11 @@ MAX_RUNS = int(os.environ.get('TOTK_MAX_RUNS', '3'))   # more parallel runs exha
 
 
 def count(image):
-    out = subprocess.run(['tasklist', '/FI', f'IMAGENAME eq {image}', '/NH'], capture_output=True, text=True).stdout
+    # errors='replace': tasklist writes in the console code page (GBK on a Chinese Windows) while text=True decodes as
+    # UTF-8, and a strict decode leaves stdout None. The image names are ASCII and start the line, so replaced bytes
+    # do not change the count.
+    out = subprocess.run(['tasklist', '/FI', f'IMAGENAME eq {image}', '/NH'], capture_output=True, text=True,
+                         errors='replace').stdout or ''
     return sum(line.lower().startswith(image) for line in out.splitlines())
 
 
