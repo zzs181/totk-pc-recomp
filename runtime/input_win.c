@@ -197,10 +197,14 @@ int input_window_msg(HWND h, UINT m, WPARAM w, LPARAM l, LRESULT *res) {
     case WM_INPUT: {
         RAWINPUT ri;
         UINT sz = sizeof ri;
-        if (cur_captured && GetRawInputData((HRAWINPUT)l, RID_INPUT, &ri, &sz, sizeof(RAWINPUTHEADER)) != (UINT)-1 &&
+        if (GetRawInputData((HRAWINPUT)l, RID_INPUT, &ri, &sz, sizeof(RAWINPUTHEADER)) != (UINT)-1 &&
             ri.header.dwType == RIM_TYPEMOUSE && !(ri.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE)) {
-            InterlockedAdd(&mouse_dx, ri.data.mouse.lLastX);
-            InterlockedAdd(&mouse_dy, ri.data.mouse.lLastY);
+            LONG x = ri.data.mouse.lLastX, y = ri.data.mouse.lLastY;
+            InterlockedAdd(&mouse_travel, (x < 0 ? -x : x) + (y < 0 ? -y : y));
+            if (cur_captured) {
+                InterlockedAdd(&mouse_dx, x);
+                InterlockedAdd(&mouse_dy, y);
+            }
         }
         snap_refresh_input();
         // The wheel comes in the same message (usButtonData, signed, + away from the player)
@@ -320,6 +324,8 @@ int32_t ikb_wheel_take(void) {
     } while (InterlockedCompareExchange(&mouse_wheel, n, o) != o);
     return (int32_t)(o / WHEEL_DELTA);
 }
+
+uint32_t ikb_mouse_travel(void) { return (uint32_t)mouse_travel; }
 
 void ikb_cursor_update(void) { cursor_update(gfx_window_handle()); }
 

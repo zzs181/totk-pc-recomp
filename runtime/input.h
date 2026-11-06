@@ -83,12 +83,6 @@ int input_flight_key(void);
 void input_cursor_suspend(int on);
 int input_cursor_released(void);   // Esc or a non-client activation released the cursor (probe)
 
-// The orbit engine (runtime/mouse_direct.c, compiled per install with the patch page): TOTK_MOUSE_ORBIT, live. input.c
-// asks whether the counts belong to another consumer this frame, and hands the engine the settings it shapes with.
-float input_mouse_sens_now(void);       // TOTK_MOUSE_SENS * the aim scale while ZR is held * TOTK_MOUSE_DIRECT_SENS
-float input_mouse_direct_k(void);       // stick units per count: 0.01 * that / the camera speed factor
-int input_mouse_orbit_suspended(void);  // 1: the ability wheel, the motion tilt or the map is using the counts
-
 // Rumble: SDL_RumbleGamepad on the open gamepad, low (heavy, left) and high (light, right) motor 0..65535 for ms
 // milliseconds. 1 if a gamepad with rumble took it. Callable from any thread.
 int input_rumble(uint16_t low, uint16_t high, uint32_t ms);
