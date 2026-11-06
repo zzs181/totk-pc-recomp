@@ -675,6 +675,8 @@ static void tab_screen(float scale) {
     opt_slider("TOTK_SHARPNESS", UI_MENU_SHARPNESS, 0, 100, UI_MENU_SHARPNESS_DESC, 5, "%.0f %%");
     static const UiTextId aspect[] = {UI_MENU_ASPECT_FIT, UI_MENU_ASPECT_STRETCH};
     opt_choice("TOTK_ASPECT", UI_MENU_ASPECT, aspect, 2, UI_MENU_ASPECT_DESC);
+    static const UiTextId movie_aspect[] = {UI_MENU_MOVIE_ASPECT_KEEP, UI_MENU_MOVIE_ASPECT_STRETCH};
+    opt_choice("TOTK_MOVIE_ASPECT", UI_MENU_MOVIE_ASPECT, movie_aspect, 2, UI_MENU_MOVIE_ASPECT_DESC);
     opt_slider("TOTK_FOV", UI_MENU_FOV, 70, 140, UI_MENU_FOV_DESC, 5, "%.0f %%");
     static const char *const aniso[] = {"game", "2", "4", "8", "16"};
     const char *aniso_names[] = {menu_text(UI_MENU_ANISO_GAME), "2x", "4x", "8x", "16x"};
@@ -710,6 +712,7 @@ static void tab_screen(float scale) {
 static void tab_game(float scale) {
     opt_begin("##game", scale);
     row_fps_limit();
+    opt_toggle("TOTK_FRAME_QUEUE", UI_MENU_FRAME_QUEUE, UI_MENU_FRAME_QUEUE_DESC);
     row_game_lang();
     static const UiTextId mode[] = {UI_MENU_MODE_DOCKED, UI_MENU_MODE_HANDHELD};
     opt_choice("TOTK_OPERATION_MODE", UI_MENU_OPERATION_MODE, mode, 2, UI_MENU_OPERATION_MODE_DESC);
@@ -856,18 +859,6 @@ static void tab_controls(float scale) {
     opt_toggle("TOTK_SCREEN_WATCH_LOG", UI_MENU_SCREEN_WATCH_LOG, UI_MENU_SCREEN_WATCH_LOG_DESC);
     opt_toggle("TOTK_MENU_CURSOR", UI_MENU_MENU_CURSOR, UI_MENU_MENU_CURSOR_DESC);
     opt_toggle("TOTK_MENU_CURSOR_LOG", UI_MENU_MENU_CURSOR_LOG, UI_MENU_MENU_CURSOR_LOG_DESC);
-    // The pointer's whitelist. The names are the layouts eui reports (menu_cursor_log prints each screen's name the
-    // first time it opens), so a menu missing here is one name away in totk.ini. The two wider presets are like-kind
-    // screens that are not play-tested, which is why the narrow list stays the default.
-    static const char *const screens_lists[] = {
-        "Title_00,Pouch_00,SystemLoadList_00,SystemSaveLoad_00",
-        "Title_00,Pouch_00,SystemLoadList_00,SystemSaveLoad_00,SystemOption_00",
-        "Title_00,Pouch_00,SystemLoadList_00,SystemSaveLoad_00,SystemOption_00,AppAlbum_00,AppPictureBook_00"};
-    const char *screens_names[] = {menu_text(UI_MENU_MENU_CURSOR_SCREENS_BASIC),
-                                   menu_text(UI_MENU_MENU_CURSOR_SCREENS_PLUS_OPTION),
-                                   menu_text(UI_MENU_MENU_CURSOR_SCREENS_PLUS_ALBUM)};
-    opt_choice_list("TOTK_MENU_CURSOR_SCREENS", UI_MENU_MENU_CURSOR_SCREENS, screens_lists, screens_names,
-                    sizeof screens_lists / sizeof *screens_lists, UI_MENU_MENU_CURSOR_SCREENS_DESC);
     opt_toggle("TOTK_PLAYER_STATE", UI_MENU_PLAYER_STATE, UI_MENU_PLAYER_STATE_DESC);
     opt_toggle("TOTK_PLAYER_STATE_LOG", UI_MENU_PLAYER_STATE_LOG, UI_MENU_PLAYER_STATE_LOG_DESC);
     static const char *const mat_values[] = {"c", "z", "b", "n"};
@@ -898,11 +889,8 @@ static void tab_controls(float scale) {
                pad ? stick_note[1] : nullptr, "TOTK_STICK_DEADZONE");
     opt_slider("TOTK_STICK_SENS", UI_MENU_STICK_SENS, 0.1f, 3, UI_MENU_STICK_SENS_DESC, 0.05f, "%.2f");
     opt_slider("TOTK_MOUSE_AIM_SCALE", UI_MENU_MOUSE_AIM_SCALE, 0.1f, 3, UI_MENU_MOUSE_AIM_SCALE_DESC, 0.05f, "%.2f");
-    opt_toggle("TOTK_MOUSE_DIRECT", UI_MENU_MOUSE_DIRECT, UI_MENU_MOUSE_DIRECT_DESC);
-    opt_slider("TOTK_MOUSE_DIRECT_SENS", UI_MENU_MOUSE_DIRECT_SENS, 0.05f, 10, UI_MENU_MOUSE_DIRECT_SENS_DESC, 0.05f,
-               "%.2f");
-    opt_slider("TOTK_MOUSE_DIRECT_PITCH", UI_MENU_MOUSE_DIRECT_PITCH, 0.2f, 4, UI_MENU_MOUSE_DIRECT_PITCH_DESC, 0.05f,
-               "%.2f");
+    static const UiTextId mouse_modes[] = {UI_MENU_MOUSE_STICK, UI_MENU_MOUSE_DIRECT};
+    opt_choice("TOTK_MOUSE_MODE", UI_MENU_MOUSE_MODE, mouse_modes, 2, UI_MENU_MOUSE_MODE_DESC);
     row_motion_key();
     opt_slider("TOTK_MOUSE_MOTION_SPEED", UI_MENU_MOUSE_MOTION_SPEED, 0.05f, 4, UI_MENU_MOUSE_MOTION_SPEED_DESC, 0.05f,
                "%.2f");
@@ -910,7 +898,6 @@ static void tab_controls(float scale) {
     opt_toggle("TOTK_SPRINT_TOGGLE", UI_MENU_SPRINT_TOGGLE, UI_MENU_SPRINT_TOGGLE_DESC);
     opt_toggle("TOTK_LOCK_TOGGLE", UI_MENU_LOCK_TOGGLE, UI_MENU_LOCK_TOGGLE_DESC);
     opt_toggle("TOTK_KEYSNAP", UI_MENU_KEYSNAP, UI_MENU_KEYSNAP_DESC);
-    opt_slider("TOTK_MOUSE_FLOOD", UI_MENU_MOUSE_FLOOD, 0, 100, UI_MENU_MOUSE_FLOOD_DESC, 1, "%.0f");
     binds_rows(scale);
     opt_end();
     binds_after_page();

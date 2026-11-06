@@ -7,11 +7,13 @@
 #include <stdint.h>
 
 // Actions are the bit numbers of libnx HidNpadButton (input.h); 16..23 are the stick directions, which keys drive as
-// stick deflection.
+// stick deflection. B_SHAKE is a key of its own, never a button bit: a press shakes the right stick left and right for
+// the game (input.c shake_stick), which detaches a fused part held with Ultrahand. A pad shakes its own stick.
 enum {
     B_A = 0, B_B, B_X, B_Y, B_STICK_L, B_STICK_R, B_L, B_R, B_ZL, B_ZR, B_PLUS, B_MINUS, B_LEFT, B_UP, B_RIGHT, B_DOWN,
     B_SL_LEFT = 16, B_SL_UP, B_SL_RIGHT, B_SL_DOWN, B_SR_LEFT, B_SR_UP, B_SR_RIGHT, B_SR_DOWN,
-    ACTION_COUNT = 24
+    B_SHAKE = 24,
+    ACTION_COUNT = 25
 };
 
 // Keys and mouse buttons. F1, F10, F11 belong to the menu and the window, F8 to the flight recorder: no ids. Esc has
@@ -109,6 +111,8 @@ uint64_t input_map_pad_buttons(const uint8_t down[PAD_COUNT], int layout);
 
 // down[key] != 0 for the keys held. Returns the Switch button bits (0..15) the table presses.
 uint64_t input_map_buttons(const uint8_t down[KEY_COUNT]);
+// 1 when a key of action is held.
+int input_map_held(const uint8_t down[KEY_COUNT], int action);
 // out = x, y of the stick (0 left, 1 right) from its four direction actions; up is +y; a diagonal is scaled to the
 // unit circle.
 void input_map_stick(const uint8_t down[KEY_COUNT], int stick, int32_t out[2]);

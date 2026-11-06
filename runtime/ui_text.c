@@ -71,6 +71,10 @@ static const char *const text_en[UI_TEXT_COUNT] = {
     [UI_MENU_ASPECT_DESC] = "When the window's shape differs from the game resolution's (a 16:9 picture on a 21:9 "
                             "screen): keep the picture's shape with black bars, or stretch it over the window.",
     [UI_MENU_ASPECT_FIT] = "Black bars", [UI_MENU_ASPECT_STRETCH] = "Stretch",
+    [UI_MENU_MOVIE_ASPECT] = "Movie shape",
+    [UI_MENU_MOVIE_ASPECT_DESC] = "When the game resolution is not 16:9, keep the cutscene movies' own shape with black "
+                                  "bars, or stretch them over the whole picture. Applies from the next movie.",
+    [UI_MENU_MOVIE_ASPECT_KEEP] = "Black bars", [UI_MENU_MOVIE_ASPECT_STRETCH] = "Stretch",
     [UI_MENU_FOV] = "Field of view",
     [UI_MENU_FOV_DESC] = "How much of the world the camera shows, in percent of the game's own. Game version 1.4.3 only.",
     [UI_MENU_SHADOW_RES] = "Shadow map size",
@@ -165,6 +169,9 @@ static const char *const text_en[UI_TEXT_COUNT] = {
     [UI_MENU_FPS_60] = "60 FPS", [UI_MENU_FPS_90] = "90 FPS", [UI_MENU_FPS_120] = "120 FPS", [UI_MENU_FPS_144] = "144 FPS",
     // the monitor's refresh rate; printf format with the rate in Hz when it is known
     [UI_MENU_FPS_DISPLAY] = "Monitor rate", [UI_MENU_FPS_DISPLAY_HZ] = "Monitor rate (%.0f Hz)",
+    [UI_MENU_FRAME_QUEUE] = "Frame queue",
+    [UI_MENU_FRAME_QUEUE_DESC] = "The game starts a frame while the previous one waits for its turn on screen: far fewer "
+                                 "dropped frames at the limit, up to one frame more input delay. Applies at once.",
     [UI_MENU_REALTIME] = "Game speed follows the clock",
     [UI_MENU_REALTIME_DESC] = "Steps the game by real time, so a slow frame does not slow the game down.",
     [UI_MENU_CLOTH_REALTIME] = "Cloth on the clock",
@@ -263,6 +270,12 @@ static const char *const text_en[UI_TEXT_COUNT] = {
     [UI_MENU_LSTICK_DEADZONE] = "Left stick dead zone", [UI_MENU_RSTICK_DEADZONE] = "Right stick dead zone",
     [UI_MENU_STICK_DEADZONE_DESC] = "How far a gamepad stick moves before the game sees it. Raise it if the character or the camera moves on its own: let go of the stick, read \"stick now\" and set the dead zone a few percent above it.",
     [UI_MENU_STICK_DEADZONE_NOW] = "stick now: %.0f %%",
+    [UI_MENU_MOUSE_MODE] = "Mouse camera",
+    [UI_MENU_MOUSE_MODE_DESC] = "Direct: the camera turns by how far the mouse moves, as in a PC game, with no stick dead zone or curve (games 1.4.3 and 1.2.1; 1.1.0 uses stick emulation). Stick emulation: the mouse acts as the right stick.",
+    [UI_MENU_MOUSE_STICK] = "Stick emulation",
+    [UI_MENU_MOUSE_DIRECT] = "Direct",
+    [UI_MENU_MENU_CURSOR] = "Mouse in the game's menus",
+    [UI_MENU_MENU_CURSOR_DESC] = "In the game's own menus (title, inventory, shops, dialogue choices) the pointer shows: the item under it is selected, left click confirms, right click goes back. Only after the mouse or a key was used last, so a gamepad sees the menus unchanged (game 1.4.3).",
     [UI_MENU_MOUSE_SENS] = "Mouse camera sensitivity",
     [UI_MENU_MOUSE_SENS_DESC] = "How fast the mouse turns the camera.",
     [UI_MENU_MOUSE_AIM_SCALE] = "Aim mouse scale",
@@ -270,11 +283,6 @@ static const char *const text_en[UI_TEXT_COUNT] = {
     [UI_MENU_MOUSE_DIRECT] = "Direct mouse look (experimental)",
     [UI_MENU_MOUSE_DIRECT_DESC] = "Adds the mouse to the camera's processed stick, so it skips the game's dead zone "
                                   "and curve; the mouse no longer drives the right stick.",
-    [UI_MENU_MOUSE_DIRECT_SENS] = "Direct mouse look speed",
-    [UI_MENU_MOUSE_DIRECT_SENS_DESC] = "Stick units per mouse count at 30 fps; 1 matches the right-stick mouse at 60 fps.",
-    [UI_MENU_MOUSE_DIRECT_PITCH] = "Direct look pitch shape",
-    [UI_MENU_MOUSE_DIRECT_PITCH_DESC] = "Square-root pitch shaping. 1.37 matches the game's quadratic pitch to yaw; "
-                                        "higher makes small vertical moves stronger.",
     [UI_MENU_MOUSE_MOTION_KEY] = "Mouse motion key",
     [UI_MENU_MOUSE_MOTION_KEY_DESC] = "Hold this key to feed mouse motion to the game's six-axis for the gyro shrines; "
                                      "the camera is paused while held. none disables.",
@@ -308,15 +316,6 @@ static const char *const text_en[UI_TEXT_COUNT] = {
     [UI_MENU_MENU_CURSOR_LOG] = "Game menu mouse log",
     [UI_MENU_MENU_CURSOR_LOG_DESC] = "Logs each menu screen's nodes, the pointer's hit test and every direction the "
                                      "focus box is walked with.",
-    [UI_MENU_MENU_CURSOR_SCREENS] = "Mouse menu screens",
-    [UI_MENU_MENU_CURSOR_SCREENS_DESC] = "Which screens take the pointer: a whitelist of the game's layout names. "
-                                         "menu_cursor_screens in totk.ini takes any list, and menu_cursor_log prints a "
-                                         "name for every screen the game opens, so a menu missing here is one name "
-                                         "away. The last two presets are like-kind screens that are not play-tested "
-                                         "yet: go back to the first if one behaves worse.",
-    [UI_MENU_MENU_CURSOR_SCREENS_BASIC] = "Title, pouch, save and load",
-    [UI_MENU_MENU_CURSOR_SCREENS_PLUS_OPTION] = "+ options",
-    [UI_MENU_MENU_CURSOR_SCREENS_PLUS_ALBUM] = "+ options, album and compendium",
     [UI_MENU_PLAYER_STATE] = "Player stance",
     [UI_MENU_PLAYER_STATE_DESC] = "1.4.3, on. Reads what Link is doing from the game's own objects -- the action verbs "
                                   "of his five action slots, the ability in use, whether Ultrahand holds an object -- "
@@ -326,8 +325,6 @@ static const char *const text_en[UI_TEXT_COUNT] = {
     [UI_MENU_PLAYER_STATE_LOG] = "Player stance log",
     [UI_MENU_PLAYER_STATE_LOG_DESC] = "One line per change of the verbs, the ability and the hold (player_state: verbs "
                                       "1,61,... power 1 holding 1).",
-    [UI_MENU_MOUSE_FLOOD] = "Mouse count injection",
-    [UI_MENU_MOUSE_FLOOD_DESC] = "Extra mouse counts per presented frame, for stress-testing a high-report-rate "
                                  "mouse and the input path. 0 is off.",
     [UI_MENU_KBM_HELP] = "Every action's key, in one context or in all of them. Select a row and press the new key; "
                          "Delete clears the override. A context override wins over a global one. While the throw key "
@@ -627,6 +624,10 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
     [UI_MENU_ASPECT_DESC] = "Когда форма окна отличается от разрешения игры (картинка 16:9 на экране 21:9): сохранить "
                             "форму картинки с чёрными полосами или растянуть её на всё окно.",
     [UI_MENU_ASPECT_FIT] = "Чёрные полосы", [UI_MENU_ASPECT_STRETCH] = "Растянуть",
+    [UI_MENU_MOVIE_ASPECT] = "Форма видеороликов",
+    [UI_MENU_MOVIE_ASPECT_DESC] = "Когда разрешение игры не 16:9: сохранить форму роликов с чёрными полосами или "
+                                  "растянуть их на всю картинку. Действует со следующего ролика.",
+    [UI_MENU_MOVIE_ASPECT_KEEP] = "Чёрные полосы", [UI_MENU_MOVIE_ASPECT_STRETCH] = "Растянуть",
     [UI_MENU_FOV] = "Поле зрения",
     [UI_MENU_FOV_DESC] = "Сколько мира показывает камера, в процентах от игрового. Только для версии игры 1.4.3.",
     [UI_MENU_SHADOW_RES] = "Размер карты теней",
@@ -721,6 +722,9 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
     [UI_MENU_FPS_30] = "30 FPS", [UI_MENU_FPS_40] = "40 FPS", [UI_MENU_FPS_45] = "45 FPS",
     [UI_MENU_FPS_60] = "60 FPS", [UI_MENU_FPS_90] = "90 FPS", [UI_MENU_FPS_120] = "120 FPS", [UI_MENU_FPS_144] = "144 FPS",
     [UI_MENU_FPS_DISPLAY] = "Как у монитора", [UI_MENU_FPS_DISPLAY_HZ] = "Как у монитора (%.0f Гц)",
+    [UI_MENU_FRAME_QUEUE] = "Очередь кадров",
+    [UI_MENU_FRAME_QUEUE_DESC] = "Игра начинает кадр, пока предыдущий ждёт показа: намного меньше пропущенных кадров на "
+                                 "лимите, задержка ввода больше не более чем на кадр. Применяется сразу.",
     [UI_MENU_REALTIME] = "Скорость игры по часам",
     [UI_MENU_REALTIME_DESC] = "Игра идёт по реальному времени, медленный кадр её не замедляет.",
     [UI_MENU_CLOTH_REALTIME] = "Ткань по часам",
@@ -817,6 +821,12 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
     [UI_MENU_LSTICK_DEADZONE] = "Мёртвая зона левого стика", [UI_MENU_RSTICK_DEADZONE] = "Мёртвая зона правого стика",
     [UI_MENU_STICK_DEADZONE_DESC] = "Насколько нужно отклонить стик геймпада, чтобы игра это заметила. Увеличьте, если персонаж или камера двигаются сами: отпустите стик, посмотрите «стик сейчас» и поставьте мёртвую зону на несколько процентов выше.",
     [UI_MENU_STICK_DEADZONE_NOW] = "стик сейчас: %.0f %%",
+    [UI_MENU_MOUSE_MODE] = "Управление мышью",
+    [UI_MENU_MOUSE_MODE_DESC] = "Прямое: камера поворачивается на столько, на сколько сдвинута мышь, как в играх для ПК, без мёртвой зоны и кривой стика (версии игры 1.4.3 и 1.2.1; на 1.1.0 эмуляция стика). Эмуляция стика: мышь работает как правый стик.",
+    [UI_MENU_MOUSE_STICK] = "Эмуляция стика",
+    [UI_MENU_MOUSE_DIRECT] = "Прямое",
+    [UI_MENU_MENU_CURSOR] = "Мышь в меню игры",
+    [UI_MENU_MENU_CURSOR_DESC] = "В меню самой игры (заставка, инвентарь, магазины, варианты ответа) появляется указатель: пункт под ним выбирается, левый щелчок подтверждает, правый возвращает назад. Только если последними использовались мышь или клавиатура, поэтому с геймпадом меню не меняются (версия игры 1.4.3).",
     [UI_MENU_MOUSE_SENS] = "Чувствительность мыши",
     [UI_MENU_MOUSE_SENS_DESC] = "Как быстро мышь поворачивает камеру.",
     [UI_MENU_MOUSE_AIM_SCALE] = "Множитель при прицеливании",
@@ -824,12 +834,6 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
     [UI_MENU_MOUSE_DIRECT] = "Прямой обзор мышью (эксперимент)",
     [UI_MENU_MOUSE_DIRECT_DESC] = "Добавляет мышь к уже обработанному стику камеры, минуя мёртвую зону и кривую "
                                   "игры; мышь больше не управляет правым стиком.",
-    [UI_MENU_MOUSE_DIRECT_SENS] = "Скорость прямого обзора",
-    [UI_MENU_MOUSE_DIRECT_SENS_DESC] = "Единицы стика на отсчёт мыши при 30 fps; 1 совпадает с мышью через правый "
-                                       "стик при 60 fps.",
-    [UI_MENU_MOUSE_DIRECT_PITCH] = "Форма вертикали прямого обзора",
-    [UI_MENU_MOUSE_DIRECT_PITCH_DESC] = "Квадратичный корень для вертикали. 1,37 согласует квадратичный наклон игры с "
-                                        "поворотом; больше усиливает малые движения.",
     [UI_MENU_MOUSE_MOTION_KEY] = "Клавиша движения мышью",
     [UI_MENU_MOUSE_MOTION_KEY_DESC] = "Удерживайте, чтобы мышь управляла шестиосевым датчиком в святилищах с наклоном; "
                                       "камера на паузе. none отключает.",
@@ -863,15 +867,6 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
     [UI_MENU_MENU_CURSOR_LOG] = "Журнал мыши в меню",
     [UI_MENU_MENU_CURSOR_LOG_DESC] = "Пишет узлы экрана, результат попадания указателя и каждое направление, "
                                      "которым ведут рамку фокуса.",
-    [UI_MENU_MENU_CURSOR_SCREENS] = "Экраны с указателем мыши",
-    [UI_MENU_MENU_CURSOR_SCREENS_DESC] = "На каких экранах берётся указатель: белый список имён раскладки игры. "
-                                         "menu_cursor_screens в totk.ini принимает любой список, а menu_cursor_log "
-                                         "печатает имя каждого открытого экрана — недостающему меню одно имя до правки. "
-                                         "Два последних набора — такие же экраны, ещё не проверенные в игре: если на "
-                                         "одном стало хуже, вернитесь к первому.",
-    [UI_MENU_MENU_CURSOR_SCREENS_BASIC] = "Титры, сумка, загрузка и сохранение",
-    [UI_MENU_MENU_CURSOR_SCREENS_PLUS_OPTION] = "+ настройки",
-    [UI_MENU_MENU_CURSOR_SCREENS_PLUS_ALBUM] = "+ настройки, альбом и справочник",
     [UI_MENU_PLAYER_STATE] = "Состояние игрока",
     [UI_MENU_PLAYER_STATE_DESC] = "1.4.3, вкл. Читает, что делает Линк, из объектов самой игры — глаголы действий пяти "
                                   "его слотов, используемая способность, держит ли UltraHand предмет — и даёт схеме "
@@ -881,8 +876,6 @@ static const char *const text_ru[UI_TEXT_COUNT] = {
     [UI_MENU_PLAYER_STATE_LOG] = "Журнал состояния игрока",
     [UI_MENU_PLAYER_STATE_LOG_DESC] = "Строка на каждое изменение глаголов, способности и удержания (player_state: "
                                       "verbs 1,61,... power 1 holding 1).",
-    [UI_MENU_MOUSE_FLOOD] = "Инъекция отсчётов мыши",
-    [UI_MENU_MOUSE_FLOOD_DESC] = "Лишние отсчёты мыши за кадр для проверки мыши с высокой частотой опроса и пути "
                                  "ввода. 0 — выкл.",
     [UI_MENU_KBM_HELP] = "Клавиша каждого действия схемы, в одном контексте или во всех. Выберите строку и нажмите "
                          "новую клавишу; Delete снимает переопределение. Контекстное важнее глобального. Пока "
@@ -1220,6 +1213,10 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
     [UI_MENU_ASPECT_DESC] = "Quando o formato da janela difere do da resolução do jogo (uma imagem 16:9 numa tela "
                             "21:9): manter o formato da imagem com barras pretas ou esticá-la sobre a janela.",
     [UI_MENU_ASPECT_FIT] = "Barras pretas", [UI_MENU_ASPECT_STRETCH] = "Esticar",
+    [UI_MENU_MOVIE_ASPECT] = "Formato dos vídeos",
+    [UI_MENU_MOVIE_ASPECT_DESC] = "Quando a resolução do jogo não é 16:9: manter o formato dos vídeos das cenas com "
+                                  "barras pretas ou esticá-los sobre a imagem toda. Vale a partir do próximo vídeo.",
+    [UI_MENU_MOVIE_ASPECT_KEEP] = "Barras pretas", [UI_MENU_MOVIE_ASPECT_STRETCH] = "Esticar",
     [UI_MENU_SHARPNESS] = "Nitidez do FSR",
     [UI_MENU_SHARPNESS_DESC] = "Aumento de nitidez após a ampliação do FSR; 0 desliga.",
 
@@ -1234,6 +1231,9 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
                                   "a janela perde o foco, como no Switch ao apertar Home; um carregamento interrompido "
                                   "assim pode parar de vez.",
     [UI_MENU_FPS_DISPLAY] = "Taxa do monitor", [UI_MENU_FPS_DISPLAY_HZ] = "Taxa do monitor (%.0f Hz)",
+    [UI_MENU_FRAME_QUEUE] = "Fila de quadros",
+    [UI_MENU_FRAME_QUEUE_DESC] = "O jogo começa um quadro enquanto o anterior espera a vez de aparecer: muito menos quadros "
+                                 "perdidos no limite, com até um quadro a mais de atraso na entrada. Vale na hora.",
     [UI_MENU_REALTIME] = "Velocidade do jogo pelo relógio",
     [UI_MENU_REALTIME_DESC] = "Avança o jogo pelo tempo real, para que um quadro lento não deixe o jogo mais lento.",
     [UI_MENU_CLOTH_REALTIME] = "Tecidos pelo relógio",
@@ -1279,12 +1279,6 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
     [UI_MENU_MOUSE_DIRECT] = "Olhar direto do mouse (experimental)",
     [UI_MENU_MOUSE_DIRECT_DESC] = "Soma o mouse ao analógico já processado da câmera, ignorando a zona morta e a "
                                   "curva do jogo; o mouse deixa de empurrar o analógico direito.",
-    [UI_MENU_MOUSE_DIRECT_SENS] = "Velocidade do olhar direto",
-    [UI_MENU_MOUSE_DIRECT_SENS_DESC] = "Unidades de analógico por contagem do mouse a 30 fps; 1 iguala o mouse pelo "
-                                       "analógico direito a 60 fps.",
-    [UI_MENU_MOUSE_DIRECT_PITCH] = "Curva vertical do olhar direto",
-    [UI_MENU_MOUSE_DIRECT_PITCH_DESC] = "Curva de raiz quadrada para a vertical. 1,37 iguala a inclinação quadrática do "
-                                        "jogo ao giro; mais aumenta movimentos pequenos.",
 
     [UI_MENU_MOUSE_MOTION_KEY] = "Tecla de movimento do mouse",
     [UI_MENU_MOUSE_MOTION_KEY_DESC] = "Segure para o mouse alimentar o sensor de seis eixos nos santuários de inclinação; "
@@ -1320,15 +1314,6 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
     [UI_MENU_MENU_CURSOR_LOG] = "Registo do mouse nos menus",
     [UI_MENU_MENU_CURSOR_LOG_DESC] = "Escreve os nós de cada ecrã, o teste de acerto do ponteiro e cada direção com "
                                      "que a caixa de foco é conduzida.",
-    [UI_MENU_MENU_CURSOR_SCREENS] = "Telas do mouse nos menus",
-    [UI_MENU_MENU_CURSOR_SCREENS_DESC] = "Em que telas o ponteiro é assumido: uma lista aberta dos nomes de layout do "
-                                         "jogo. menu_cursor_screens no totk.ini aceita qualquer lista, e menu_cursor_log "
-                                         "imprime o nome de cada tela que o jogo abre — a um menu que falte falta só um "
-                                         "nome. As duas últimas opções são telas do mesmo tipo ainda não testadas a "
-                                         "jogar: se alguma for pior, volte à primeira.",
-    [UI_MENU_MENU_CURSOR_SCREENS_BASIC] = "Título, bolsa, carregar e salvar",
-    [UI_MENU_MENU_CURSOR_SCREENS_PLUS_OPTION] = "+ opções",
-    [UI_MENU_MENU_CURSOR_SCREENS_PLUS_ALBUM] = "+ opções, álbum e enciclopédia",
     [UI_MENU_PLAYER_STATE] = "Estado do jogador",
     [UI_MENU_PLAYER_STATE_DESC] = "1.4.3, ligado. Lê o que Link faz dos objetos do próprio jogo — os verbos de ação dos "
                                   "seus cinco slots, o poder em uso, se o Ultra Mão segura algo — e dá ao esquema as "
@@ -1338,8 +1323,6 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
     [UI_MENU_PLAYER_STATE_LOG] = "Registro do estado do jogador",
     [UI_MENU_PLAYER_STATE_LOG_DESC] = "Uma linha por mudança de verbos, poder e captura (player_state: verbs 1,61,... "
                                       "power 1 holding 1).",
-    [UI_MENU_MOUSE_FLOOD] = "Injeção de contagem do mouse",
-    [UI_MENU_MOUSE_FLOOD_DESC] = "Contagens extras de mouse por quadro, para testar um mouse de alta taxa de "
                                  "relatório e o caminho de entrada. 0 desliga.",
     [UI_MENU_KBM_HELP] = "A tecla de cada ação do esquema, num contexto ou em todos. Selecione uma linha e pressione a "
                          "nova tecla; Delete limpa a substituição. A do contexto vence a global. Com a tecla de "
@@ -1618,6 +1601,12 @@ static const char *const text_pt_br[UI_TEXT_COUNT] = {
     [UI_MENU_PROMPTS_NINTENDO] = "Nintendo",
     [UI_MENU_PROMPTS_XBOX] = "Xbox",
     [UI_MENU_PROMPTS_KEYBOARD] = "Teclado",
+    [UI_MENU_MOUSE_MODE] = "Câmera com o mouse",
+    [UI_MENU_MOUSE_MODE_DESC] = "Direta: a câmera gira o quanto o mouse se move, como num jogo de PC, sem zona morta nem curva do analógico (jogos 1.4.3 e 1.2.1; o 1.1.0 usa a emulação do analógico). Emulação do analógico: o mouse age como o analógico direito.",
+    [UI_MENU_MOUSE_STICK] = "Emulação do analógico",
+    [UI_MENU_MOUSE_DIRECT] = "Direta",
+    [UI_MENU_MENU_CURSOR] = "Mouse nos menus do jogo",
+    [UI_MENU_MENU_CURSOR_DESC] = "Nos menus do próprio jogo (título, inventário, lojas, escolhas de diálogo) o ponteiro aparece: o item sob ele fica selecionado, o clique esquerdo confirma e o direito volta. Só depois de usar o mouse ou uma tecla por último, então com um controle os menus ficam como antes (jogo 1.4.3).",
     [UI_MENU_PROMPTS_MISSING] = "faltam os arquivos dos ícones: execute a instalação de novo",
     [UI_MENU_PROMPTS_FAILED] = "arquivos dos ícones danificados: execute a instalação de novo",
     [UI_MENU_PROMPTS_CURRENT] = "em vigor",
@@ -1820,6 +1809,11 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
                             "用黑边保持画面比例，或拉伸铺满窗口。",
     [UI_MENU_ASPECT_FIT] = "黑边",
     [UI_MENU_ASPECT_STRETCH] = "拉伸",
+    [UI_MENU_MOVIE_ASPECT] = "视频画面比例",
+    [UI_MENU_MOVIE_ASPECT_DESC] = "当游戏分辨率不是 16:9 时：用黑边保持过场视频的原有比例，或拉伸铺满整个画面。"
+                                  "从下一段视频起生效。",
+    [UI_MENU_MOVIE_ASPECT_KEEP] = "黑边",
+    [UI_MENU_MOVIE_ASPECT_STRETCH] = "拉伸",
     [UI_MENU_FOV] = "视野",
     [UI_MENU_FOV_DESC] = "镜头能看到多大范围，以游戏自身视野的百分比表示。"
                           "仅限游戏版本 1.4.3。",
@@ -1853,6 +1847,8 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
     [UI_MENU_FPS_144] = "144 FPS",
     [UI_MENU_FPS_DISPLAY] = "显示器刷新率",
     [UI_MENU_FPS_DISPLAY_HZ] = "显示器刷新率（%.0f Hz）",
+    [UI_MENU_FRAME_QUEUE] = "帧队列",
+    [UI_MENU_FRAME_QUEUE_DESC] = "前一帧等待显示时游戏就开始绘制下一帧：在帧率上限下掉帧大幅减少，输入延迟最多增加一帧。立即生效。",
     [UI_MENU_REALTIME] = "游戏速度跟随时钟",
     [UI_MENU_REALTIME_DESC] = "按真实时间推进游戏，帧率低时游戏速度也不会变慢。",
     [UI_MENU_CLOTH_REALTIME] = "布料跟随时钟",
@@ -1904,11 +1900,6 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
     [UI_MENU_MOUSE_AIM_SCALE_DESC] = "按住 ZR 拉弓时的鼠标灵敏度倍率；1 表示不变。",
     [UI_MENU_MOUSE_DIRECT] = "鼠标直接视角（实验）",
     [UI_MENU_MOUSE_DIRECT_DESC] = "把鼠标加到相机已处理的右摇杆上，跳过游戏的死区和曲线；鼠标不再推动右摇杆。",
-    [UI_MENU_MOUSE_DIRECT_SENS] = "直接视角速度",
-    [UI_MENU_MOUSE_DIRECT_SENS_DESC] = "30 fps 下每个鼠标计数对应的摇杆量；1 约等于 60 fps 时右摇杆鼠标的速度。",
-    [UI_MENU_MOUSE_DIRECT_PITCH] = "直接视角俯仰整形",
-    [UI_MENU_MOUSE_DIRECT_PITCH_DESC] = "垂直方向用平方根整形。1.37 让游戏的二次俯仰与水平转动一致；"
-                                        "调高会让小幅垂直移动更灵敏。",
 
     [UI_MENU_MOUSE_MOTION_KEY] = "鼠标体感按键",
     [UI_MENU_MOUSE_MOTION_KEY_DESC] = "按住时把鼠标交给游戏的六轴传感器，用于体感神庙/倾斜机关；此时视角直插暂停。"
@@ -1938,22 +1929,12 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
                                  "世界内的快捷条一律不碰——释放捕获会让滚轮失效。",
     [UI_MENU_MENU_CURSOR_LOG] = "游戏菜单鼠标日志",
     [UI_MENU_MENU_CURSOR_LOG_DESC] = "记录每个菜单界面的节点数、指针命中结果，以及焦点框每次被哪个方向键移动。",
-    [UI_MENU_MENU_CURSOR_SCREENS] = "鼠标接管的菜单界面",
-    [UI_MENU_MENU_CURSOR_SCREENS_DESC] = "决定指针在哪些界面接管，内容是游戏界面名（blyt 布局名）的白名单。totk.ini 的 "
-                                         "menu_cursor_screens 可以写任意名单；menu_cursor_log 会把游戏每打开一个界面的名字"
-                                         "打印出来，少接管哪个菜单就照日志补哪个名字。后两个预设是同类界面、还没实测过，"
-                                         "如果反而更难用就切回第一个。",
-    [UI_MENU_MENU_CURSOR_SCREENS_BASIC] = "标题、背包、读档、存档",
-    [UI_MENU_MENU_CURSOR_SCREENS_PLUS_OPTION] = "再加设置页",
-    [UI_MENU_MENU_CURSOR_SCREENS_PLUS_ALBUM] = "再加设置、相册与图鉴",
     [UI_MENU_PLAYER_STATE] = "玩家姿态",
     [UI_MENU_PLAYER_STATE_DESC] = "1.4.3，默认开。从游戏自己的对象读林克正在做什么——五个动作槽的动词、当前能力、究极手有"
                                   "没有吸着东西——再把键位切到对应姿态那一套：攀爬、空中、滑翔、游泳、骑马、载具，以及能力"
                                   "专用键。只读不写；姿态要连续 30 毫秒同一个答案才切，游戏自己的菜单永远优先。",
     [UI_MENU_PLAYER_STATE_LOG] = "玩家姿态日志",
     [UI_MENU_PLAYER_STATE_LOG_DESC] = "动词、能力、吸持状态每变化一次记一行（player_state: verbs 1,61,... power 1 holding 1）。",
-    [UI_MENU_MOUSE_FLOOD] = "鼠标计数注入",
-    [UI_MENU_MOUSE_FLOOD_DESC] = "每帧额外注入的鼠标计数，用于高回报率鼠标与输入路径压测。0 = 关。",
     [UI_MENU_KBM_HELP] = "方案里每个动作的按键，可按上下文或全局设置。选中一行后按新键；Delete 清除覆盖。"
                          "上下文覆盖优先于全局。按住投掷键时滚轮换材料。",
     [UI_MENU_KBM_CONTEXT] = "上下文",
@@ -2302,6 +2283,12 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
     [UI_MENU_PROMPTS_NINTENDO] = "Nintendo",
     [UI_MENU_PROMPTS_XBOX] = "Xbox",
     [UI_MENU_PROMPTS_KEYBOARD] = "键盘",
+    [UI_MENU_MOUSE_MODE] = "鼠标视角",
+    [UI_MENU_MOUSE_MODE_DESC] = "直接：镜头按鼠标移动的距离转动，与电脑游戏相同，没有摇杆死区和响应曲线（游戏 1.4.3 和 1.2.1；1.1.0 使用摇杆模拟）。摇杆模拟：鼠标相当于右摇杆。",
+    [UI_MENU_MOUSE_STICK] = "摇杆模拟",
+    [UI_MENU_MOUSE_DIRECT] = "直接",
+    [UI_MENU_MENU_CURSOR] = "在游戏菜单中使用鼠标",
+    [UI_MENU_MENU_CURSOR_DESC] = "在游戏自身的菜单中（标题、背包、商店、对话选项）显示指针：指针下的项目被选中，左键确认，右键返回。仅在最后使用的是鼠标或键盘时生效，因此使用手柄时菜单保持不变（游戏 1.4.3）。",
     [UI_MENU_PROMPTS_MISSING] = "缺少按键提示文件：请重新运行安装程序",
     [UI_MENU_PROMPTS_FAILED] = "按键提示文件已损坏：请重新运行安装程序",
     [UI_MENU_PROMPTS_CURRENT] = "已生效",

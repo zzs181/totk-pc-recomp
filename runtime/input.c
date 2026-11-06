@@ -29,6 +29,13 @@ enum { STICK_MAX = 32767, STICK_DIR = 16384, TRIGGER_ON = 16384, RESCAN_MS = 100
 
 static PlatMutex lock = PLAT_MUTEX_INIT;
 static int state;                    // 0 not started, 1 running, -1 disabled or SDL failed
+static volatile int32_t g_block, g_menu;   // text entry / host menu: 0 off, 1 open, 2 waiting for release
+// The device the player used last (input_kbm_last): 1 keyboard and mouse, 0 the gamepad. A pad counts once a button is
+// down or a stick is past half way (a drifting stick never switches), the mouse once it moved MOUSE_USED raw counts
+// within one poll (a slow deliberate move does; a desk bump does not), the keyboard with any key or mouse button.
+enum { PAD_USED = 16384, MOUSE_USED = 6 };
+static volatile int32_t g_kbm_last = 1;
+int input_kbm_last(void) { return __atomic_load_n(&g_kbm_last, __ATOMIC_RELAXED); }
 static SDL_Gamepad *pad;
 static uint64_t next_scan;
 static int pad_rumble;               // the open gamepad has rumble motors
@@ -69,6 +76,7 @@ static const struct { const char *name; int bit; } script_buttons[] = {
 static ScriptEv *script_ev;
 static int script_n, script_state;   // 0 not loaded, 1 loaded
 static int script_mixed;             // the script has timed lines: its untimed ones end where the world clock starts
+static int32_t script_mouse[2];      // one-shot raw counts, consumed by the camera hook; under lock
 
 static void script_load(void) {
     script_state = 1;
@@ -91,10 +99,11 @@ static void script_load(void) {
         ScriptEv e = {.at = (uint64_t)(at * unit + 0.5), .hold = timed ? 66667 : 4, .bit = -1, .timed = timed};
         long a, b;
         double c;
-        if (!strcmp(name, "LSTICK") || !strcmp(name, "RSTICK")) {
+        if (!strcmp(name, "MOUSE") || !strcmp(name, "LSTICK") || !strcmp(name, "RSTICK")) {
             int n = sscanf(line + off, "%ld %ld %lf", &a, &b, &c);
             if (n < 2) { rt_log("input: script line %d: %s needs x y [hold]", ln, name); continue; }
-            e.stick = name[0] == 'L' ? 1 : 2; e.x = (int32_t)a; e.y = (int32_t)b;
+            e.stick = name[0] == 'M' ? 3 : name[0] == 'L' ? 1 : 2; e.x = (int32_t)a; e.y = (int32_t)b;
+            if (e.stick == 3) e.hold = 1;   // a displacement, never a held speed
             if (n >= 3 && c > 0) e.hold = (uint64_t)(c * unit + 0.5);
             snprintf(e.text, sizeof e.text, "%s %d %d", name, e.x, e.y);
         } else {
@@ -126,12 +135,17 @@ static void script_apply(uint64_t *b, int32_t sl[2], int32_t sr[2]) {
         if (e->timed ? w < 0 : script_mixed && w >= 0) continue;
         uint64_t now = e->timed ? (uint64_t)w : tick;
         if (now < e->at || (now >= e->at + e->hold && (e->logged || !e->timed))) continue;
+        if (e->stick == 3 && e->logged) continue;
         if (!e->logged) {
             e->logged = 1;
             if (e->timed) rt_log("input: script frame %llu at %.1f ms: %s", (unsigned long long)fr, w / 1000.0, e->text);
             else rt_log("input: script frame %llu tick %llu: %s", (unsigned long long)fr, (unsigned long long)tick, e->text);
         }
-        if (e->stick) { int32_t *s = e->stick == 1 ? sl : sr; s[0] = e->x; s[1] = e->y; }
+        if (e->stick == 3) {
+            int64_t x = (int64_t)script_mouse[0] + e->x, y = (int64_t)script_mouse[1] + e->y;
+            script_mouse[0] = (int32_t)(x < INT32_MIN ? INT32_MIN : x > INT32_MAX ? INT32_MAX : x);
+            script_mouse[1] = (int32_t)(y < INT32_MIN ? INT32_MIN : y > INT32_MAX ? INT32_MAX : y);
+        } else if (e->stick) { int32_t *s = e->stick == 1 ? sl : sr; s[0] = e->x; s[1] = e->y; }
         else *b |= 1ull << e->bit;
     }
 }
@@ -226,6 +240,30 @@ static void rec_apply(uint64_t b, const int32_t sl[2], const int32_t sr[2]) {
     if (wrote) fflush(rec);
 }
 
+void input_direct_mouse_sample(int enabled, int32_t *dx, int32_t *dy) {
+    plat_mutex_lock(&lock);
+    enabled = enabled && !g_block && !g_menu;
+    *dx = script_mouse[0]; *dy = script_mouse[1];
+    script_mouse[0] = script_mouse[1] = 0;
+    if (!enabled) { *dx = *dy = 0; }
+    else if (ikb_captured() && ikb_foreground() && input_cursor_allowed()) {
+        int32_t x, y;
+        ikb_mouse_take(&x, &y);
+        int64_t sx = (int64_t)*dx + x, sy = (int64_t)*dy + y;
+        *dx = (int32_t)(sx < INT32_MIN ? INT32_MIN : sx > INT32_MAX ? INT32_MAX : sx);
+        *dy = (int32_t)(sy < INT32_MIN ? INT32_MIN : sy > INT32_MAX ? INT32_MAX : sy);
+    }
+    if (enabled && (*dx || *dy) && rec_state == 1) {
+        char what[80];
+        snprintf(what, sizeof what, "MOUSE %d %d", *dx, *dy);
+        int64_t w = frame_step_world_us();
+        uint64_t tick = frame_step_ticks();
+        rec_line(tick, w, tick + 1, w, what);
+        fflush(rec);
+    }
+    plat_mutex_unlock(&lock);
+}
+
 static float mouse_sens = -1;              // TOTK_MOUSE_SENS, 0 = mouse camera off; live (cfg_version)
 static unsigned mouse_sens_seen;
 
@@ -238,18 +276,6 @@ static float mouse_sens_get(void) {
     return mouse_sens;
 }
 
-// TOTK_MOUSE_AIM_SCALE: the mouse camera's sensitivity while ZR (the bow) is held, 1 = unchanged.
-static float mouse_aim_scale = -1;
-static unsigned mouse_aim_seen;
-static float mouse_aim_get(void) {
-    unsigned ver = cfg_version();
-    if (mouse_aim_scale >= 0 && ver == mouse_aim_seen) return mouse_aim_scale;
-    mouse_aim_seen = ver;
-    double v = cfg_double("TOTK_MOUSE_AIM_SCALE");
-    if (!(v > 0)) v = 1;
-    mouse_aim_scale = (float)(v < 0.1 ? 0.1 : v > 3 ? 3 : v);
-    return mouse_aim_scale;
-}
 
 // ---- walk key: the keyboard's stick samples scaled down while a key is held (TOTK_WALK_KEY, TOTK_WALK_SCALE)
 // A keyboard key is all or nothing, so every keyboard-driven stick sample is +/-32767 and the game only ever sees a
@@ -297,203 +323,11 @@ static void walk_get(void) {
     }
 }
 
-// ---- the PC scheme (TOTK_KBM_SCHEME): the keyboard and the mouse routed by kbm_scheme.c's context table
-// (ported from Weeping of the Empire) instead of the flat table in input_map.c. Off by default: the Controls tab
-// and the TOTK_BIND_* lines edit input_map.c's table, which the scheme does not read.
-static int kbm_scheme_on = -1;             // -1 unknown, 0 off, 1 on; live (cfg_version)
-static unsigned kbm_scheme_seen;
+static int mouse_selector;
+int input_direct_mouse_selector_active(void) { return __atomic_load_n(&mouse_selector, __ATOMIC_RELAXED) != 0; }
 
-static int kbm_on(void) {
-    unsigned ver = cfg_version();
-    if (kbm_scheme_on >= 0 && ver == kbm_scheme_seen) return kbm_scheme_on;
-    kbm_scheme_seen = ver;
-    const char *v = cfg_value("TOTK_KBM_SCHEME");
-    int on = *v && !name_matches(v, "0") && !name_matches(v, "off") && !name_matches(v, "none");
-    // kbm_binds is live: every cfg change reparses the rows, whether the switch flipped or not
-    if (on) kbm_scheme_set_binds(cfg_get("TOTK_KBM_BINDS"));
-    if (on != kbm_scheme_on) {
-        if (on) {
-            kbm_scheme_init();
-            rt_log("input: PC scheme on: %d rows, %d unknown keys, Esc is the game's menu key, "
-                   "the Controls tab and TOTK_BIND_* do not apply",
-                   kbm_scheme_row_count(), kbm_scheme_unknown_key_count());
-        } else if (kbm_scheme_on == 1) {
-            rt_log("input: PC scheme off, the bindings of docs/controls.md are back");
-        }
-    }
-    kbm_scheme_on = on;
-    return on;
-}
-
-// The same switch for the window thread (ui/menu_win.cpp, ui/menu_sdl.cpp, input_win.c, input_sdl.c): while the
-// scheme runs, Esc is the game's key, so only F1 opens the host menu and Esc leaves the cursor alone.
-int input_kbm_scheme(void) {
-    const char *v = cfg_value("TOTK_KBM_SCHEME");
-    return *v && !name_matches(v, "0") && !name_matches(v, "off") && !name_matches(v, "none");
-}
-
-// TOTK_CAMLOG=<ms>: the mouse camera's raw counts and the stick it produced, for chasing input feel.
-static void camlog(int32_t dx, int32_t dy, const int32_t held[2], int cap, int path, int aim) {
-    static uint64_t last;
-    int ms = cfg_int("TOTK_CAMLOG");
-    if (ms <= 0) return;
-    uint64_t now = plat_now_ns();
-    if (last && now - last < (uint64_t)ms * 1000000ull) return;
-    last = now;
-    rt_log("input: camlog dx=%d dy=%d stick=%d,%d captured=%d path=%d aim=%d", dx, dy, held[0], held[1], cap, path, aim);
-}
-
-// The ability wheel (L held) picks a segment by where the right stick points and keeps the pick while the stick is
-// held. The mouse sample is a velocity (input_mouse_stick): it is back to the middle the moment the mouse stops, so
-// the wheel's pick slid back to the centre -- "it sticks to the middle". While L is held the counts push a virtual
-// stick instead that stays where it was pushed until the wheel closes, so the pick stays under the pointer.
-enum { MOUSE_WHEEL_COUNTS = 220 };   // counts for a full deflection (a nudge back to the middle centres it)
-static int32_t wheel_stick[2];
-
-// Direct mouse look (TOTK_MOUSE_DIRECT, the `mousedirect` set in recomp/patches-v143.txt): the game's stick step adds
-// (total - applied) * k to the processed right stick after its dead zone and curve, so the mouse skips both. The patch
-// page holds 32-bit running totals and the totals the game applied last: +0x100/+0x104 total x/y, +0x108/+0x10c
-// applied x/y, +0x110 the stick units per count. The runtime drops motion the game did not apply for a while (menus,
-// loading, cutscenes) instead of saving it up for the first step after them.
-enum { MD_TOTAL_X = 0x100, MD_TOTAL_Y = 0x104, MD_APPLIED_X = 0x108, MD_APPLIED_Y = 0x10c, MD_K = 0x110,
-       MD_PITCH = 0x114 };
-enum { MD_STALE_PRESENTS = 8 };       // steps skipped before the saved motion is dropped
-static uint32_t md_seen[2];
-static int md_stale;
-static int md_was_on;
-static int md_logged;
-
-static int mouse_direct_get(void) {
-    static int on = -1;
-    static unsigned seen;
-    unsigned ver = cfg_version();
-    if (on < 0 || ver != seen) {
-        seen = ver;
-        on = cfg_bool("TOTK_MOUSE_DIRECT") && !cfg_bool("TOTK_MOUSE_ORBIT");
-        int set = rt_patch_set("mousedirect");
-        if (set >= 0) rt_patch_switch(set, on);
-    }
-    return on;
-}
-
-static float mouse_direct_sens_get(void) {
-    static float sens = -1;
-    static unsigned seen;
-    unsigned ver = cfg_version();
-    if (sens < 0 || ver != seen) {
-        seen = ver;
-        double v = cfg_double("TOTK_MOUSE_DIRECT_SENS");
-        if (!(v > 0)) v = 1;
-        sens = (float)(v < 0.05 ? 0.05 : v > 10 ? 10 : v);
-    }
-    return sens;
-}
-
-// The game turns pitch by 51 y |y| and yaw by 70 x, so the direct path shapes the mouse's pitch by
-// sign(v) sqrt(g |v|), g = 70/51: the pitch per count then matches yaw. The patch reads g from the page.
-static float mouse_direct_pitch_get(void) {
-    static float gain = -1;
-    static unsigned seen;
-    unsigned ver = cfg_version();
-    if (gain < 0 || ver != seen) {
-        seen = ver;
-        double v = cfg_double("TOTK_MOUSE_DIRECT_PITCH");
-        if (!(v > 0)) v = 70.0 / 51.0;
-        gain = (float)(v < 0.2 ? 0.2 : v > 4 ? 4 : v);
-    }
-    return gain;
-}
-
-static uint32_t md_load(uint8_t *page, unsigned off) {
-    return __atomic_load_n((uint32_t *)(void *)(page + off), __ATOMIC_RELAXED);
-}
-
-static void md_store(uint8_t *page, unsigned off, uint32_t v) {
-    __atomic_store_n((uint32_t *)(void *)(page + off), v, __ATOMIC_RELAXED);
-}
-
-// The game did not run the stick step (menus, loading, wheel, lost capture): take its applied totals up to now, so the
-// first step after it applies no motion from before.
-static void mouse_direct_sync(void) {
-    uint8_t *page = rt_patch_page();
-    if (!page) return;
-    uint32_t x = md_load(page, MD_TOTAL_X), y = md_load(page, MD_TOTAL_Y);
-    md_store(page, MD_APPLIED_X, x);
-    md_store(page, MD_APPLIED_Y, y);
-    md_seen[0] = x;
-    md_seen[1] = y;
-    md_stale = 0;
-    float zero = 0;
-    memcpy(page + MD_K, &zero, sizeof zero);
-}
-
-static void mouse_direct_frame(int32_t dx, int32_t dy, int aim) {
-    uint8_t *page = rt_patch_page();
-    if (!page) return;
-    uint32_t tx = md_load(page, MD_TOTAL_X) + (uint32_t)dx;
-    uint32_t ty = md_load(page, MD_TOTAL_Y) + (uint32_t)dy;
-    md_store(page, MD_TOTAL_X, tx);
-    md_store(page, MD_TOTAL_Y, ty);
-    uint32_t ax = md_load(page, MD_APPLIED_X), ay = md_load(page, MD_APPLIED_Y);
-    if (ax != md_seen[0] || ay != md_seen[1]) {
-        if (!md_logged) {
-            rt_log("input: direct mouse look: the game applied the mouse");
-            md_logged = 1;
-        }
-        md_seen[0] = ax;
-        md_seen[1] = ay;
-        md_stale = 0;
-    } else if (++md_stale > MD_STALE_PRESENTS) {
-        md_store(page, MD_APPLIED_X, tx);
-        md_store(page, MD_APPLIED_Y, ty);
-        md_seen[0] = tx;
-        md_seen[1] = ty;
-        md_stale = 0;
-    }
-    float ratio;
-    memcpy(&ratio, page, sizeof ratio);   // page +0: the 30 Hz ratio (frame_rate.c)
-    if (!(ratio > 0.1f) || ratio > 10) ratio = 1;
-    float k = 0.01f * mouse_sens_get() * (aim ? mouse_aim_get() : 1.0f) * mouse_direct_sens_get() / ratio;
-    memcpy(page + MD_K, &k, sizeof k);
-    float gain = mouse_direct_pitch_get();
-    memcpy(page + MD_PITCH, &gain, sizeof gain);
-}
-
-// ---- the orbit engine (runtime/mouse_direct.c): the same settings, shaped in C rather than in the patch page.
-// The engine's sites call into the runtime on the game thread; these two answer with the numbers input.c has cached for
-// this frame, and the suspension flag tells the hook to leave the counts to the wheel, the motion tilt or the map.
-static int mouse_aim_now;
-static int orbit_suspend;   // written and read across threads with __atomic_*
-
-float input_mouse_sens_now(void) {
-    return mouse_sens_get() * (mouse_aim_now ? mouse_aim_get() : 1.0f) * mouse_direct_sens_get();
-}
-
-float input_mouse_direct_k(void) {
-    float k = 0.01f * input_mouse_sens_now(), speed = cam_speed_applied();
-    if (speed > 0) k /= speed;
-    return k;
-}
-
-int input_mouse_orbit_suspended(void) { return __atomic_load_n(&orbit_suspend, __ATOMIC_RELAXED); }
-
-// TOTK_MOUSE_ORBIT, live: the set of patch sites is on and the settings ask for it. input.c owns the switch, because
-// the engine's own sites only run once the set is on: the first read here turns it on and the asm set off.
-static int mouse_orbit_get(void) {
-    static int on = -1;
-    static unsigned seen;
-    unsigned ver = cfg_version();
-    if (on < 0 || ver != seen) {
-        seen = ver;
-        int want = cfg_bool("TOTK_MOUSE_ORBIT");
-        int set = rt_patch_set("mouseorbit"), asm_set = rt_patch_set("mousedirect");
-        if (set >= 0) rt_patch_switch(set, want);
-        if (want && asm_set >= 0) rt_patch_switch(asm_set, 0);
-        on = want && rt_patch_enabled(set);
-    }
-    return on;
-}
-
+// Selector 1 is a radial wheel, 2..4 are distinct horizontal quick lists; only a wheel retains a virtual cursor.
+// Under `lock`.
 // Hold-to-tilt: the mouse feeds the virtual controller's six-axis for the game's motion mechanics (the gyro shrines)
 // while TOTK_MOUSE_MOTION_KEY is held (default k; none off). The direct mouse look is paused then, so the mouse does
 // not turn the view as well. TOTK_MOUSE_MOTION_SPEED scales the tilt.
@@ -573,93 +407,61 @@ static void mouse_motion_feed(int32_t dx, int32_t dy) {
 // The mouse camera as a right-stick sample, held for the whole presented frame. Under `lock`. The sample is divided by
 // the camera speed factor the game runs with (camera_speed.c, cam_speed_applied), which multiplies every right-stick
 // turn rate, so TOTK_MOUSE_SENS alone sets the mouse's speed; below 1 the sample stays within the stick's range, so the
-// mouse's top speed drops with the factor.
-static void mouse_camera(int32_t out[2], int aim, int wheel, int as_stick) {
+
+static void mouse_camera(int32_t out[2], int selector) {
     static uint64_t frame = ~0ull, t0;
     static int32_t held[2];
+    static int was_selector;
+    static float cursor[2];
+    static InputMouseRow row;
     uint64_t now = plat_now_ns();
-    int32_t dx = 0, dy = 0;
-    int flood = cfg_int("TOTK_MOUSE_FLOOD");
-    int cap = ikb_captured();
-    int orbit = mouse_orbit_get();
-    int direct = mouse_direct_get() && !orbit;
-    mouse_aim_now = aim;
-    // The ability's held object reads the pad's right stick, not the camera's processed one: the direct look would
-    // move the view and leave the object still. The counts go through the ordinary stick sample instead (below).
-    if (as_stick) direct = 0;
-    if (md_was_on && !direct) mouse_direct_sync();
-    md_was_on = direct;
+    int32_t dx, dy;
+    if (!input_direct_mouse_enabled() || !ikb_captured()) selector = 0;
+    __atomic_store_n(&mouse_selector, selector, __ATOMIC_RELAXED);
+    if (selector) {
+        if (was_selector != selector) cursor[0] = cursor[1] = 0, row = (InputMouseRow){0};
+        was_selector = selector;
+        ikb_mouse_take(&dx, &dy);
+        if (selector == 1) input_direct_mouse_radial(dx, dy, mouse_sens_get(), cursor, out);
+        else input_direct_mouse_row(dx, mouse_sens_get(), now, &row, out);
+        held[0] = held[1] = 0; frame = ~0ull;
+        return;
+    }
+    if (was_selector) {
+        was_selector = 0; cursor[0] = cursor[1] = 0; row = (InputMouseRow){0};
+        ikb_mouse_take(&dx, &dy);   // release the wheel without sending its last movement to the camera
+        held[0] = held[1] = out[0] = out[1] = 0; frame = ~0ull;
+        return;
+    }
     int motion = mouse_motion_held();
     if (!motion && mm_live) mouse_motion_stop();
-    __atomic_store_n(&orbit_suspend, orbit && (as_stick || wheel || motion), __ATOMIC_RELAXED);
-    if (motion && cap) {
+    if (motion && ikb_captured()) {
+        static uint64_t mframe = ~0ull;
         uint64_t fr = __atomic_load_n(&gfx_counters.frames, __ATOMIC_RELAXED);
-        if (fr != frame) {
+        if (fr != mframe) {
             ikb_mouse_take(&dx, &dy);
             mouse_motion_feed(dx, dy);
-            frame = fr;
-            t0 = now;
+            mframe = fr;
         }
-        held[0] = held[1] = 0;
-        out[0] = out[1] = 0;
-        if (direct) mouse_direct_sync();
-        camlog(dx, dy, held, cap, 3, aim);
+        held[0] = held[1] = out[0] = out[1] = 0;
         return;
     }
-    if (wheel && cap) {
-        if (direct) mouse_direct_sync();   // the wheel consumes the counts; keep its pick on the stick
-        uint64_t fr = __atomic_load_n(&gfx_counters.frames, __ATOMIC_RELAXED);
-        if (fr != frame) {
-            ikb_mouse_take(&dx, &dy);
-            double x = wheel_stick[0] / (double)STICK_MAX + dx / (double)MOUSE_WHEEL_COUNTS;
-            double y = wheel_stick[1] / (double)STICK_MAX - dy / (double)MOUSE_WHEEL_COUNTS;
-            double len = sqrt(x * x + y * y);
-            if (len > 1) x /= len, y /= len;
-            if (x * x + y * y < 0.02) x = y = 0;   // back over the middle: the wheel shows its centre again
-            wheel_stick[0] = (int32_t)lround(x * STICK_MAX);
-            wheel_stick[1] = (int32_t)lround(y * STICK_MAX);
-            frame = fr;
-            t0 = now;
-        }
-        out[0] = wheel_stick[0], out[1] = wheel_stick[1];
-        camlog(dx, dy, wheel_stick, cap, 0, aim);
-        return;
-    }
-    if (orbit && cap) {
-        // The engine's sites read the counts on the game thread (mouse_direct.c): leave them for it, and hand the game
-        // no stick sample at all. The wheel, the motion tilt and the map suspended it above and keep the path below.
-        held[0] = held[1] = 0;
+    if (input_direct_mouse_active()) {
+        held[0] = held[1] = out[0] = out[1] = 0;
         frame = ~0ull;
-        out[0] = out[1] = 0;
-        camlog(0, 0, held, cap, 4, aim);
-        return;
+        return;   // the camera update takes the raw counts itself, once, outside the HID stick path
     }
-    wheel_stick[0] = wheel_stick[1] = 0;
-    if (!cap) {
+    if (!ikb_captured()) {
         ikb_mouse_take(&dx, &dy);
-        if (direct) mouse_direct_sync();
-        mouse_motion_stop();
         held[0] = held[1] = 0;
         frame = ~0ull;
-        camlog(dx, dy, held, cap, 0, aim);
     } else {
         uint64_t fr = __atomic_load_n(&gfx_counters.frames, __ATOMIC_RELAXED);
         double age = frame == ~0ull ? 0 : (double)(now - t0) / 1e9;
         if (fr != frame) {
             double dt = age < 0.004 ? 0.004 : age > 0.1 ? 0.1 : age;
             ikb_mouse_take(&dx, &dy);
-            if (flood > 0) dx += flood;
-            if (direct) {
-                mouse_direct_frame(dx, dy, aim);
-                held[0] = held[1] = 0;
-                frame = fr;
-                t0 = now;
-                out[0] = out[1] = 0;
-                camlog(dx, dy, held, cap, 2, aim);
-                return;
-            }
-            float sens = mouse_sens_get() * (aim ? mouse_aim_get() : 1.0f);
-            input_mouse_stick(dx, dy, dt, sens, held);
+            input_mouse_stick(dx, dy, dt, mouse_sens_get(), held);
             frame = fr;
             t0 = now;
         } else if (age > 0.1) {
@@ -670,7 +472,6 @@ static void mouse_camera(int32_t out[2], int aim, int wheel, int as_stick) {
     if (len > STICK_MAX) x *= STICK_MAX / len, y *= STICK_MAX / len;
     out[0] = (int32_t)lround(x);
     out[1] = (int32_t)lround(y);
-    camlog(dx, dy, held, cap, 0, aim);
 }
 
 static float stick_dead[2] = {-1, -1};     // input_pad_deadzone of the left and right stick; live (cfg_version)
@@ -818,6 +619,53 @@ static void pick(int32_t *x, int32_t *y, int32_t kx, int32_t ky) {
     if (b > a) { *x = kx; *y = ky; }
 }
 
+// The shake key (B_SHAKE): the game detaches a part fused to what Ultrahand holds when the right stick swings left and
+// right a few times. A press swings it for SHAKE_NS, holding keeps it swinging; each side lasts SHAKE_SIDE_NS, two
+// frames at the game's 30 fps, so every side is read even at 20 fps. Returns the stick x, 0 while not shaking.
+// Under lock.
+#define SHAKE_NS 800000000ull
+#define SHAKE_SIDE_NS 66666667ull
+static int32_t shake_stick(int held) {
+    static int was;
+    static uint64_t from, until;
+    uint64_t now = plat_now_ns();
+    if (held && !was && now >= until) from = now;
+    if (held && !was) until = now + SHAKE_NS;
+    if (held && until < now) until = now;
+    was = held;
+    if (now >= until && !held) return 0;
+    return (now - from) / SHAKE_SIDE_NS % 2 ? STICK_MAX : -STICK_MAX;
+}
+
+// The scroll wheel on the Purah Pad's map, which zooms with the right stick's y (up: in): each notch is a full-tilt
+// pulse of MAP_ZOOM_PULSE_NS on that stick with MAP_ZOOM_GAP_NS of neutral after it, so a step of the zoom and a
+// held zoom both see one notch as one push. A fast scroll's notches wait their turn (at most MAP_ZOOM_QUEUE), a turn the
+// other way drops them. Returns the stick y for this poll, 0 between pulses and off the map. Under lock.
+#define MAP_ZOOM_PULSE_NS 100000000ull
+#define MAP_ZOOM_GAP_NS 50000000ull
+#define MAP_ZOOM_QUEUE 4
+static int32_t map_zoom_stick(int32_t notches, int on_map) {
+    static int32_t queued, dir;
+    static uint64_t until;   // the end of the pulse (dir != 0) or of the neutral after it
+    uint64_t now = plat_now_ns();
+    if (!on_map) { queued = dir = 0, until = 0; return 0; }
+    if (notches) {
+        if (queued && (notches > 0) != (queued > 0)) queued = 0;
+        queued += notches;
+        queued = queued > MAP_ZOOM_QUEUE ? MAP_ZOOM_QUEUE : queued < -MAP_ZOOM_QUEUE ? -MAP_ZOOM_QUEUE : queued;
+    }
+    if (dir) {
+        if (now < until) return dir * STICK_MAX;
+        dir = 0, until = now + MAP_ZOOM_GAP_NS;
+        return 0;
+    }
+    if (now < until || !queued) return 0;
+    dir = queued > 0 ? 1 : -1;
+    queued -= dir;
+    until = now + MAP_ZOOM_PULSE_NS;
+    return dir * STICK_MAX;
+}
+
 // Under lock, state 1: the open gamepad's inputs by position (pd[PAD_*] != 0 held); 0 without a connected gamepad.
 static int pad_physical(uint8_t pd[PAD_COUNT]) {
     if ((!pad || !SDL_GamepadConnected(pad)) && plat_now_ns() / 1000000u >= next_scan) { next_scan = plat_now_ns() / 1000000u + RESCAN_MS; scan_pads(); }
@@ -855,6 +703,43 @@ int input_pad_stick_percent(double pct[2]) {
     plat_mutex_unlock(&lock);
     return ok;
 }
+
+
+// ---- the PC scheme (TOTK_KBM_SCHEME): the keyboard and the mouse routed by kbm_scheme.c's context table
+// (ported from Weeping of the Empire) instead of the flat table in input_map.c. Off by default: the Controls tab
+// and the TOTK_BIND_* lines edit input_map.c's table, which the scheme does not read.
+static int kbm_scheme_on = -1;             // -1 unknown, 0 off, 1 on; live (cfg_version)
+static unsigned kbm_scheme_seen;
+
+static int kbm_on(void) {
+    unsigned ver = cfg_version();
+    if (kbm_scheme_on >= 0 && ver == kbm_scheme_seen) return kbm_scheme_on;
+    kbm_scheme_seen = ver;
+    const char *v = cfg_value("TOTK_KBM_SCHEME");
+    int on = *v && !name_matches(v, "0") && !name_matches(v, "off") && !name_matches(v, "none");
+    // kbm_binds is live: every cfg change reparses the rows, whether the switch flipped or not
+    if (on) kbm_scheme_set_binds(cfg_get("TOTK_KBM_BINDS"));
+    if (on != kbm_scheme_on) {
+        if (on) {
+            kbm_scheme_init();
+            rt_log("input: PC scheme on: %d rows, %d unknown keys, Esc is the game's menu key, "
+                   "the Controls tab and TOTK_BIND_* do not apply",
+                   kbm_scheme_row_count(), kbm_scheme_unknown_key_count());
+        } else if (kbm_scheme_on == 1) {
+            rt_log("input: PC scheme off, the bindings of docs/controls.md are back");
+        }
+    }
+    kbm_scheme_on = on;
+    return on;
+}
+
+// The same switch for the window thread (ui/menu_win.cpp, ui/menu_sdl.cpp, input_win.c, input_sdl.c): while the
+// scheme runs, Esc is the game's key, so only F1 opens the host menu and Esc leaves the cursor alone.
+int input_kbm_scheme(void) {
+    const char *v = cfg_value("TOTK_KBM_SCHEME");
+    return *v && !name_matches(v, "0") && !name_matches(v, "off") && !name_matches(v, "none");
+}
+
 
 // TOTK_KEY_MIN_HOLD_MS: a movement key released still reads held for this long (Weeping's key_min_hold_ms). Without
 // it a fast keyboard tap at 144 fps can stop and restart the walk between the game's own samples.
@@ -1000,11 +885,7 @@ static void frame_clock(void) {
     kbm_scheme_set_frame_ms(ms);
 }
 
-// A wheel notch with a quick menu already in front: the strip or the wheel holds itself open on the player's own key,
-// so the notch only walks it -- one 2-frame flick of the right stick, no d-pad press and no release (Weeping's
-// wheel_read, its quick-menu branch).
-static int32_t g_flick;
-static uint64_t g_flick_until;
+static uint64_t g_buttons_last;   // the merged buttons of the last poll (input_buttons_last)
 
 static void poll_merged(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx, int32_t *ry) {
     uint64_t b = 0;
@@ -1019,8 +900,9 @@ static void poll_merged(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx
             pad_read(&b, sl, sr);
             pad_bits = b;
         }
+        int pad_used = b || abs(sl[0]) > PAD_USED || abs(sl[1]) > PAD_USED || abs(sr[0]) > PAD_USED ||
+                       abs(sr[1]) > PAD_USED, kbm_used = 0;
         if (ikb_foreground()) {
-            frame_clock();
             uint8_t down[KEY_COUNT] = {0};
             // Mouse buttons count only while the cursor is captured, and a button already held when the capture began
             // (the click that refocused the window) is ignored until it is released.
@@ -1029,6 +911,7 @@ static void poll_merged(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx
             int cap = ikb_captured();
             for (int k = 1; k < KEY_COUNT; k++) {
                 down[k] = ikb_down(k);
+                kbm_used |= down[k];
                 if (k < KEY_MOUSE_L || k > KEY_MOUSE_X2) continue;
                 if (cap && !was_captured) mouse_ignore[k] = down[k];
                 if (!down[k]) mouse_ignore[k] = 0;
@@ -1038,20 +921,19 @@ static void poll_merged(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx
             int menu_open = menu_is_open();
             scheme = kbm_on();
             // Not while the menu is open: the bind capture and ImGui read the wheel there (wheel_keys, above).
-            int wheel = menu_open ? 0 : ikb_wheel_take();
-            if (!cap) wheel = 0;
+            int wheel = menu_open || !cap ? 0 : ikb_wheel_take();
             wheel_keys(wheel, menu_open, cap, down);
             key_min_hold(down);
             uint64_t key_bits = 0;
-            int32_t k[2];
+            int32_t k[2] = {0, 0};
             if (scheme) {
-                // The context table decides. The mouse camera stays this file's: no row of the scheme carries it,
-                // and the direct mouse look needs the game-side veneer (docs/kbm-port.md).
+                // The context table decides the keys and the sticks. The mouse camera below stays upstream's: the
+                // scheme's rows carry only keys, and the direct mouse look needs the game-side hooks.
                 int32_t kl[2] = {0, 0}, kr[2] = {0, 0};
                 kbm_scheme_set_ctx(screen_watch_ctx(menu_open));
                 kbm_scheme_set_ability(player_state_power(), player_state_holding());
-                // The ability's rotate key takes the mouse for itself (upstream's take_mouse): the counts become d-pad
-                // steps and must not also reach the camera or the held object.
+                // The ability's rotate key takes the mouse for itself: the counts become d-pad steps and must not
+                // also reach the camera.
                 if (!menu_open && cap && kbm_scheme_mouse_wanted(down)) {
                     int32_t ddx = 0, ddy = 0;
                     ikb_mouse_take(&ddx, &ddy);
@@ -1087,32 +969,43 @@ static void poll_merged(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx
             }
             input_toggles(&key_bits, sl, menu_open);
             b = pad_bits | key_bits;
-            // L is the ability wheel: the mouse then pushes a stick that stays (mouse_camera), not a velocity sample.
-            // An ability holding an object reads the pad's stick instead of the camera's direct look.
+            int selector = b & (1ull << B_L) ? 1 : b & (1ull << B_UP) ? 2 :
+                           b & (1ull << B_LEFT) ? 3 : b & (1ull << B_RIGHT) ? 4 : 0;
+            // Only while the wheel or a strip is on screen (menu_cursor.c reads the focused screen). The scheme has
+            // its own wheel and strip rows, so upstream's selector stays off there.
+            if (scheme || (selector && menu_cursor_shortcut() == 0)) selector = 0;
+            mouse_camera(k, selector);
+            // On the map the left stick moves the cursor: the mouse's sample goes there. Under the scheme the map
+            // context says the same (the map owns no focus box, so the pointer path cannot reach it).
             int ctx = kbm_scheme_ctx();
-            int ability_stick = scheme && ctx == KBM_SC_ABILITY && player_state_holding();
-            // The map's cursor is the left stick's and the map owns no focus box, so the pointer path cannot reach it:
-            // there the mouse sample goes to the left stick and moves the cursor. Upstream does the same in its pad
-            // shim (its MAP rows name the mouse as the cursor); the camera gets nothing in a screen that has none.
-            int map_cursor = scheme && !menu_open && ctx == KBM_SC_MAP && ikb_captured();
-            // Either way the counts must become a stick sample, not the camera's direct injection: the patch page only
-            // reaches PlayerCamera, and neither an ability's held object nor the map's cursor reads it.
-            mouse_camera(k, (int)((b >> B_ZR) & 1), (int)((b >> B_L) & 1), ability_stick || map_cursor);
-            if (map_cursor) pick(&sl[0], &sl[1], k[0], k[1]);
+            int as_left = scheme && !menu_open && ctx == KBM_SC_MAP;
+            int map = menu_cursor_map();
+            if (as_left || (map && !scheme)) pick(&sl[0], &sl[1], k[0], k[1]);
             else pick(&sr[0], &sr[1], k[0], k[1]);
-            // The map's zoom is the pad's right stick (Weeping's wheel_read mode 2, hle_hid.cpp: a flick, up = in). The
-            // notch already has wheel_keys' step-and-rest cadence above, so two notches stay two steps; the smallest
-            // wheel step the player set is what the game sees as the hold, as upstream's 120 ms does for the pad.
-            if (scheme && ctx == KBM_SC_MAP) {
+            // The map's zoom is the pad's right stick. Without the scheme the notches pulse the stick themselves
+            // (map_zoom_stick); under the scheme the wheel keys carry it, so a notch also reaches the binds.
+            if (!scheme) {
+                int32_t zoom = map_zoom_stick(wheel, map);
+                if (zoom) pick(&sr[0], &sr[1], 0, zoom);
+            } else if (ctx == KBM_SC_MAP) {
                 if (down[KEY_WHEEL_UP]) pick(&sr[0], &sr[1], 0, 32767);
                 else if (down[KEY_WHEEL_DOWN]) pick(&sr[0], &sr[1], 0, -32767);
             }
-            if (g_flick && plat_now_ns() / 1000000u < g_flick_until) pick(&sr[0], &sr[1], g_flick, 0);
-            else g_flick = 0;
+            int32_t shake = shake_stick(input_map_held(down, B_SHAKE));
+            if (shake) sr[0] = shake, sr[1] = 0;
+            // A mouse shake (mouse_direct.c) moves the stick with the mouse, side by side, and lets go when it rests
+            else if (input_direct_mouse_shake()) sr[0] = input_direct_mouse_shake() * STICK_MAX, sr[1] = 0;
+            static uint32_t travel_seen;
+            uint32_t travel = ikb_mouse_travel();
+            if (travel - travel_seen >= MOUSE_USED) kbm_used = 1;
+            travel_seen = travel;
         } else {
             ikb_wheel_take();   // not queued while the window is behind others
             wheel_flush();
         }
+        // A press or a full-way stick on the pad wins over keys held in the same poll: the player picked it up
+        if (pad_used) __atomic_store_n(&g_kbm_last, 0, __ATOMIC_RELAXED);
+        else if (kbm_used) __atomic_store_n(&g_kbm_last, 1, __ATOMIC_RELAXED);
     }
     script_apply(&b, sl, sr);
     rec_apply(b, sl, sr);
@@ -1131,14 +1024,15 @@ static void poll_merged(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx
     if (overlay) menu_perf_cycle();
     stick_bits(&b, sl[0], sl[1], B_SL_LEFT);
     stick_bits(&b, sr[0], sr[1], B_SR_LEFT);
+    __atomic_store_n(&g_buttons_last, b, __ATOMIC_RELAXED);
     *buttons = b; *lx = sl[0]; *ly = sl[1]; *rx = sr[0]; *ry = sr[1];
 }
+
+uint64_t input_buttons_last(void) { return __atomic_load_n(&g_buttons_last, __ATOMIC_RELAXED); }
 
 // Text entry (swkbd_*.c): while it is open the game reads no input, as behind the keyboard applet; after it closes
 // the game reads none until every button and stick direction is released, so the press that closed it stays there.
 // g_block: 0 off, 1 text entry open, 2 closed, waiting for the release. The cursor is released while it is open.
-static volatile int32_t g_block;
-static volatile int32_t g_menu;   // the in-game menu, the same way (input_menu)
 // When g_block and g_menu last went to 2 (plat_now_ns). The wait for the release ends after RELEASE_WAIT_NS even with
 // something held: an input that never reads as released (a button another program holds down, a key whose release
 // went to another window, a stick that rests outside its dead zone) would otherwise keep the game deaf until restart
@@ -1163,7 +1057,6 @@ void input_menu(int open) {
     if (!open) __atomic_store_n(&g_menu_closed, plat_now_ns(), __ATOMIC_RELEASE);
     plat_xchg32(&g_menu, open ? 1 : 2);
     if (!open) ikb_menu_closed();   // the capture before Esc comes back
-    ikb_wheel_take();               // notches while the menu was open belong to it, not the game
     ikb_cursor_update();
 }
 
@@ -1188,7 +1081,7 @@ static int blocked(volatile int32_t *flag, volatile uint64_t *closed, const char
 void input_poll(uint64_t *buttons, int32_t *lx, int32_t *ly, int32_t *rx, int32_t *ry) {
     poll_merged(buttons, lx, ly, rx, ry);
     screen_watch_poll(*buttons);   // the game thread's pad read: the eui screen for the scheme's next context
-    if (!g_block && !g_menu) menu_cursor_poll(buttons);   // the game's menus: hover and click as A/B, walked with the d-pad
+    if (!g_block && !g_menu) menu_cursor_poll(buttons);
     const int32_t axes[4] = {*lx, *ly, *rx, *ry};
     int text = blocked(&g_block, &g_block_closed, "text entry", *buttons, axes),
         menu = blocked(&g_menu, &g_menu_closed, "menu", *buttons, axes);
@@ -1244,8 +1137,6 @@ int input_capture(int reset, int *id) {
     int fg = ikb_foreground();
     for (int i = 1; i < KEY_COUNT; i++) k[i] = fg && ikb_down(i);
     int esc = fg && ikb_escape();
-    int wheel = ikb_wheel_take();   // a notch is an event, not a held key
-    if (!fg) wheel = 0;
     plat_mutex_lock(&lock);
     if (!state) start();
     if (state == 1) pad_physical(p);
@@ -1253,7 +1144,6 @@ int input_capture(int reset, int *id) {
     int got = INPUT_CAPTURE_NONE;
     if (!reset) {
         if (esc && !prev_esc) got = INPUT_CAPTURE_CANCEL;
-        if (!got && wheel) got = INPUT_CAPTURE_KEY, *id = wheel > 0 ? KEY_WHEEL_UP : KEY_WHEEL_DOWN;
         for (int i = 1; i < KEY_COUNT && !got; i++)
             if (k[i] && !prev_k[i]) got = INPUT_CAPTURE_KEY, *id = i;
         for (int i = 1; i < PAD_COUNT && !got; i++)

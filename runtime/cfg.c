@@ -7,6 +7,7 @@
 // cfg_get handed out stays valid) and cfg_save writes only the changed keys back, keeping the rest of the file.
 // Readers take no lock: an entry is complete before n_entries counts it, and value pointers are swapped atomically.
 #include <ctype.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,7 +29,8 @@ static PlatMutex set_lock = PLAT_MUTEX_INIT;   // cfg_set, cfg_reset, cfg_save
 static int save_ok = 1;                         // the last cfg_save_to wrote (or had nothing to write)
 
 // Every name the runtime reads (and the patch sets in generated/), without the prefix. A file key outside this list is
-// logged as unknown. A new variable goes here too, or its ini key logs a harmless "unknown key" line.
+// logged as unknown. A new variable goes here too, or its ini key logs a harmless "unknown key" line, and gets a
+// description in totk.ini.example or docs/settings.md (tests/settings_doc_check.py checks both).
 static const char *const known[] = {
     "AB", "AMIIBO_DIR", "ANISO", "APP_POOL", "ASPECT", "ASPECT_PATCH", "ASSUME_FOCUS", "ASTC", "ASTC_BC", "ASTC_TIME", "ASYNC_PREEMPT", "AUDIO", "AUDIO_CHANNELS", "AUDIO_OFF", "AUDIO_PREFILL_MS",
     "BACKGROUND_WINDOW", "BIND_A", "BIND_B", "BIND_DOWN", "BIND_L", "BIND_LCLICK", "BIND_LEFT", "BIND_LSTICK_DOWN", "BIND_LSTICK_LEFT",
@@ -39,13 +41,15 @@ static const char *const known[] = {
     "COLOR_PRESET", "COLOR_SATURATION", "CONTACT_DEBUG", "CONTACT_SHADOWS", "CORE_DIAG", "CRIT", "CRIT_OUT",
     "DESC_TEMPLATE", "DEVICE_PROFILE", "DLAA", "DLAA_JITTER", "DLAA_MV", "DLSS", "DLSS_PRESET", "DLSS_CHAR_MASK", "DLSS_FG", "DLSS_FG_MULT", "DUMP", "DUMP_BUF", "DUMP_DIR",
     "DUMP_LOG", "EXEFS", "FEEDBACK", "FIX_C0", "FIX_ZERO", "FLIGHT", "FLIGHT_AT", "FLIGHT_DIR", "FLIGHT_FRAMES",
-    "FLIGHT_SPIKE_MS", "FLIGHT_THUMBS", "FLUSH_SPAN", "FOV", "FOV_PATCH", "FPS60", "FPS_LIMIT", "FREEZE_IDLE", "FREE_CORES",
+    "FLIGHT_SPIKE_MS", "FLIGHT_THUMBS", "FLUSH_SPAN", "FOV", "FOV_PATCH", "FPS60", "FPS_LIMIT", "FRAME_QUEUE", "FREEZE_IDLE", "FREE_CORES",
     "FSR31", "FULLSCREEN", "FXAA", "GPL", "GPL_DRAW_BUILD", "GPU", "GPU_INDEX", "GPU_NAME", "HDR", "HDR_GAME_NITS", "HDR_HUE",
     "HDR_PEAK_NITS", "HDR_UI_NITS", "HEROPATH_REALTIME", "HIGHFPS_FIX", "INPUT", "INPUT_RECORD", "INPUT_SCRIPT", "KBM_SCHEME", "LANG", "LIB_PREBUILD",
     "LIB_PREBUILD_KEEP", "LIB_PREBUILD_THREADS", "LOCALE", "LOD_GUARD", "LSTICK_DEADZONE", "MEMORY", "MENU_LANG", "MENU_TEST",
-    "MENU_TEST_DIR", "MENU_TEST_SET", "MINIMAL_LAYOUT", "MIRROR_GAP", "MODS_DIR", "MODS_DISABLED", "MODS_ORDER", "MODS_REBUILD", "MOTION", "ABILITY_PITCH", "MOUSE_AIM_SCALE", "MOUSE_DIRECT", "MOUSE_DIRECT_SENS", "MOUSE_DIRECT_PITCH", "MOUSE_MOTION_KEY", "MOUSE_MOTION_SPEED", "MOUSE_ORBIT", "MOUSE_SENS", "MOVIE_HOST", "MOVIE_PACE",
+    "MENU_TEST_DIR", "MENU_TEST_SET", "MINIMAL_LAYOUT", "MIRROR_GAP", "MODS_DIR", "MODS_DISABLED", "MODS_ORDER", "MODS_REBUILD", "MOTION", "ABILITY_PITCH", "MOUSE_AIM_SCALE", "MOUSE_MODE", "MOUSE_DIRECT_PATCH", "MOUSE_MOTION_KEY", "MOUSE_MOTION_SPEED", "MOUSE_SENS", "MOVIE_ASPECT", "MOVIE_HOST", "MOVIE_PACE",
+    "MVOBJ_ALL", "MVOBJ_BANKS", "MVOBJ_EQUAL", "MVOBJ_EXACT", "MVOBJ_EXEC", "MVOBJ_NOC4", "MVOBJ_ONLY", "MVOBJ_TIMES", "MVPREV_CHECK", "MVPREV_GROW", "MVPREV_SKIP", "MVPREV_TRUST", "MV_CHECK",
+    "MV_SURVEY",
     "ONE_PER_CORE", "OPERATION_MODE", "OUTPUT_RES", "PAD_LAYOUT", "PASS_CRUMBS", "PATCH_OUTPUT", "PATCH_SCENE", "PCSS", "PCSS_K", "PERF_OVERLAY", "PERF_SLOW_MS", "PIPELINE_CACHE", "PIPE_MEMO", "PIPE_PREBUILD", "PIPE_SKIP", "PIPE_SYNC", "PIPE_WAIT",
-    "PREWARM_XLATE", "PROBE_MOVIE", "PROBE_MOVIE_SHOT", "PROFILE", "PROFILE_CHAINS", "PROFILE_DIR", "PROFILE_FRAMES",
+    "PREWARM_XLATE", "PROBE_MOVIE", "PROBE_MOVIE_BENCH", "PROBE_MOVIE_SHOT", "PROFILE", "PROFILE_CHAINS", "PROFILE_DIR", "PROFILE_FRAMES",
     "PROFILE_MAIN", "PROFILE_RENDER", "PROMPTS", "PUSH_SKIP", "PUSH_STAGE", "RDOC", "RDOC_DIR", "RDOC_DLL", "REALTIME", "REC_END", "REEXEC",
     "RENDER_SCALE", "REPLAY_ASYNC",
     "REPLAY_CHECK", "RESOLVE_CHECK", "RESTART_WAIT", "ROMFS", "ROMFS_INDEX", "ROMFS_MMAP", "ROMFS_MODS", "ROMFS_PATCHES",
@@ -56,20 +60,20 @@ static const char *const known[] = {
     "SWKBD_TEST", "TEST_PAD", "TEST_PREPARE_SHADERS", "TEX_ALIAS", "TEX_MEMO", "TEX_VRAM_PRESSURE", "TIMER_1MS", "TRACE", "TXD_TRANSPOSE", "UBO_SNAPSHOT", "UPSCALER", "VK_DYN_A2C", "VK_DYN_VERTEX", "VK_NO_FLOAT64",
     "VK_PRESENT", "VK_RECORDER", "VK_SSBO_ALIGN", "VK_SUBGROUP", "VK_SUBGROUP_PIN", "VK_VALIDATION", "VOLUME", "VRAM_HEADROOM", "VS_OUTS",
     "WALK_KEY", "WALK_SCALE", "WB_EXACT", "WB_FENCE_LIMIT", "WB_MERGE", "WINDOW_SIZE", "XLATE", "XLATE_ID", "XLATE_PROCS",
-    "CAMLOG", "KEY_MIN_HOLD_MS", "KBM_BINDS", "KBM_MATERIALS_KEY", "KBM_PULSE_MS", "WHEEL_STEP_MS", "KEYSNAP",
-    "MENU_CURSOR_SCREENS", "PLAYER_STATE", "PLAYER_STATE_LOG",
-    "LOCK_TOGGLE", "MENU_CURSOR", "MENU_CURSOR_LOG", "MOUSE_FLOOD", "SCREEN_WATCH", "SCREEN_WATCH_LOG",
+    "KEY_MIN_HOLD_MS", "KBM_BINDS", "KBM_MATERIALS_KEY", "KBM_PULSE_MS", "WHEEL_STEP_MS", "KEYSNAP",
+    "PLAYER_STATE", "PLAYER_STATE_LOG",
+    "LOCK_TOGGLE", "MENU_CURSOR", "MENU_CURSOR_LOG", "SCREEN_WATCH", "SCREEN_WATCH_LOG",
     "SPRINT_TOGGLE",
     "ZSTD_CHECK", "ZSTD_NATIVE",
 };
 
 // The totk.ini section a key cfg_set may write goes to when the file lacks it (totk.ini.example's sections).
 static const struct { const char *key, *section; } sections[] = {
-    {"FPS_LIMIT", "frame rate"}, {"FPS60", "frame rate"},
+    {"FPS_LIMIT", "frame rate"}, {"FPS60", "frame rate"}, {"FRAME_QUEUE", "frame rate"},
     {"REALTIME", "frame rate"}, {"CLOTH_REALTIME", "frame rate"}, {"HEROPATH_REALTIME", "frame rate"}, {"HIGHFPS_FIX", "frame rate"},
     {"FULLSCREEN", "display"}, {"WINDOW_SIZE", "display"}, {"PERF_OVERLAY", "display"}, {"VK_PRESENT", "display"},
     {"GPU_INDEX", "display"}, {"OUTPUT_RES", "display"}, {"RENDER_SCALE", "display"}, {"UPSCALER", "display"},
-    {"SHARPNESS", "display"}, {"ASPECT", "display"}, {"FOV", "display"}, {"ANISO", "display"},
+    {"SHARPNESS", "display"}, {"ASPECT", "display"}, {"MOVIE_ASPECT", "display"}, {"FOV", "display"}, {"ANISO", "display"},
     {"COLOR_PRESET", "display"},
     {"COLOR_BRIGHTNESS", "display"}, {"COLOR_CONTRAST", "display"}, {"COLOR_SATURATION", "display"},
     {"COLOR_GAMMA", "display"}, {"HDR", "display"}, {"HDR_PEAK_NITS", "display"}, {"HDR_GAME_NITS", "display"},
@@ -86,13 +90,13 @@ static const struct { const char *key, *section; } sections[] = {
     {"MOTION", "input"}, {"RUMBLE_STRENGTH", "input"}, {"RUMBLE_CURVE", "input"}, {"RUMBLE_TRIGGERS", "input"},
     {"PAD_LAYOUT", "input"}, {"PROMPTS", "input"}, {"STICK_DEADZONE", "input"}, {"LSTICK_DEADZONE", "input"}, {"RSTICK_DEADZONE", "input"},
     {"STICK_SENS", "input"},
-    {"ABILITY_PITCH", "input"}, {"MOUSE_SENS", "input"}, {"MOUSE_DIRECT", "input"}, {"MOUSE_DIRECT_SENS", "input"}, {"MOUSE_DIRECT_PITCH", "input"}, {"MOUSE_ORBIT", "input"}, {"MOUSE_MOTION_KEY", "input"}, {"MOUSE_MOTION_SPEED", "input"},
+    {"ABILITY_PITCH", "input"}, {"MOUSE_MODE", "input"}, {"MOUSE_SENS", "input"}, {"MOUSE_AIM_SCALE", "input"}, {"MOUSE_MOTION_KEY", "input"}, {"MOUSE_MOTION_SPEED", "input"},
     {"KBM_SCHEME", "input"}, {"KBM_BINDS", "input"}, {"KBM_MATERIALS_KEY", "input"}, {"KBM_PULSE_MS", "input"},
     {"WHEEL_STEP_MS", "input"}, {"SCREEN_WATCH", "input"}, {"SCREEN_WATCH_LOG", "input"}, {"MENU_CURSOR", "input"},
-    {"MENU_CURSOR_LOG", "input"}, {"MENU_CURSOR_SCREENS", "input"}, {"PLAYER_STATE", "input"},
+    {"MENU_CURSOR_LOG", "input"}, {"PLAYER_STATE", "input"},
     {"PLAYER_STATE_LOG", "input"}, {"KEY_MIN_HOLD_MS", "input"},
-    {"SPRINT_TOGGLE", "input"}, {"LOCK_TOGGLE", "input"}, {"KEYSNAP", "input"}, {"CAMLOG", "input"},
-    {"MOUSE_FLOOD", "input"}, {"WALK_KEY", "input"}, {"WALK_SCALE", "input"}, {"INPUT_RECORD", "input"},
+    {"SPRINT_TOGGLE", "input"}, {"LOCK_TOGGLE", "input"}, {"KEYSNAP", "input"},
+    {"WALK_KEY", "input"}, {"WALK_SCALE", "input"}, {"INPUT_RECORD", "input"},
     {"BIND_A", "input"}, {"BIND_B", "input"}, {"BIND_X", "input"}, {"BIND_Y", "input"}, {"BIND_LCLICK", "input"},
     {"BIND_RCLICK", "input"}, {"BIND_L", "input"}, {"BIND_R", "input"}, {"BIND_ZL", "input"}, {"BIND_ZR", "input"},
     {"BIND_PLUS", "input"}, {"BIND_MINUS", "input"}, {"BIND_LEFT", "input"}, {"BIND_UP", "input"},
@@ -128,7 +132,7 @@ static const CfgMeta metas[] = {
     {"DLSS_PRESET", "default", "default|k|j", LIVE},
     {"DLSS_CHAR_MASK", "65", "0|35|65|100", LIVE}, {"FXAA", "1", "0|1", LIVE},
     {"DLSS_FG", "0", "0|1", RESTART}, {"DLSS_FG_MULT", "2", "2|3|4|5|6", LIVE},
-    {"ASPECT", "fit", "fit|stretch", LIVE}, {"FOV", "100", "70..140", LIVE},
+    {"ASPECT", "fit", "fit|stretch", LIVE}, {"MOVIE_ASPECT", "keep", "keep|stretch", LIVE}, {"FOV", "100", "70..140", LIVE},
     {"ANISO", "game", "game|2|4|8|16", RESTART},   // vk_texture.c sampler_features
     // colour adjustment (vk_color.c); the preset is the menu's, the four values are what the present uses
     {"COLOR_PRESET", "default", "default|vivid|clarity|custom", LIVE}, {"COLOR_BRIGHTNESS", "0", "-30..30", LIVE},
@@ -143,7 +147,7 @@ static const CfgMeta metas[] = {
     {"SHADOW_RANGE", "100", "50..400", RESTART}, {"CONTACT_SHADOWS", "0", "0..100", RESTART},
     {"PCSS", "0", "0..200", RESTART},
     // Game
-    {"FPS_LIMIT", "60", "30|40|45|60|90|120|144|display", LIVE}, {"FPS60", "1", "0|1", LIVE},
+    {"FPS_LIMIT", "60", "30|40|45|60|90|120|144|display", LIVE}, {"FPS60", "1", "0|1", LIVE}, {"FRAME_QUEUE", "0", "0|1", LIVE},
     {"REALTIME", "1", "0|1", RESTART}, {"CLOTH_REALTIME", "1", "0|1", RESTART},
     {"HEROPATH_REALTIME", "1", "0|1", RESTART},
     {"MODS_REBUILD", "auto", "auto|off", RESTART},
@@ -160,21 +164,17 @@ static const CfgMeta metas[] = {
     {"LSTICK_DEADZONE", "", "0..50", LIVE}, {"RSTICK_DEADZONE", "", "0..50", LIVE},
     {"MOUSE_SENS", "1", "0..10", LIVE}, {"KBM_SCHEME", "0", "0|1", LIVE},
     {"MOUSE_AIM_SCALE", "1", "0.1..3", LIVE},
-    {"MOUSE_DIRECT", "0", "0|1", LIVE}, {"MOUSE_DIRECT_SENS", "1", "0.05..10", LIVE},
-    {"MOUSE_DIRECT_PITCH", "1.3725", "0.2..4", LIVE},
-    {"MOUSE_ORBIT", "0", "0|1", LIVE},
+    {"MOUSE_MODE", "direct", "stick|direct", LIVE},
     {"ABILITY_PITCH", "1", "0|1", LIVE},
     {"MOUSE_MOTION_KEY", "k", NULL, LIVE}, {"MOUSE_MOTION_SPEED", "1", "0.05..4", LIVE},
     {"KEY_MIN_HOLD_MS", "150", "0..1000", LIVE}, {"SPRINT_TOGGLE", "0", "0|1", LIVE},
     {"LOCK_TOGGLE", "0", "0|1", LIVE}, {"KEYSNAP", "1", "0|1", LIVE},
-    {"KBM_BINDS", "", NULL, LIVE}, {"CAMLOG", "", NULL, LIVE},
+    {"KBM_BINDS", "", NULL, LIVE},
     {"KBM_MATERIALS_KEY", "c", "c|z|b|n", LIVE},
     {"KBM_PULSE_MS", "70", "0..200", LIVE}, {"WHEEL_STEP_MS", "70", "0..200", LIVE},
     {"SCREEN_WATCH", "1", "0|1", LIVE}, {"SCREEN_WATCH_LOG", "1", "0|1", LIVE},
-    {"MENU_CURSOR", "0", "0|1", LIVE}, {"MENU_CURSOR_LOG", "0", "0|1", LIVE},
-    {"MENU_CURSOR_SCREENS", "Title_00,Pouch_00,SystemLoadList_00,SystemSaveLoad_00", NULL, LIVE},
+    {"MENU_CURSOR", "1", "0|1", LIVE}, {"MENU_CURSOR_LOG", "0", "0|1", LIVE},
     {"PLAYER_STATE", "1", "0|1", LIVE}, {"PLAYER_STATE_LOG", "1", "0|1", LIVE},
-    {"MOUSE_FLOOD", "0", "0..100", LIVE},
     {"WALK_KEY", "none", NULL, LIVE}, {"WALK_SCALE", "0.51", "0.2..0.9", LIVE},
     {"MENU_LANG", "", "en|ru|pt-BR|zh-Hans", LIVE},
     {"AMIIBO_DIR", "", NULL, LIVE},
@@ -352,9 +352,51 @@ static const char *raw_get(const char *name) {
     return NULL;
 }
 
+// ---- the screen's shape (desktop): a primary display of another shape than 16:9 gives output_res a default of that
+// shape while neither the environment nor totk.ini sets it, so the first start fills the screen instead of a 16:9
+// picture between black bars. The sizes are the ones the installer lays the HUD out for (installer/steps.py
+// ASPECT_SIZES, ui/menu.cpp row_output_res): of the display's shape within 1%, the smallest at least 1080 high that fits
+// the display, else the largest that fits. A 16:9 display, an unknown one or one of another shape keeps 1920x1080.
+// Xbox or keyboard prompts keep 1920x1080 too: the setup builds their folders for 16:9 only (romfs.c overlay_init), so
+// a default of another shape would trade the prompts the player chose for the Switch ones.
+static const unsigned SHAPED[][2] = {
+    {2560, 1080}, {3440, 1440}, {3840, 1600}, {5120, 2160},             // 21:9
+    {3840, 1080}, {5120, 1440},                                         // 32:9
+    {1280, 800}, {1680, 1050}, {1920, 1200}, {2560, 1600},              // 16:10
+    {1920, 1280}, {2160, 1440}, {2256, 1504}, {2880, 1920}, {3000, 2000}, // 3:2
+};
+static char screen_res[16];   // set once by cfg_init, "" for none
+
+static int switch_prompts(void) {
+    const char *p = raw_get(PREFIX "PROMPTS"), *l = raw_get(PREFIX "PAD_LAYOUT");
+    return (!p || !strcasecmp(p, "nintendo")) && !(l && !strcasecmp(l, "xbox_prompts"));
+}
+
+static void screen_default(void) {
+    int sw, sh;
+    if (!plat_screen_size(&sw, &sh)) return;
+    double r = (double)sw / sh;
+    if (fabs(r / (16.0 / 9.0) - 1) <= 0.01) return;
+    int best = -1, fit = -1;
+    for (int i = 0; i < (int)(sizeof SHAPED / sizeof *SHAPED); i++) {
+        unsigned w = SHAPED[i][0], h = SHAPED[i][1];
+        if (fabs((double)w / h / r - 1) > 0.01 || w > (unsigned)sw || h > (unsigned)sh) continue;
+        if (fit < 0 || w > SHAPED[fit][0]) fit = i;   // the largest that fits
+        if (h >= 1080 && (best < 0 || w < SHAPED[best][0])) best = i;
+    }
+    if (best < 0) best = fit;
+    if (best < 0) return;
+    snprintf(screen_res, sizeof screen_res, "%ux%u", SHAPED[best][0], SHAPED[best][1]);
+    if (!raw_get(PREFIX "OUTPUT_RES") && switch_prompts())
+        rt_log("cfg: the display is %dx%d: output_res defaults to %s, its shape (totk.ini output_res sets another)", sw,
+               sh, screen_res);
+}
+
 const char *cfg_get(const char *name) {
     const char *v = raw_get(name);
-    if (v || strncmp(name, PREFIX, PREFIX_LEN) || !profile_of()) return v;
+    if (v || strncmp(name, PREFIX, PREFIX_LEN)) return v;
+    if (!profile_of())
+        return screen_res[0] && !strcasecmp(name + PREFIX_LEN, "OUTPUT_RES") && switch_prompts() ? screen_res : NULL;
     for (size_t i = 0; i < sizeof DECK / sizeof *DECK; i++)
         if (!strcasecmp(DECK[i].key, name + PREFIX_LEN)) return DECK[i].value;
     return NULL;
@@ -729,6 +771,7 @@ static void load_ini(void) {
 
 void cfg_init(void) {
     load_ini();
+    if (!profile_of()) screen_default();
     if (profile_of())
         rt_log("cfg: device profile Steam Deck: defaults for the keys totk.ini does not set (TOTK_DEVICE_PROFILE=desktop "
                "turns it off)");

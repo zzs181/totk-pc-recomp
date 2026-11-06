@@ -17,6 +17,9 @@
 # fps_limit = 60
 # Older key, read only while fps_limit is unset: fps60 = 0 means a limit of 30.
 # fps60 = 1
+# Frame queue: the game starts a frame while the previous one waits for its display time, so a frame that runs long
+# still makes its turn. Far fewer dropped frames at the limit for up to one frame more input delay. Takes effect at once.
+# frame_queue = 0
 # Real-time frame step: game speed follows the clock instead of the frame count.
 # realtime = 1
 # Cloth simulation on the real-time clock. Needs realtime = 1.
@@ -144,7 +147,10 @@
 # (32:9), 1280x800, 1680x1050, 1920x1200, 2560x1600 (16:10), 1920x1280, 2160x1440, 2256x1504, 2880x1920 and 3000x2000
 # (3:2). Any other size
 # gets the camera's view but a 16:9 HUD, stretched over the picture, unless you build its layout with
-# tools/make_romfs_patches.py --aspect WxH. Read at start.
+# tools/make_romfs_patches.py --aspect WxH. Read at start. Default: 1920x1080, or on a primary display of one of those
+# shapes the smallest of its sizes at least 1080 high that fits the display (1920x1280 on a 3:2 laptop, 2560x1080 on
+# a 21:9 monitor), so the picture fills the screen without black bars; with prompts = xbox or pc it stays 1920x1080,
+# the only shape the setup builds those prompts for.
 # output_res = 1920x1080
 # 3D render scale: the scene's size relative to the game resolution, game (5/6, the game's own 1600x900 at 1080p) or
 # a percentage (25 to 400, at most 4096 pixels a side); above 100 supersamples the scene (anti-aliasing). Read at start.
@@ -158,6 +164,10 @@
 # window is no longer stretched as it used to be; stretch fills the window. Changes while the game runs take effect at
 # once.
 # aspect = fit
+# Shape of the pre-rendered movies (16:9) when the game resolution (output_res) is not 16:9: keep, the default, draws
+# them in their own shape with black bars at the sides or above and below; stretch fills the whole picture, as the game
+# does. Read when a movie starts, so a change takes effect at the next movie.
+# movie_aspect = keep
 # Field of view, in percent of the game's own: 70 to 140, 100 (the default) leaves the camera as it is. Higher shows
 # more of the world around Link. Game version 1.4.3 only. Changes while the game runs take effect at once.
 # fov = 100
@@ -290,25 +300,23 @@
 # tab shows each stick's deflection now, so a drifting stick's resting value can be read off.
 # lstick_deadzone = 8
 # rstick_deadzone = 8
-# Mouse camera sensitivity (0 to 10; 0 = no mouse camera and no cursor capture).
+# Mouse camera mode: direct (default) or stick. Direct turns the camera by the raw mouse motion, the same on both axes,
+# with no stick dead zone or response curve (games 1.4.3 and 1.2.1; 1.1.0 uses stick emulation). Stick makes the
+# mouse a right stick. Neither changes the gamepad. The Controls tab changes this while the game runs.
+# mouse_mode = direct
+# The mouse in the game's menus, 1.4.3 only (title, inventory, System tab, Options, shops, dialogue choices): while a
+# menu has the game's focus box the pointer shows, the item under it takes the focus, a left click is A on it and a
+# right click is B. On the map the mouse moves the map's cursor and the scroll wheel zooms. 0 leaves the menus and
+# the map to the keys and the pad. Changes while the game runs.
+# menu_cursor = 1
+# Mouse camera sensitivity (0 to 10; 0 = no mouse camera and no cursor capture). With mouse_mode = direct, 1 turns the
+# camera 0.08 degrees per count, the same in every camera mode (about 14.3 cm a turn at 800 DPI).
 # mouse_sens = 1
-# Mouse sensitivity while ZR (the bow) is held: 1 = unchanged, 0.1 to 3. 0.7-0.8 calms a drawn bow.
+# The mouse's camera motion times this while the bow is drawn (0.1 to 3; mouse_mode = direct, game 1.4.3), on top of
+# the 0.08 degrees per count every camera turns, the bow's included. Changes while the game runs.
 # mouse_aim_scale = 1
-# Direct mouse look (experimental): the mouse motion is added to the camera's processed right stick after the game's
-# dead zone and curve, so slow motion is not lost and fast flicks do not saturate; the mouse no longer drives the right
-# stick itself. 1 = on. Note: the 1.4.3 patch site must match the game version (recomp/patches-v143.txt).
-# mouse_direct = 0
-# Direct mouse look speed, 0.05 to 10 (1 = the same speed as the right-stick mouse at 60 fps).
-# mouse_direct_sens = 1
-# Direct mouse look pitch shaping: the vertical motion is sign(v) * sqrt(gain * |v|), which turns the game's
-# quadratic pitch (51 y |y|) into the same response as yaw (70 x). 1.3725 = 70/51; 0.2 to 4.
-# mouse_direct_pitch = 1.3725
-# The orbit engine (experimental, the other direct mouse look): five host callbacks instead of the asm patch, so the
-# mouse is not clamped to the stick's radius and the free camera takes degrees directly; Ultrahand's held object gets
-# its own input too. 1 = on, and mouse_direct above is then off. 1.4.3 only.
-# mouse_orbit = 0
-# The abilities' vertical camera speed follows the frame rate in the game (2x at 60 fps while Ultrahand is held); 1
-# scales it to the Switch's degrees per second at any rate, 0 keeps the game's own step (1.4.3 only).
+# The abilities' vertical camera speed follows the frame rate in the game (2x at 60 fps while Ultrahand is
+# held); 1 scales it to the Switch's degrees per second at any rate, 0 keeps the game's own step (1.4.3 only).
 # ability_pitch = 1
 # Hold-to-tilt for the gyro shrines: while this key is held the mouse feeds the virtual controller's six-axis and the
 # direct mouse look is paused; none disables. A gamepad with motion sensors keeps its own six-axis.
@@ -347,23 +355,6 @@
 # screen_watch = 1
 # Logs each screen and the scheme's context when they change (1 on).
 # screen_watch_log = 1
-# The mouse pointer in the game's own menus (1.4.3), off by default: it releases the OS cursor and moves the focus box
-# the way the game moves it -- pressing the d-pad direction that closes the gap to the hovered item, one press per step
-# -- because eui recomputes its cursor every frame and ignores direct writes. Left click is A on the hovered item,
-# right click is B. It only takes the cursor in the screens named in menu_cursor_screens: the game's in-world strips
-# keep the pointer captured, because releasing it there would also drop the wheel.
-# menu_cursor = 0
-# Comma-separated layout names the pointer is taken for. menu_cursor_log prints each screen's name, so a menu missing
-# here is one name away.
-# menu_cursor_screens = Title_00,Pouch_00,SystemLoadList_00,SystemSaveLoad_00
-# Logs each menu screen's nodes, the pointer's hit test and every d-pad press the pointer drives (layout coordinates,
-# first box, hit node/none, focus there/elsewhere).
-# menu_cursor_log = 0
-# The player's stance for the scheme's gameplay contexts (1.4.3), on: it reads the action verbs of Link's five action
-# slots, the ability in use and whether Ultrahand holds an object, from the game's own objects, and gives the scheme the
-# climb / air / glide / swim / horse / vehicle / ability rows instead of the on-foot ones. It only ever reads, never
-# writes; a stance change must hold the same answer for 30 ms, and one of the game's own screens always wins
-# (runtime/player_state.c, runtime/screen_watch.c). 0 keeps every stance on the world rows.
 # player_state = 1
 # Logs the verbs, the ability and the hold once per change (player_state: verbs 1,61,0,-1,-1 power 1 holding 1).
 # player_state_log = 1
