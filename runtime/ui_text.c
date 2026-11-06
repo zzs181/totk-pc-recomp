@@ -184,6 +184,10 @@ static const char *const text_en[UI_TEXT_COUNT] = {
                                   "window loses focus, as on the Switch when Home is pressed; a load interrupted that "
                                   "way can stop for good.",
 
+    [UI_MENU_PLAY_TIME] = "Play time",
+    [UI_MENU_PLAY_TIME_DESC] = "Time in the game over all runs, counted while the game window has the focus and the game "
+                               "draws frames. Kept in playtime.txt in the profile folder, next to the saves.",
+    [UI_MENU_PLAY_TIME_HM] = "%llu h %02u min", [UI_MENU_PLAY_TIME_SESSION] = "this run: %s",
     [UI_MENU_MODS_BUILTIN] = "Built into the port", [UI_MENU_MODS_INSTALLED] = "Installed mods",
     [UI_MENU_MODS_NONE] = "No mods yet. Unpack a mod into the mods folder, one folder per mod with its romfs folder "
                           "inside, and restart the game. TKMM can export its merged mods into a folder there too.",
@@ -582,6 +586,10 @@ static const char *const text_zh_hans[UI_TEXT_COUNT] = {
     [UI_MENU_TAB_MENU] = "菜单",
     [UI_MENU_TAB_ADVANCED] = "高级",
     [UI_MENU_TAB_MODS] = "模组",
+    [UI_MENU_PLAY_TIME] = "游戏时间",
+    [UI_MENU_PLAY_TIME_DESC] = "所有运行累计的游戏时间，仅在游戏窗口处于焦点且游戏正在绘制画面时计时。"
+                               "保存在配置文件夹的 playtime.txt 中，与存档放在一起。",
+    [UI_MENU_PLAY_TIME_HM] = "%llu 小时 %02u 分钟", [UI_MENU_PLAY_TIME_SESSION] = "本次运行：%s",
     [UI_MENU_MODS_BUILTIN] = "移植版内置", [UI_MENU_MODS_INSTALLED] = "已安装的模组",
     [UI_MENU_MODS_NONE] = "还没有模组。把模组解压到 mods 文件夹，每个模组一个文件夹，里面放 romfs 文件夹，然后重启游戏。"
                           "TKMM 也可以把合并后的模组导出到那里的一个文件夹。",
