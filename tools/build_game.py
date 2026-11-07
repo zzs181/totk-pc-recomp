@@ -491,14 +491,14 @@ def ninja_file(gen, out, mods, pool_depth, skip=(), prebuilt=False, runtime_lib=
             mods['main'] = list(mods.get('main', [])) + [wsrc]
     ll_genflags = ' '.join(f for f in GEN_FLAGS
                            if not f.startswith(('-W', '-ffp-contract', '-fno-strict-aliasing', '-fvisibility'))
-                           ) + ' -flto -Qunused-arguments' if ir else ''
-    link_flags = LINK_FLAGS + (['-flto'] if ir else [])
+                           ) + ' -Qunused-arguments' if ir else ''
+    link_flags = LINK_FLAGS
     lines = [
         '# Written by tools/build_game.py; do not edit.',
         'ninja_required_version = 1.10',
         f'builddir = {ninja_path(out)}',
         f'cc = {cache}{cmd_arg(CLANG.as_posix())}',
-        f'genflags = {" ".join(GEN_FLAGS)}{" -flto" if ir else ""} {inc}',
+        f'genflags = {" ".join(GEN_FLAGS)} {inc}',
         f'rtflags = {" ".join(RT_FLAGS)} {rt_inc}',
         f'ldflags = {" ".join(link_flags)}',
         f'libs = {" ".join(libs)}',
