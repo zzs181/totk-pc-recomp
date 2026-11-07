@@ -636,6 +636,7 @@ def _emit_chunk(task):
     except OSError as ex:
         written, error = False, f'{path}: {ex}'
     ir_file, ir_helpers, ir_fails = None, set(), []
+    residual_c = None
     if _W.get('ir'):
         import emit_ir
         ll, residual, ir_helpers, ir_fails = emit_ir.emit_chunk_partial(text)
@@ -644,6 +645,7 @@ def _emit_chunk(task):
             write_if_changed(ir_path, ll)
             write_if_changed(Path(path), residual)   # the residual C: header + the rest
             ir_file = ir_path.name
+            residual_c = Path(path).name   # both TUs go into the build
             written = True
     reads = _W['reads'].get(name, [])
     folded = merge_ranges(reads)
@@ -651,7 +653,8 @@ def _emit_chunk(task):
     return {'module': name, 'number': number, 'file': ir_file or Path(path).name, 'functions': len(fns),
             'bytes': len(text), 'written': written, 'error': error, 'seconds': time.perf_counter() - t0,
             'stats': dict(e.stats), 'unsupported': dict(e.unsupported), 'folded': folded,
-            'ir': ir_file is not None, 'ir_helpers': ir_helpers, 'ir_fails': ir_fails}
+            'ir': ir_file is not None, 'ir_helpers': ir_helpers, 'ir_fails': ir_fails,
+            'residual_c': residual_c}
 
 
 # ------------------------------------------------------------------------------------------------ driver
@@ -842,7 +845,10 @@ def main():
                 sig = emit_ir._tbl['functions'][orig]
                 params = ', '.join(f'{CTY[t]} a{i}' for i, t in enumerate(sig['params']))
                 call_args = ', '.join(f'a{i}' for i in range(len(sig['params'])))
-                wlines.append(f'{CTY[sig["ret"]]} {h}({params}) {{ return {orig}({call_args}); }}')
+                if sig['ret'] == 'void':
+                    wlines.append(f'void {h}({params}) {{ {orig}({call_args}); }}')
+                else:
+                    wlines.append(f'{CTY[sig["ret"]]} {h}({params}) {{ return {orig}({call_args}); }}')
             write_if_changed(moddir / f'{name}_irwrappers.c', '\n'.join(wlines) + '\n')
         elif (moddir / f'{name}_irwrappers.c').exists():
             (moddir / f'{name}_irwrappers.c').unlink()
@@ -852,7 +858,7 @@ def main():
         t = time.perf_counter()
         table_written = write_if_changed(moddir / f'{name}_table.c', table_text(name, d['emitted']))
         write_if_changed(moddir / 'folded.txt', folded_text(name, merge_ranges(folded[name])))
-        ir_stems = {r['number'] for r in rs if r.get('ir')}
+        ir_stems = {f"{r['number']:04d}" for r in rs if r.get('ir')}
         removed = remove_stale(moddir, name, d['chunks'], errors, keep_ll=ir_stems)
         manifest = {
             'module': name,
@@ -860,7 +866,7 @@ def main():
             'base': f'{d["base"]:#x}',
             'text': [f'{d["lo"]:#x}', f'{d["hi"]:#x}'],
             'function_count': len(d['emitted']),
-            'chunks': [r['file'] for r in rs],
+            'chunks': [c for r in rs for c in ([r['file']] + ([r['residual_c']] if r.get('residual_c') else []))],
             'table': f'{name}_table.c',
             'chunk_info': [{'file': r['file'], 'functions': r['functions'], 'bytes': r['bytes'],
                             'seconds': round(r['seconds'], 2)} for r in rs],
@@ -917,7 +923,10 @@ def main():
             sig = emit_ir._tbl['functions'][orig]
             params = ', '.join(f'{CTY[t]} a{i}' for i, t in enumerate(sig['params']))
             call_args = ', '.join(f'a{i}' for i in range(len(sig['params'])))
-            wlines.append(f'{CTY[sig["ret"]]} {h}({params}) {{ return {orig}({call_args}); }}')
+            if sig['ret'] == 'void':
+                wlines.append(f'void {h}({params}) {{ {orig}({call_args}); }}')
+            else:
+                wlines.append(f'{CTY[sig["ret"]]} {h}({params}) {{ return {orig}({call_args}); }}')
         write_if_changed(args.out / 'irwrappers.c', '\n'.join(wlines) + '\n')
     elif (args.out / 'irwrappers.c').exists():
         (args.out / 'irwrappers.c').unlink()

@@ -43,6 +43,12 @@ class Num:
     def __init__(self, v, ty): self.v, self.ty = v, ty
 class Ref:
     def __init__(self, name): self.name = name
+class FlagField:
+    "F.a / F.b / F.nz: a member of the function-local Flags struct."
+    def __init__(self, member): self.member = member
+class VecElem:
+    "VS8(n)/VS16(n)/VS32(n)/VS64(n)/VSF32(n)/VSF64(n): the vector element view c->v[n]."
+    def __init__(self, name, idx): self.name, self.idx = name, idx
 class CpuField:
     def __init__(self, name, idx=None): self.name, self.idx = name, idx
 class Cast:
@@ -58,8 +64,12 @@ class Tern:
 
 CASTS = {'void': 'void', 'uint64_t': 'i64', 'int64_t': 'i64', 'uint32_t': 'i32', 'int32_t': 'i32',
          'uint16_t': 'i16', 'int16_t': 'i16', 'uint8_t': 'i8', 'int8_t': 'i8',
-         'u128': 'i128', '__uint128_t': 'i128', 'float': 'f32', 'double': 'f64'}
+         'u128': 'i128', '__uint128_t': 'i128', '__int128': 'i128', 'unsigned __int128': 'i128', 'float': 'f32', 'double': 'f64'}
 INT_W = {'i8': 8, 'i16': 16, 'i32': 32, 'i64': 64, 'i128': 128}
+ATOMIC_ORDERS = {'__ATOMIC_RELAXED': 0, '__ATOMIC_CONSUME': 1, '__ATOMIC_ACQUIRE': 2,
+                 '__ATOMIC_RELEASE': 3, '__ATOMIC_ACQ_REL': 4, '__ATOMIC_SEQ_CST': 5}
+VS_MAP = {'VS8': ('i8', 1), 'VS16': ('i16', 2), 'VS32': ('i32', 4), 'VS64': ('i64', 8),
+          'VSF32': ('f32', 4), 'VSF64': ('f64', 8)}
 CC_CONSTS = {n: i for i, n in enumerate(
     ['CC_EQ', 'CC_NE', 'CC_CS', 'CC_CC', 'CC_MI', 'CC_PL', 'CC_VS', 'CC_VC',
      'CC_HI', 'CC_LS', 'CC_GE', 'CC_LT', 'CC_GT', 'CC_LE'])}
@@ -102,6 +112,9 @@ class Parser:
         return a
     def unary(self):
         t = self.peek()
+        if t == '(' and self.peek(1) == 'unsigned' and self.peek(2) == '__int128' and self.peek(3) == ')':
+            self.take(); self.take(); self.take(); self.take()
+            return Cast('i128', self.unary())
         if t == '(' and self.peek(1) in CASTS and self.peek(2) == ')':
             self.take(); ty = CASTS[self.take()]; self.take()
             return Cast(ty, self.unary())
@@ -119,6 +132,10 @@ class Parser:
                 return Num(v, 'i64')
             return Num(v, 'i32')
         if re.match(r'^[A-Za-z_]', t):
+            if t in ('VS8', 'VS16', 'VS32', 'VS64', 'VSF32', 'VSF64') and self.peek() == '(':
+                self.take()          # '('
+                idx = self.expr(); self.expect(')')
+                return VecElem(t, idx)
             if self.peek() == '(':
                 self.take()
                 args = []
@@ -128,6 +145,9 @@ class Parser:
                         self.take(); args.append(self.expr())
                 self.expect(')')
                 return Call(t, args)
+            if t == 'F' and self.peek() == '.':
+                self.take()          # '.'
+                return FlagField(self.take())   # the member name
             if t == 'c' and self.peek() == '->':
                 self.take()          # '->'
                 name = self.take()   # the field name
@@ -145,8 +165,8 @@ CPU_TYPE = ('%Cpu = type { [32 x i64], i64, i64, i64, i64, i64, i64, i64, ptr, i
 CPU_IDX = {'x': 0, 'sp': 1, 'pc': 2, 'nzcv': 3, 'tpidr': 4, 'tpidrro': 5, 'excl_addr': 6,
            'excl_val': 7, 'thread': 8, 'fpcr': 9, 'fpsr': 10, 'excl_val_hi': 11,
            'excl_gen': 12, 'v': 14}
-LD_SIZES = {'LD8': 'i8', 'LD16': 'i16', 'LD32': 'i32', 'LD64': 'i64',
-            'ST8': 'i8', 'ST16': 'i16', 'ST32': 'i32', 'ST64': 'i64'}
+LD_SIZES = {'LD8': 'i8', 'LD16': 'i16', 'LD32': 'i32', 'LD64': 'i64', 'LD128': 'i128',
+            'ST8': 'i8', 'ST16': 'i16', 'ST32': 'i32', 'ST64': 'i64', 'ST128': 'i128'}
 BIN_IR = {'+': 'add', '-': 'sub', '&': 'and', '|': 'or', '^': 'xor',
           '*': 'mul', '/': 'udiv', '%': 'urem'}
 CMP_IR = {'==': 'eq', '!=': 'ne', '<': 'ult', '>': 'ugt', '<=': 'ule', '>=': 'uge'}
@@ -210,13 +230,39 @@ class Emitter:
             if want not in INT_W:
                 raise ValueError(f'num into {want}')
             return want, str(e.v & ((1 << INT_W[want]) - 1))
+        if isinstance(e, VecElem):
+            elt = VS_MAP[e.name][0]
+            _, iv = self.eval(e.idx, 'i64')
+            r1 = self.t()
+            self.emit(f'{r1} = getelementptr %Cpu, ptr %c, i32 0, i32 14')
+            r2 = self.t()
+            self.emit(f'{r2} = getelementptr inbounds [32 x i128], ptr {r1}, i64 0, i64 {iv}')
+            if ty == 'ptr':
+                return 'ptr', r2
+            r3 = self.t()
+            self.emit(f'{r3} = load {elt}, ptr {r2}, align 1')
+            want = ty or elt
+            if want != elt and want in INT_W and elt in INT_W:
+                return want, self.cvt(r3, elt, want)
+            return elt, r3
+        if isinstance(e, FlagField):
+            midx = {'a': 0, 'b': 1, 'nz': 2}[e.member]
+            r = self.t()
+            self.emit(f'{r} = getelementptr %Flags, ptr %v.F, i32 0, i32 {midx}')
+            if ty == 'ptr':
+                return 'ptr', r
+            r2 = self.t()
+            self.emit(f'{r2} = load i64, ptr {r}, align 8')
+            return 'i64', r2
         if isinstance(e, Ref) and e.name == 'c':
             return 'ptr', '%c'   # the function parameter itself
         if isinstance(e, Ref) and e.name in CC_CONSTS:
             want = ty or 'i32'
             return want, str(CC_CONSTS[e.name] & ((1 << INT_W[want]) - 1))
+        if isinstance(e, Ref) and e.name in ATOMIC_ORDERS:
+            return 'i32', str(ATOMIC_ORDERS[e.name])
         if isinstance(e, Ref):
-            if e.name not in self.scopes[-1] and e.name not in CC_CONSTS and e.name != 'c':
+            if e.name not in self.scopes[-1] and e.name not in CC_CONSTS                     and e.name not in ATOMIC_ORDERS and e.name != 'c':
                 raise ValueError(f'unknown name {e.name!r} (enum const, global or unhandled macro)')
             want = ty or self.ty_scopes[-1].get(e.name, 'i64')
             if e.name in CC_CONSTS:
@@ -342,7 +388,26 @@ class Emitter:
 
     def call(self, e, ty):
         name = e.name
-        if name not in ALLOWED and not re.match(r'^f_[0-9a-f]+$', name) and not name.startswith('rt_') \
+        if name in ('ROR64', 'ROR32'):
+            # ROR64(v, r) = (v >> (r & 63)) | (v << ((64 - (r & 63)) & 63)) — cpu.h macro
+            bits = 64 if name == 'ROR64' else 32
+            t = 'i64' if bits == 64 else 'i32'
+            _, v = self.eval(e.args[0], t)
+            _, r = self.eval(e.args[1], t)
+            masked = self.t()
+            mask = str(bits - 1)
+            self.emit(f'{masked} = and {t} {r}, {mask}')
+            shr = self.t()
+            self.emit(f'{shr} = lshr {t} {v}, {masked}')
+            remain = self.t()
+            self.emit(f'{remain} = sub {t} {bits}, {masked}')
+            shifted = self.t()
+            self.emit(f'{shifted} = shl {t} {v}, {remain}')
+            res = self.t()
+            self.emit(f'{res} = or {t} {shr}, {shifted}')
+            return t, res
+        real_extern = name.startswith('rt_') and name != 'rt_fpcr_sync'
+        if name not in ALLOWED and not real_extern and not re.match(r'^f_[0-9a-f]+$', name) \
                 and name not in LD_SIZES:
             raise ValueError(f'call to {name!r}: not a helper in the signature table (macro or unknown)')
         if name in LD_SIZES and name.startswith('LD'):
@@ -353,6 +418,10 @@ class Emitter:
             self.emit(f'{rv} = load {LD_SIZES[name]}, ptr {r}, align 1')
             want = ty or 'i64'
             return want, self.cvt(rv, LD_SIZES[name], want)
+        if name == '__atomic_thread_fence':
+            self.eval(e.args[0])
+            self.emit(f'fence seq_cst')
+            return 'void', None
         if name in LD_SIZES and name.startswith('ST'):
             _, a = self.eval(e.args[0], 'i64')
             r = self.t()
@@ -363,7 +432,7 @@ class Emitter:
                 v = self.cvt(v, vt, sz)
             self.emit(f'store {sz} {v}, ptr {r}, align 1')
             return 'void', None
-        wrap = not re.match(r'^f_[0-9a-f]+$', name) and not name.startswith('rt_')
+        wrap = not re.match(r'^f_[0-9a-f]+$', name) and not real_extern
         if wrap:
             sig = _tbl['functions'][name]   # the true signature; the gate above guarantees presence
             atys, ret = sig['params'], sig['ret']
@@ -391,15 +460,28 @@ class Emitter:
 import json as _json, pathlib as _path
 _tbl = _json.loads((_path.Path(__file__).parent / 'sig' / 'table.json').read_text(encoding='utf-8'))
 FN_HEAD = re.compile(r'(?m)^(?:static )?void ((?:f|fb)_[0-9a-f]+)\(Cpu \*c\) \{')
-ALLOWED = set(_tbl['functions']) | {'memcpy', 'memset', 'memmove'}
+ALLOWED = set(_tbl['functions']) | {'memcpy', 'memset', 'memmove', '__atomic_thread_fence'}
 
 NORETURN = {'rt_udf', 'rt_brk'}
 RET_TYPES = {'rt_dispatch': 'void', 'rt_udf': 'void', 'rt_brk': 'void', 'rt_svc': 'void',
              'rt_spin_gate': 'void', 'rt_hook_run': 'void', 'fnprof_hit': 'void',
-             'memcpy': 'void', 'fc_sub64': 'i32', 'fc_sub32': 'i32', 'fc_add64': 'i32',
+             'rt_ticks': 'i64',
+             'memcpy': 'void', '__atomic_thread_fence': 'void', 'fc_sub64': 'i32', 'fc_sub32': 'i32', 'fc_add64': 'i32',
              'fc_add32': 'i32', 'fc_logic64': 'i32', 'fc_logic32': 'i32',
              'fnz_sub64': 'i64', 'fnz_sub32': 'i64', 'fnz_add64': 'i64', 'fnz_add32': 'i64',
              'fnz_logic64': 'i64', 'fnz_logic32': 'i64', 'fnz_nz': 'i64'}
+
+# the runtime externals' full signatures, for the .ll preamble's declare lines
+RT_DECLARES = {
+    'rt_dispatch': ('void', ['ptr']),
+    'rt_udf': ('void', ['ptr', 'i64']),
+    'rt_brk': ('void', ['ptr', 'i64']),
+    'rt_svc': ('void', ['ptr', 'i32', 'i64']),
+    'rt_spin_gate': ('void', ['ptr', 'i64']),
+    'rt_hook_run': ('void', ['i32', 'ptr', 'ptr']),
+    'fnprof_hit': ('void', ['i64', 'i64', 'i64']),
+    'rt_ticks': ('i64', []),
+}
 
 # ---------------------------------------------------------------- statements
 
@@ -544,6 +626,27 @@ class FnEmitter(Emitter):
                 ty = want
             an = self.scopes[-1].get(lhs.name, lhs.name)
             self.emit(f'store {ty} {v}, ptr %v.{an}, align 8')
+            self.jump_ended = False
+            return None
+        if isinstance(lhs, FlagField):
+            midx = {'a': 0, 'b': 1, 'nz': 2}[lhs.member]
+            r = self.t()
+            self.emit(f'{r} = getelementptr %Flags, ptr %v.F, i32 0, i32 {midx}')
+            ty, v = self.eval(rhs)
+            if ty in INT_W and ty != 'i64':
+                v = self.cvt(v, ty, 'i64')
+                ty = 'i64'
+            self.emit(f'store {ty} {v}, ptr {r}, align 8')
+            self.jump_ended = False
+            return None
+        if isinstance(lhs, VecElem):
+            _, ptr = self.eval(lhs, ty='ptr')
+            elt = VS_MAP[lhs.name][0]
+            ty, v = self.eval(rhs, elt)
+            if ty in INT_W and elt in INT_W and ty != elt:
+                v = self.cvt(v, ty, elt)
+                ty = elt
+            self.emit(f'store {ty} {v}, ptr {ptr}, align 1')
             self.jump_ended = False
             return None
         if isinstance(lhs, CpuField):
@@ -826,6 +929,7 @@ def emit_chunk_partial(chunk_text):
         return None, chunk_text, [('chunk', 'no functions found')], set()
     header = chunk_text[:first.start()]
     fns = split_functions(chunk_text)
+    src = {name: ftext for name, ftext in fns}
     translated, residual, fails = {}, [], []
     for name, ftext in fns:
         ll, used = emit_function(name, ftext)
@@ -847,10 +951,10 @@ def emit_chunk_partial(chunk_text):
                 pair = name[:-5]
             if pair and pair in residual_names(residual):
                 fails.append((name, 'static pair with residual ' + pair))
-                residual.append((name, translated.pop(name)[0]))
-                translated.pop(name, None)
+                residual.append((name, src[name]))
+                del translated[name]
                 changed = True
-            elif pair and pair in translated and pair not in residual:
+            elif pair and pair in translated and pair not in residual_names(residual):
                 pass   # both translated: fine (same TU, same side)
     if not translated:
         return None, chunk_text, fails, set()
@@ -859,11 +963,9 @@ def emit_chunk_partial(chunk_text):
         helpers |= {u for u in used if u.endswith('_w')}
         calls |= {u for u in used if re.match(r'^(f|fb)_[0-9a-f]+$', u)}
         ir_defined.add(name)
-    preamble = [CPU_TYPE, '%Flags = type { i64, i64, i64 }',
-                'declare void @rt_dispatch(ptr)', 'declare void @rt_udf(ptr, i64)',
-                'declare void @rt_brk(ptr, i64)', 'declare void @rt_svc(ptr, i32, i64)',
-                'declare void @rt_spin_gate(ptr, i64)', 'declare void @rt_hook_run(i32, ptr, ptr)',
-                'declare void @fnprof_hit(i64, i64, i64)']
+    preamble = [CPU_TYPE, '%Flags = type { i64, i64, i64 }']
+    for rt_name, (ret, atys) in sorted(RT_DECLARES.items()):
+        preamble.append(f'declare {ret} @{rt_name}({", ".join(atys)})')
     for g in sorted(calls - ir_defined):
         preamble.append(f'declare void @{g}(ptr)')
     for h in sorted(helpers):
