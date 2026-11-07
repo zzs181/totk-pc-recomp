@@ -49,7 +49,7 @@ static void wait_until(uint64_t at) {
 
 static void present_main(void *arg) {
     (void)arg;
-    uint64_t last = 0, last_queued = 0;
+    uint64_t last = 0, last_queued = 0, last_at = 0;
     plat_mutex_lock(&pl);
     for (;;) {
         while (!pending) plat_cond_wait(&pcv, &pl);
@@ -73,6 +73,20 @@ static void present_main(void *arg) {
         uint64_t t1 = kern_now_ns();
         vk_present_hold(t1 - t0);   // the back-edge hold, into the present-path attribution (gfx_present.c)
         vk_present_flip();
+        // Frame generation (TOTK_FG_DUP, a test switch): present the same picture `dup - 1` more times, evenly inside
+        // this frame\'s period, to check the sub-slot pacing before a generated frame exists. The menu and the
+        // captures belong to the rendered frame and are skipped for the repeats.
+        const char *dups = cfg_get("TOTK_FG_DUP");
+        int dup = dups ? atoi(dups) : 0;
+        uint64_t period = last_at && j.at > last_at && j.at - last_at < 100000000ull ? j.at - last_at : 16666667ull;
+        for (int k = 1; k < dup && k < 6; k++) {
+            wait_until(j.at + period * (uint64_t)k / (uint64_t)dup);
+            vk_present_repeat(1);
+            vk_present_blit(j.image, VK_IMAGE_LAYOUT_GENERAL, j.format, j.w, j.h, j.has_crop ? j.crop : NULL);
+            vk_present_flip();
+            vk_present_repeat(0);
+        }
+        last_at = j.at;
         // TOTK_TRACE=present: one line per present: the host present's interval, the interval of the game's present
         // calls (when the host present went out before back-edge pacing), the wait and how far past its target it went
         if (rt_trace & RT_TRACE_PRESENT)

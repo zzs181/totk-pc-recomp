@@ -116,6 +116,7 @@ static VkFormat g_sc_fmt;
 static int g_sc_hdr;                        // HDR10 (TOTK_HDR, vk_hdr.c): PQ code values in Rec. 2020
 static VkExtent2D g_sc_ext;
 static int g_scaler;                        // the last present: 0 the game image 1:1, 1 scaled by the blit, 2 by FSR
+static int g_repeat;                        // this present repeats the last picture (frame generation): no menu, no capture
 static uint32_t g_sc_n;
 static VkImage g_sc_img[MAX_IMAGES];
 static VkImageView g_sc_view[MAX_IMAGES];   // colour attachment views for the menu overlay
@@ -763,10 +764,10 @@ static void present_image(VkImage src, VkImageLayout layout, VkFormat fmt, int w
     MenuTarget mt = {c->instance, c->phys, c->device, c->gfx_family, c->gfx_queue,
                      g_sc_hdr ? VK_FORMAT_R8G8B8A8_UNORM : g_sc_fmt, g_sc_ext.width,
                      g_sc_ext.height, cw, ch, g_scaler};
-    int overlay = g_sc_view[idx] &&
+    int overlay = !g_repeat && g_sc_view[idx] &&
                   menu_overlay_frame(__atomic_load_n(&gfx_counters.frames, __ATOMIC_RELAXED), &mt, &menu_shot);
-    int cap = (g_capture || menu_shot) && ensure_capture_buffer();
-    int thumb = g_th_n && ensure_thumbs();
+    int cap = !g_repeat && (g_capture || menu_shot) && ensure_capture_buffer();
+    int thumb = !g_repeat && g_th_n && ensure_thumbs();
 
     VkCommandBuffer cb = g_cb[slot];
     vkResetCommandBuffer(cb, 0);
@@ -903,6 +904,10 @@ out:
 void vk_present_image(VkImage src, VkImageLayout layout, VkFormat fmt, int w, int h, const int crop[4]) {
     present_image(src, layout, fmt, w, h, crop, 0);
 }
+
+// Frame generation: the presents after the rendered one repeat the last picture; the menu, the capture and the
+// thumbnails belong to the rendered frame only, so they are skipped while this is on.
+void vk_present_repeat(int on) { g_repeat = on != 0; }
 
 void vk_present_blit(VkImage src, VkImageLayout layout, VkFormat fmt, int w, int h, const int crop[4]) {
     present_image(src, layout, fmt, w, h, crop, 1);

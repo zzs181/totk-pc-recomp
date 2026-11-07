@@ -140,6 +140,7 @@ void vk_present_image(VkImage src, VkImageLayout layout, VkFormat fmt, int w, in
 // vk_present_image split in two: vk_present_blit submits the blit and leaves the present waiting, vk_present_flip
 // queues it. The next blit or a swapchain rebuild queues a waiting present first.
 void vk_present_blit(VkImage src, VkImageLayout layout, VkFormat fmt, int w, int h, const int crop[4]);
+void vk_present_repeat(int on);   // 1: this present repeats the last picture (frame generation), no menu or capture
 // The present thread's back-edge wait for the frame's display time, before vk_present_flip (vk_backend.c): ns of hold,
 // counted into the present-path attribution (gfx_present.c, perf.c's 60 s summary).
 void vk_present_hold(uint64_t ns);
