@@ -237,7 +237,7 @@ class Emitter:
                 raise ValueError(f'num into {want}')
             return want, str(e.v & ((1 << INT_W[want]) - 1))
         if isinstance(e, VecElem):
-            elt = VS_MAP[e.name][0]
+            elt = LLVM_TYPE.get(VS_MAP[e.name][0], VS_MAP[e.name][0])
             _, iv = self.eval(e.idx, 'i64')
             r1 = self.t()
             self.emit(f'{r1} = getelementptr %Cpu, ptr %c, i32 0, i32 14')
@@ -375,6 +375,8 @@ class Emitter:
         if e.op in ('<<', '>>'):
             t, a = self.eval(e.a, ty or 'i64')
             _, sh = self.eval(e.b, t)
+            if INT_W.get(t, 0) > 64:
+                sh = self.cvt(sh, 'i64', t)   # shift counts promote to the value's width
             r = self.t()
             self.emit(f'{r} = {"shl" if e.op == "<<" else "lshr"} {t} {a}, {sh}')
             return t, r
@@ -388,7 +390,13 @@ class Emitter:
             return 'i32', rb
         if e.op in BIN_IR:
             t, a = self.eval(e.a, ty)
-            _, b = self.eval(e.b, t)
+            bt, bv = self.eval(e.b, t)
+            if bt != t:
+                if INT_W.get(t, 0) >= INT_W.get(bt, 0):
+                    b = self.cvt(bv, bt, t)
+                else:
+                    a = self.cvt(a, t, bt)
+                    t = bt
             r = self.t()
             self.emit(f'{r} = {BIN_IR[e.op]} {t} {a}, {b}')
             return t, r
@@ -455,6 +463,7 @@ class Emitter:
         args = []
         for i, a in enumerate(e.args):
             at, av = self.eval(a, atys[i] if wrap and i < len(atys) else None)
+            at = LLVM_TYPE.get(at, at) if wrap else at
             args.append(f'{at} {av}')
         if re.match(r'^f_[0-9a-f]+$', name):
             ret = 'void'   # guest functions: void(Cpu *), always
@@ -473,7 +482,7 @@ class Emitter:
 
 import json as _json, pathlib as _path
 _tbl = _json.loads((_path.Path(__file__).parent / 'sig' / 'table.json').read_text(encoding='utf-8'))
-FN_HEAD = re.compile(r'(?m)^(?:static )?void ((?:f|fb)_[0-9a-f]+)\(Cpu \*c\) \{')
+FN_HEAD = re.compile(r'(?m)^(?:static )?void ((?:f|fb)_[0-9a-f]+(?:_body)?)\(Cpu \*c\) \{')
 ALLOWED = set(_tbl['functions']) | {'memcpy', 'memset', 'memmove', '__atomic_thread_fence'}
 
 NORETURN = {'rt_udf', 'rt_brk'}
@@ -655,9 +664,9 @@ class FnEmitter(Emitter):
             return None
         if isinstance(lhs, VecElem):
             _, ptr = self.eval(lhs, ty='ptr')
-            elt = VS_MAP[lhs.name][0]
+            elt = LLVM_TYPE.get(VS_MAP[lhs.name][0], VS_MAP[lhs.name][0])
             ty, v = self.eval(rhs, elt)
-            if ty in INT_W and elt in INT_W and ty != elt:
+            if elt in INT_W and ty in INT_W and ty != elt:
                 v = self.cvt(v, ty, elt)
                 ty = elt
             self.emit(f'store {ty} {v}, ptr {ptr}, align 1')
@@ -951,10 +960,16 @@ def emit_chunk_partial(chunk_text):
     fns = split_functions(chunk_text)
     src = {name: ftext for name, ftext in fns}
     translated, residual, fails = {}, [], []
+    # fb_ fallbacks are static and only their f_ wrapper calls them (musttail); the hook
+    # body/wrapper pair is the same shape. Keep each static pair on the C route: a static
+    # definition cannot satisfy the other TU's reference, and the IR side cannot take the
+    # callback's address without more plumbing.
+    static_pairs = {n for n, _ in fns if n.endswith('_body')} |                     {n[:-5] for n, _ in fns if n.endswith('_body')} |                     {n for n, _ in fns if n.startswith('fb_')} |                     {'f_' + n[3:] for n, _ in fns if n.startswith('fb_')}
     for name, ftext in fns:
         ll, used = emit_function(name, ftext)
-        if ll is None:
-            fails.append((name, used))
+        if ll is None or name in static_pairs:
+            if ll is None:
+                fails.append((name, used))
             residual.append((name, ftext))
         else:
             translated[name] = (ll, used)
@@ -990,10 +1005,18 @@ def emit_chunk_partial(chunk_text):
         preamble.append(f'declare void @{g}(ptr)')
     for h in sorted(helpers):
         sig = _tbl['functions'][h[:-2]]
-        params = ' '.join(LLVM_TYPE.get(t_, t_) for t_ in sig['params'])
+        params = ', '.join(LLVM_TYPE.get(t_, t_) for t_ in sig['params'])
         preamble.append(f'declare {LLVM_TYPE.get(sig["ret"], sig["ret"])} @{h}({params})')
     ll = '\n\n'.join(preamble + [ll for name, (ll, _) in translated.items()]) + '\n'
-    res = header + '\n\n'.join(ftext for name, ftext in residual) + '\n' if residual else ''
+    res = ''
+    if residual:
+        # the residual's own prototypes: chunk-internal statics (fb_, hook bodies)
+        # and anything the residual calls that is defined later in it
+        protos = ''.join(('static void %s(Cpu *c);\n') % n if (n.startswith('fb_') or n.endswith('_body')) else ('void %s(Cpu *c);\n') % n for n, _ in residual)
+        res = header + protos + ''.join(ftext for name, ftext in residual) + '\n'
+    else:
+        res = ''
+
     return ll, res, helpers, calls
 
 def residual_names(residual):
