@@ -76,7 +76,7 @@ static void present_main(void *arg) {
         // Frame generation (TOTK_FG_DUP, a test switch): present the same picture `dup - 1` more times, evenly inside
         // this frame\'s period, to check the sub-slot pacing before a generated frame exists. The menu and the
         // captures belong to the rendered frame and are skipped for the repeats.
-        const char *dups = cfg_get("TOTK_FG_DUP");
+        const char *dups = getenv("TOTK_FG_DUP");   // a test switch, not an ini key
         int dup = dups ? atoi(dups) : 0;
         uint64_t period = last_at && j.at > last_at && j.at - last_at < 100000000ull ? j.at - last_at : 16666667ull;
         for (int k = 1; k < dup && k < 6; k++) {
