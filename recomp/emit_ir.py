@@ -299,6 +299,13 @@ class Emitter:
         self.emit(f'{r} = load {it}, ptr {tmp}, align 8')
         return it, r
 
+    def cond_i1(self, e):
+        """A call used directly as a condition: evaluate with its known return type, compare against 0."""
+        t, v = self.eval(e, RET_TYPES.get(e.name) or 'i32')
+        r = self.t()
+        self.emit(f'{r} = icmp ne {t} {v}, 0')
+        return r
+
     def eval_i1(self, e):
         if isinstance(e, Bin) and e.op in CMP_IR:
             t, a = self.eval(e.a)
@@ -306,7 +313,7 @@ class Emitter:
             r = self.t()
             self.emit(f'{r} = icmp {CMP_IR[e.op]} {t} {a}, {b}')
             return r
-        t, v = self.eval(e)
+        t, v = self.eval(e, RET_TYPES.get(e.name) if isinstance(e, Call) else None)
         r = self.t()
         self.emit(f'{r} = icmp ne {t} {v}, 0')
         return r
@@ -736,7 +743,7 @@ def emit_function(name, text):
             out.append(f'{lbl}:')
         out.extend(lines)
     out.append('}')
-    return '\n'.join(out), sorted(em.used_calls)
+    return '\n'.join(out), em.wrappers, sorted(em.used_calls)
 
 def main():
     import argparse
@@ -790,34 +797,27 @@ def main():
     m = re.search(r'(void ' + re.escape(fname) + r'\(Cpu \*c\) \{.*?\n\})', s, re.S)
     if not m:
         sys.exit(f'{fname} not found in {chunk}')
-    ll, wraps = emit_function(fname, m.group(1))
+    ll, wrappers, calls = emit_function(fname, m.group(1))
     if ll is None:
         sys.exit(f'{fname} not IR-eligible: {wraps}')
-    known = {'rt_dispatch', 'rt_udf', 'rt_brk', 'rt_svc', 'rt_spin_gate', 'rt_hook_run', 'fnprof_hit'}
-    helpers = [w for w in wraps if not re.match(r'^f_[0-9a-f]+$', w) and w not in known]
     preamble = [CPU_TYPE, '%Flags = type { i64, i64, i64 }',
                 'declare void @rt_dispatch(ptr)', 'declare void @rt_udf(ptr, i64)',
                 'declare void @rt_brk(ptr, i64)', 'declare void @rt_svc(ptr, i32, i64)',
                 'declare void @rt_spin_gate(ptr, i64)', 'declare void @fnprof_hit(i64, i64, i64)']
-    wrappers_c = ['#include "cpu.h"', '#include "simd.h"', '']
-    for h in helpers:
-        rn = h
-        orig = h[:-2] if h.endswith('_w') else h
-        if orig.startswith('fc_'):
-            preamble.append(f'declare i32 @{rn}(ptr, i32)')
-            wrappers_c.append(f'int32_t {rn}(Flags *f, int32_t cc) {{ return {orig}(f, cc); }}')
-        elif orig.startswith('fnz_'):
-            preamble.append(f'declare i32 @{rn}(ptr)')
-            wrappers_c.append(f'int32_t {rn}(Flags *f) {{ return {orig}(f); }}')
-        elif orig.endswith('64'):
-            preamble.append(f'declare i64 @{rn}(ptr, i64, i64)')
-            wrappers_c.append(f'uint64_t {rn}(Flags *f, uint64_t a, uint64_t b) {{ return {orig}(f, a, b); }}')
-        else:
-            preamble.append(f'declare i32 @{rn}(ptr, i32, i32)')
-            wrappers_c.append(f'uint32_t {rn}(Flags *f, uint32_t a, uint32_t b) {{ return {orig}(f, a, b); }}')
+    for g in calls:
+        if re.match(r'^f_[0-9a-f]+$', g):
+            preamble.append(f'declare void @{g}(ptr)')
+    for h, (ret, atys) in sorted(wrappers.items()):
+        preamble.append(f'declare {ret} @{h}({", ".join(atys)})')
     print('\n'.join(preamble))
     print(ll)
-    open('ir_wrappers.c', 'w', encoding='utf-8', newline='\n').write('\n'.join(wrappers_c))
+    out = ['#include "cpu.h"', '#include "simd.h"', '']
+    for h, (ret, atys) in sorted(wrappers.items()):
+        orig = h[:-2] if h.endswith('_w') else h
+        params = ', '.join(f'{t} a{i}' for i, t in enumerate(atys))
+        call_args = ', '.join(f'a{i}' for i in range(len(atys)))
+        out.append(f'{ret} {h}({params}) {{ return {orig}({call_args}); }}')
+    open('ir_wrappers.c', 'w', encoding='utf-8', newline='\n').write('\n'.join(out))
 
 if __name__ == '__main__':
     main()
