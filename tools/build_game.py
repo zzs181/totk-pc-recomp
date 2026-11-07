@@ -97,6 +97,7 @@ SDL3_DLLS = [UCRT / 'SDL3.dll', UCRT / 'libiconv-2.dll', UCRT / 'libopus-0.dll']
 # Flags for generated code as LAS Recomp builds it (Makefile GENFLAGS, Windows), plus -march for the FP/SIMD lowering.
 # --cpu v2 replaces the level for CPUs without AVX2/FMA; runtime/fma.c then supplies the correctly rounded fma the
 # lowering needs (runtime/simd.h).
+_NO_LTO = False   # --no-lto: the IR route compiles without LTO (fast boot-test builds)
 GEN_FLAGS = ['-O1', '-ffp-contract=off', '-fno-strict-aliasing', '-Wno-return-type', '-Wno-unused-label', '-fvisibility=hidden',
              '-march=x86-64-v3']
 RT_FLAGS = ['-O2', '-g', '-Wall', '-fno-strict-aliasing', '-march=x86-64-v3']
@@ -387,25 +388,37 @@ def derive_cheat_symbols(gen):
     print(f'cheat symbols: {len(cands)} candidate(s), player root first 0x{cands[0]:x}', flush=True)
 
 
+def generated_dir(version, out=None):
+    """The generated tree a build reads: a route build (build/v143-c, build/v143-ir) reads the tree of the same name,
+    so the two routes sit side by side; a build without a route name reads generated/<version>. The name is also what
+    the object-reuse check compares a build's main tree against."""
+    if out is not None and (ROOT / 'generated' / out.name / 'layout.json').is_file():
+        return ROOT / 'generated' / out.name
+    return ROOT / 'generated' / version
+
+
 def copy_romfs_patches(version, out):
     """totk.exe loads romfs-patches beside romfs-index.bin (runtime/romfs.c overlay_init). tools/make_romfs_patches.py
-    writes them into build/<version> only, so a build in another directory ran without the 60 fps overlay (the quick
-    menus' captured background turned black). Copies every romfs-patches* folder of build/<version> that has a
-    manifest, the same way when it differs: romfs-patches, romfs-patches-xbox, romfs-patches-xbox-label and
-    romfs-patches-pc (the same with Xbox or keyboard and mouse button prompts, make_romfs_patches.py --prompts) and
-    the ones of another shape, romfs-patches-<w>x<h> and romfs-patches-pc-<w>x<h> (make_romfs_patches.py --aspect),
-    which runtime/romfs.c overlay_init needs for a game resolution that is not 16:9."""
-    names = sorted(p.name for p in (ROOT / 'build' / version).glob('romfs-patches*') if p.is_dir())
-    for name in names:
-        src = ROOT / 'build' / version / name
-        dst = out / name
-        if src.resolve() == dst.resolve() or not (src / 'manifest.tsv').is_file():
-            continue
-        if (dst / 'manifest.tsv').is_file() and (dst / 'manifest.tsv').read_bytes() == (src / 'manifest.tsv').read_bytes():
-            continue
-        shutil.rmtree(dst, ignore_errors=True)
-        shutil.copytree(src, dst)
-        print(f'romfs patches: copied {name} from {src}')
+    writes them into one build folder only, so a build in another directory ran without the 60 fps overlay (the quick
+    menus' captured background turned black). Copies every romfs-patches* folder that has a manifest from the edition
+    builds (build/<version>-c, then -ir, then the unsuffixed one) into this one, the same way when it differs:
+    romfs-patches, romfs-patches-xbox, romfs-patches-xbox-label and romfs-patches-pc (the same with Xbox or keyboard
+    and mouse button prompts, make_romfs_patches.py --prompts) and the ones of another shape,
+    romfs-patches-<w>x<h> and romfs-patches-pc-<w>x<h> (make_romfs_patches.py --aspect), which runtime/romfs.c
+    overlay_init needs for a game resolution that is not 16:9."""
+    roots = [p for p in (ROOT / 'build' / f'{version}-c', ROOT / 'build' / f'{version}-ir',
+                         ROOT / 'build' / version) if p.is_dir()]
+    for src_root in roots:
+        for name in sorted(p.name for p in src_root.glob('romfs-patches*') if p.is_dir()):
+            src = src_root / name
+            dst = out / name
+            if src.resolve() == dst.resolve() or not (src / 'manifest.tsv').is_file():
+                continue
+            if (dst / 'manifest.tsv').is_file() and (dst / 'manifest.tsv').read_bytes() == (src / 'manifest.tsv').read_bytes():
+                continue
+            shutil.rmtree(dst, ignore_errors=True)
+            shutil.copytree(src, dst)
+            print(f'romfs patches: copied {name} from {src}')
 
 
 def work_dir():
@@ -480,10 +493,13 @@ def module_glue(layout, linked, hashes, paths, version):
     return '\n'.join(out)
 
 
+VERSION_LABEL = None   # --label: reads VERSION-<label> instead of VERSION
+
+
 def port_version():
-    """VERSION at the root: the repository's semver, or in a release folder the release string (make_release.py
-    version)."""
-    path = ROOT / 'VERSION'
+    """VERSION (or VERSION-<label> with --label) at the root: the repository's semver, or in a release folder the
+    release string (make_release.py version)."""
+    path = ROOT / ('VERSION' + (f'-{VERSION_LABEL}' if VERSION_LABEL else ''))
     return path.read_text(encoding='utf-8').strip() if path.is_file() else 'unknown'
 
 
@@ -507,14 +523,14 @@ def ninja_file(gen, out, mods, pool_depth, skip=(), prebuilt=False, runtime_lib=
             mods['main'] = list(mods.get('main', [])) + [wsrc]
     ll_genflags = ' '.join(f for f in GEN_FLAGS
                            if not f.startswith(('-W', '-ffp-contract', '-fno-strict-aliasing', '-fvisibility'))
-                           ) + ' -Qunused-arguments' if ir else ''
-    link_flags = LINK_FLAGS
+                           ) + (' -flto' if not _NO_LTO else '') + ' -Qunused-arguments' if ir else ''
+    link_flags = LINK_FLAGS + ([] if _NO_LTO else (['-flto'] if ir else []))
     lines = [
         '# Written by tools/build_game.py; do not edit.',
         'ninja_required_version = 1.10',
         f'builddir = {ninja_path(out)}',
         f'cc = {cache}{cmd_arg(CLANG.as_posix())}',
-        f'genflags = {" ".join(GEN_FLAGS)} {inc}',
+        f'genflags = {" ".join(GEN_FLAGS)}{"" if _NO_LTO else (" -flto" if ir else "")} {inc}',
         f'rtflags = {" ".join(RT_FLAGS)} {rt_inc}',
         f'ldflags = {" ".join(link_flags)}',
         f'libs = {" ".join(libs)}',
@@ -916,6 +932,8 @@ def main():
                          "dir being the [work] dir of config.local.toml, else build)")
     ap.add_argument('--romfs', type=Path, help="totk.exe's default RomFS directory with romfs.bin and index.json "
                                                '(default <work dir>/extracted/<version>/romfs)')
+    ap.add_argument('--label', help='read VERSION-<label> instead of VERSION (per-route version strings)')
+    ap.add_argument('--no-lto', action='store_true', help='compile the IR route without LTO (fast boot-test builds)')
     ap.add_argument('--no-romfs', action='store_true',
                     help='build even when the RomFS directory has no index.json (the exe then stops at start)')
     ap.add_argument('--profile', type=Path, help="totk.exe's default profile directory (default build/profile for v121, "
@@ -944,10 +962,12 @@ def main():
                          '.profdata (tools/pgo.py merge)')
     ap.add_argument('--expected', type=Path,
                     help='expected hashes (default tools/data/expected-<display version>.json)')
+    global VERSION_LABEL, _NO_LTO
     args = ap.parse_args()
+    VERSION_LABEL, _NO_LTO = args.label, args.no_lto
     set_cpu(args.cpu)
 
-    gen = (args.gen or ROOT / 'generated' / args.version).resolve()
+    gen = (args.gen or generated_dir(args.version, args.out)).resolve()
     out = (args.out or ROOT / 'build' / args.version).resolve()
     if args.gen_O2 and not args.pgo:
         GEN_FLAGS[GEN_FLAGS.index('-O1')] = '-O2'

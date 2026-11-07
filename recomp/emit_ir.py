@@ -69,7 +69,6 @@ INT_W = {'i8': 8, 'i16': 16, 'i32': 32, 'i64': 64, 'i128': 128}
 COND_SHIFTS = {'COND_EQ': 30, 'COND_NE': 29, 'COND_CS': 28, 'COND_CC': 27, 'COND_MI': 26,
                'COND_PL': 25, 'COND_VS': 24, 'COND_VC': 23, 'COND_HI': 22, 'COND_LS': 21,
                'COND_GE': 20, 'COND_LT': 19, 'COND_GT': 18, 'COND_LE': 17}
-FOP_OPS = {'FOP_ADD': 0, 'FOP_SUB': 1, 'FOP_MUL': 2, 'FOP_MULX': 3, 'FOP_NMUL': 4, 'FOP_DIV': 5, 'FOP_ABD': 6, 'FOP_SQRT': 7, 'FOP_MADD': 8, 'FOP_RECPS': 9, 'FOP_RSQRTS': 10, 'FOP_MAX': 11, 'FOP_MIN': 12, 'FOP_MAXNM': 13, 'FOP_MINNM': 14}
 ATOMIC_ORDERS = {'__ATOMIC_RELAXED': 0, '__ATOMIC_CONSUME': 1, '__ATOMIC_ACQUIRE': 2,
                  '__ATOMIC_RELEASE': 3, '__ATOMIC_ACQ_REL': 4, '__ATOMIC_SEQ_CST': 5}
 VS_MAP = {'VS8': ('i8', 1), 'VS16': ('i16', 2), 'VS32': ('i32', 4), 'VS64': ('i64', 8),
@@ -268,10 +267,8 @@ class Emitter:
             return want, str(CC_CONSTS[e.name] & ((1 << INT_W[want]) - 1))
         if isinstance(e, Ref) and e.name in ATOMIC_ORDERS:
             return 'i32', str(ATOMIC_ORDERS[e.name])
-        if isinstance(e, Ref) and e.name in FOP_OPS:
-            return 'i32', str(FOP_OPS[e.name])
         if isinstance(e, Ref):
-            if e.name not in self.scopes[-1] and e.name not in CC_CONSTS                     and e.name not in ATOMIC_ORDERS and e.name not in FOP_OPS and e.name != 'c':
+            if e.name not in self.scopes[-1] and e.name not in CC_CONSTS                     and e.name not in ATOMIC_ORDERS and e.name != 'c':
                 raise ValueError(f'unknown name {e.name!r} (enum const, global or unhandled macro)')
             want = ty or self.ty_scopes[-1].get(e.name, 'i64')
             if e.name in CC_CONSTS:
@@ -393,10 +390,10 @@ class Emitter:
             return 'i32', rb
         if e.op in BIN_IR:
             t, a = self.eval(e.a, ty)
-            bt, b = self.eval(e.b, t)
+            bt, bv = self.eval(e.b, t)
             if bt != t:
                 if INT_W.get(t, 0) >= INT_W.get(bt, 0):
-                    b = self.cvt(b, bt, t)
+                    b = self.cvt(bv, bt, t)
                 else:
                     a = self.cvt(a, t, bt)
                     t = bt
@@ -442,13 +439,6 @@ class Emitter:
             self.emit(f'{rv} = load {LD_SIZES[name]}, ptr {r}, align 1')
             want = ty or 'i64'
             return want, self.cvt(rv, LD_SIZES[name], want)
-        if name in ('__builtin_bswap32', '__builtin_bswap64'):
-            t = 'i64' if name.endswith('64') else 'i32'
-            _, v = self.eval(e.args[0], t)
-            r = self.t()
-            self.emit(f'{r} = call {t} @llvm.bswap.{t}({t} {v})')
-            self.used_calls.add(f'llvm.bswap.{t}')
-            return t, r
         if name == '__atomic_thread_fence':
             self.eval(e.args[0])
             self.emit(f'fence seq_cst')
@@ -493,7 +483,7 @@ class Emitter:
 import json as _json, pathlib as _path
 _tbl = _json.loads((_path.Path(__file__).parent / 'sig' / 'table.json').read_text(encoding='utf-8'))
 FN_HEAD = re.compile(r'(?m)^(?:static )?void ((?:f|fb)_[0-9a-f]+(?:_body)?)\(Cpu \*c\) \{')
-ALLOWED = set(_tbl['functions']) | {'memcpy', 'memset', 'memmove', '__atomic_thread_fence', '__builtin_bswap32', '__builtin_bswap64'}
+ALLOWED = set(_tbl['functions']) | {'memcpy', 'memset', 'memmove', '__atomic_thread_fence'}
 
 NORETURN = {'rt_udf', 'rt_brk'}
 RET_TYPES = {'rt_dispatch': 'void', 'rt_udf': 'void', 'rt_brk': 'void', 'rt_svc': 'void',
@@ -1013,10 +1003,6 @@ def emit_chunk_partial(chunk_text):
         preamble.append(f'declare {ret} @{rt_name}({", ".join(atys)})')
     for g in sorted(calls - ir_defined):
         preamble.append(f'declare void @{g}(ptr)')
-    all_ll = '\n'.join(ll for name, (ll, _) in translated.items())
-    for w in ('i32', 'i64'):
-        if f'@llvm.bswap.{w}(' in all_ll:
-            preamble.append(f'declare {w} @llvm.bswap.{w}({w})')
     for h in sorted(helpers):
         sig = _tbl['functions'][h[:-2]]
         params = ', '.join(LLVM_TYPE.get(t_, t_) for t_ in sig['params'])
