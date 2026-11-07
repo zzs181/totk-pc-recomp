@@ -66,10 +66,14 @@ CASTS = {'void': 'void', 'uint64_t': 'i64', 'int64_t': 'i64', 'uint32_t': 'i32',
          'uint16_t': 'i16', 'int16_t': 'i16', 'uint8_t': 'i8', 'int8_t': 'i8',
          'u128': 'i128', '__uint128_t': 'i128', '__int128': 'i128', 'unsigned __int128': 'i128', 'float': 'f32', 'double': 'f64'}
 INT_W = {'i8': 8, 'i16': 16, 'i32': 32, 'i64': 64, 'i128': 128}
+COND_SHIFTS = {'COND_EQ': 30, 'COND_NE': 29, 'COND_CS': 28, 'COND_CC': 27, 'COND_MI': 26,
+               'COND_PL': 25, 'COND_VS': 24, 'COND_VC': 23, 'COND_HI': 22, 'COND_LS': 21,
+               'COND_GE': 20, 'COND_LT': 19, 'COND_GT': 18, 'COND_LE': 17}
 ATOMIC_ORDERS = {'__ATOMIC_RELAXED': 0, '__ATOMIC_CONSUME': 1, '__ATOMIC_ACQUIRE': 2,
                  '__ATOMIC_RELEASE': 3, '__ATOMIC_ACQ_REL': 4, '__ATOMIC_SEQ_CST': 5}
 VS_MAP = {'VS8': ('i8', 1), 'VS16': ('i16', 2), 'VS32': ('i32', 4), 'VS64': ('i64', 8),
           'VSF32': ('f32', 4), 'VSF64': ('f64', 8)}
+LLVM_TYPE = {'f32': 'float', 'f64': 'double'}
 CC_CONSTS = {n: i for i, n in enumerate(
     ['CC_EQ', 'CC_NE', 'CC_CS', 'CC_CC', 'CC_MI', 'CC_PL', 'CC_VS', 'CC_VC',
      'CC_HI', 'CC_LS', 'CC_GE', 'CC_LT', 'CC_GT', 'CC_LE'])}
@@ -227,6 +231,8 @@ class Emitter:
     def eval(self, e, ty=None):
         if isinstance(e, Num):
             want = ty or e.ty
+            if want in ('f32', 'f64', 'float', 'double'):
+                return 'f64' if want in ('f64', 'double') else 'f32', f'{e.v:.6e}'
             if want not in INT_W:
                 raise ValueError(f'num into {want}')
             return want, str(e.v & ((1 << INT_W[want]) - 1))
@@ -298,6 +304,13 @@ class Emitter:
             raise ValueError(f'unary {e.op}')
         if isinstance(e, Bin):
             return self.bin(e, ty)
+        if isinstance(e, Call) and e.name in COND_SHIFTS:
+            t, v = self.eval(Ref('F') if False else CpuField('nzcv'), 'i64')
+            r = self.t()
+            self.emit(f'{r} = lshr i64 {v}, {COND_SHIFTS[e.name]}')
+            r2 = self.t()
+            self.emit(f'{r2} = and i64 {r}, 1')
+            return 'i64', r2
         if isinstance(e, Call):
             return self.call(e, ty)
         if isinstance(e, Tern):
@@ -436,6 +449,7 @@ class Emitter:
         if wrap:
             sig = _tbl['functions'][name]   # the true signature; the gate above guarantees presence
             atys, ret = sig['params'], sig['ret']
+            ret = LLVM_TYPE.get(ret, ret)
             name = name + '_w'   # cpu.h/simd.h statics: called through the generated wrapper TU
         self.used_calls.add(name)
         args = []
@@ -668,10 +682,9 @@ class FnEmitter(Emitter):
     def if_stmt(self, t):
         self.n += 1
         i = 1
-        if t[i] != '(':
-            raise ValueError('if without a parenthesised condition')
+        assert t[i] == '('
         depth, j = 0, i
-        while j < len(t):
+        while True:
             if t[j] == '(':
                 depth += 1
             elif t[j] == ')':
@@ -687,20 +700,25 @@ class FnEmitter(Emitter):
         rest = t[j + 1:]
         if not rest:
             raise ValueError('if without a body')
-        has_else = rest[0] == 'else'
+        if rest[0] == ';':   # an empty then-arm, or the splitter's ';'
+            rest = rest[1:]
+        if not rest:
+            raise ValueError('if without a body')
+        # find the then-arm's extent, then look for an else after its ';'
+        used = self.match_brace(rest, 0) + 1 if rest[0] == '{' else self.stmt_end(rest)
+        tail = rest[used:]
+        if tail and tail[0] == ';':
+            tail = tail[1:]
+        has_else = bool(tail) and tail[0] == 'else'
         else_b = self.block('if.else') if has_else else end_b
         self.emit(f'br i1 {c}, label %{then_b}, label %{else_b}')
         self.cur = then_b
-        used = self.match_brace(rest, 0) + 1 if rest[0] == '{' else self.stmt_end(rest)
         self.statement(rest[:used])
         if not self.terminated() and not self.jump_ended:
             self.enter(end_b)
         self.cur = end_b
         self.jump_ended = False
-        tail = rest[used:]
         if has_else:
-            if not tail or tail[0] != 'else':
-                raise ValueError('else without a body')
             self.cur = else_b
             if len(tail) > 1 and tail[1] == 'if':
                 self.if_stmt(tail[1:])
@@ -712,6 +730,8 @@ class FnEmitter(Emitter):
             self.cur = end_b
             self.jump_ended = False
             tail = tail[used:]
+        if tail and all(t == ';' for t in tail):
+            return None   # the splitter's terminating ';' rides along; nothing follows
         if tail:
             raise ValueError(f'tokens after the if statement: {" ".join(tail[:8])}')
         return None
@@ -970,7 +990,8 @@ def emit_chunk_partial(chunk_text):
         preamble.append(f'declare void @{g}(ptr)')
     for h in sorted(helpers):
         sig = _tbl['functions'][h[:-2]]
-        preamble.append(f'declare {sig["ret"]} @{h}({", ".join(sig["params"])})')
+        params = ' '.join(LLVM_TYPE.get(t_, t_) for t_ in sig['params'])
+        preamble.append(f'declare {LLVM_TYPE.get(sig["ret"], sig["ret"])} @{h}({params})')
     ll = '\n\n'.join(preamble + [ll for name, (ll, _) in translated.items()]) + '\n'
     res = header + '\n\n'.join(ftext for name, ftext in residual) + '\n' if residual else ''
     return ll, res, helpers, calls
