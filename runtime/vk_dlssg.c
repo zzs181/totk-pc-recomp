@@ -159,14 +159,19 @@ static void probe_run(void) {
         goto out;
     p = vk_ngx_alloc();
     if (!p) goto out;
-    p_setu(p, "Width", W);
-    p_setu(p, "Height", H);
-    p_setu(p, "OutWidth", W);
-    p_setu(p, "OutHeight", H);
+    // Official DLSS SDK 310.9.16 (include/nvsdk_ngx_helpers_dlssg_vk.h): the feature is created through CreateFeature
+    // with the backbuffer's DXGI format as a create parameter, and evaluated with one parameter per camera component.
     p_setu(p, "CreationNodeMask", 1);
     p_setu(p, "VisibilityNodeMask", 1);
-    cr = vk_ngx_create1(cb, NGX_FEATURE_FRAMEGENERATION, p, &feat);
-    rt_log("dlssg: probe CreateFeature1 -> %08x%s", (unsigned)cr, feat ? "" : " (no handle)");
+    p_setu(p, "Width", W);
+    p_setu(p, "Height", H);
+    p_setu(p, "DLSSG.BackbufferFormat", 28);   // DXGI_FORMAT_R8G8B8A8_UNORM
+    cr = vk_ngx_create(cb, NGX_FEATURE_FRAMEGENERATION, p, &feat);
+    rt_log("dlssg: probe CreateFeature -> %08x%s", (unsigned)cr, feat ? "" : " (no handle)");
+    if ((!NGX_OK(cr) || !feat)) {
+        cr = vk_ngx_create1(cb, NGX_FEATURE_FRAMEGENERATION, p, &feat);
+        rt_log("dlssg: probe CreateFeature1 -> %08x%s", (unsigned)cr, feat ? "" : " (no handle)");
+    }
     if (!NGX_OK(cr) || !feat) goto out;
     const VkImageAspectFlags ca = VK_IMAGE_ASPECT_COLOR_BIT;
     NgxResourceVK rbb = probe_res(&bb, W, H, VK_FORMAT_R8G8B8A8_UNORM, ca, 0);
@@ -175,29 +180,58 @@ static void probe_run(void) {
     NgxResourceVK ro[2] = {probe_res(&out[0], W, H, VK_FORMAT_R8G8B8A8_UNORM, ca, 1),
                            probe_res(&out[1], W, H, VK_FORMAT_R8G8B8A8_UNORM, ca, 1)};
     static const float ident[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
-    static const float zero3[3] = {0, 0, 0};
     p_setp(p, "DLSSG.Backbuffer", &rbb);
     p_setp(p, "DLSSG.Depth", &rd);
     p_setp(p, "DLSSG.MVecs", &rmv);
-    p_setp(p, "DLSSG.OutputReal", &ro[1]);            // one image that would be shown as-is (never read here)
-    p_setp(p, "DLSSG.OutputInterpolated", &ro[0]);    // one frame between the two rendered ones
+    p_setp(p, "DLSSG.OutputReal", &ro[1]);
+    p_setp(p, "DLSSG.OutputInterpolated", &ro[0]);
+    p_setp(p, "DLSSG.CameraViewToClip", (void *)ident);
+    p_setp(p, "DLSSG.ClipToCameraView", (void *)ident);
+    p_setp(p, "DLSSG.ClipToLensClip", (void *)ident);
     p_setp(p, "DLSSG.ClipToPrevClip", (void *)ident);
     p_setp(p, "DLSSG.PrevClipToClip", (void *)ident);
+    p_setf(p, "DLSSG.JitterOffsetX", 0.0f);
+    p_setf(p, "DLSSG.JitterOffsetY", 0.0f);
+    p_setf(p, "DLSSG.MvecScaleX", 1.0f);
+    p_setf(p, "DLSSG.MvecScaleY", 1.0f);
+    p_setf(p, "DLSSG.CameraPinholeOffsetX", 0.0f);
+    p_setf(p, "DLSSG.CameraPinholeOffsetY", 0.0f);
+    p_setf(p, "DLSSG.CameraPosX", 0.0f);
+    p_setf(p, "DLSSG.CameraPosY", 0.0f);
+    p_setf(p, "DLSSG.CameraPosZ", 0.0f);
+    p_setf(p, "DLSSG.CameraUpX", 0.0f);
+    p_setf(p, "DLSSG.CameraUpY", 1.0f);
+    p_setf(p, "DLSSG.CameraUpZ", 0.0f);
+    p_setf(p, "DLSSG.CameraRightX", 1.0f);
+    p_setf(p, "DLSSG.CameraRightY", 0.0f);
+    p_setf(p, "DLSSG.CameraRightZ", 0.0f);
+    p_setf(p, "DLSSG.CameraFwdX", 0.0f);
+    p_setf(p, "DLSSG.CameraFwdY", 0.0f);
+    p_setf(p, "DLSSG.CameraFwdZ", 1.0f);
     p_setf(p, "DLSSG.CameraNear", 0.1f);
     p_setf(p, "DLSSG.CameraFar", 1000.0f);
     p_setf(p, "DLSSG.CameraFOV", 1.0f);
     p_setf(p, "DLSSG.CameraAspectRatio", (float)W / (float)H);
-    p_setp(p, "DLSSG.CameraPos", (void *)zero3);
-    p_setp(p, "DLSSG.CameraUp", (void *)zero3);
-    p_setp(p, "DLSSG.CameraRight", (void *)zero3);
-    p_setp(p, "DLSSG.CameraFwd", (void *)zero3);
-    p_seti(p, "DLSSG.MultiFrameCount", 2);
-    p_seti(p, "DLSSG.MultiFrameIndex", 0);
-    p_seti(p, "DLSSG.Reset", 1);
-    p_seti(p, "DLSSG.ColorBuffersHDR", 0);
-    p_seti(p, "DLSSG.DepthInverted", 0);
-    p_setf(p, "DLSSG.MvecScaleX", 1.0f);
-    p_setf(p, "DLSSG.MvecScaleY", 1.0f);
+    p_setu(p, "DLSSG.ColorBuffersHDR", 0);
+    p_setu(p, "DLSSG.DepthInverted", 0);
+    p_setu(p, "DLSSG.CameraMotionIncluded", 1);
+    p_setu(p, "DLSSG.Reset", 1);
+    p_setu(p, "DLSSG.AutomodeOverrideReset", 0);
+    p_setu(p, "DLSSG.NotRenderingGameFrames", 0);
+    p_setu(p, "DLSSG.OrthoProjection", 0);
+    p_setf(p, "DLSSG.MotionVectorsInvalidValue", 0.0f);
+    p_setu(p, "DLSSG.MotionVectorsDilated", 0);
+    p_setu(p, "DLSSG.MenuDetectionEnabled", 0);
+    p_setu(p, "DLSSG.MVecsSubrectBaseX", 0);
+    p_setu(p, "DLSSG.MVecsSubrectBaseY", 0);
+    p_setu(p, "DLSSG.MVecsSubrectWidth", W);
+    p_setu(p, "DLSSG.MVecsSubrectHeight", H);
+    p_setu(p, "DLSSG.DepthSubrectBaseX", 0);
+    p_setu(p, "DLSSG.DepthSubrectBaseY", 0);
+    p_setu(p, "DLSSG.DepthSubrectWidth", W);
+    p_setu(p, "DLSSG.DepthSubrectHeight", H);
+    p_setu(p, "DLSSG.MultiFrameCount", 1);    // 1 = 2x (2 would be 3x)
+    p_setu(p, "DLSSG.MultiFrameIndex", 1);
     ev = vk_ngx_evaluate(cb, feat, p);
     rt_log("dlssg: probe EvaluateFeature -> %08x", (unsigned)ev);
     vkEndCommandBuffer(cb);
