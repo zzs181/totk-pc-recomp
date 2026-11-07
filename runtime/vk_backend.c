@@ -39,6 +39,7 @@ static PlatMutex pl = PLAT_MUTEX_INIT;
 static PlatCond pcv = PLAT_COND_INIT;   // job queued, job taken, job submitted
 static PresentJob job;
 static int pending, busy, present_thread;
+static uint64_t fg_repeats;   // presents of repeated pictures (TOTK_FG_DUP), for the first lines of a run
 
 // Sleeps on a high-resolution timer to 1 ms before at, then yields until at: the timer alone wakes up to ~0.5 ms late.
 static void wait_until(uint64_t at) {
@@ -85,6 +86,9 @@ static void present_main(void *arg) {
             vk_present_blit(j.image, VK_IMAGE_LAYOUT_GENERAL, j.format, j.w, j.h, j.has_crop ? j.crop : NULL);
             vk_present_flip();
             vk_present_repeat(0);
+            if (++fg_repeats <= 6)
+                rt_log("fg: repeat %llu at %.3f ms after the frame (period %.2f ms, dup %d)",
+                       (unsigned long long)fg_repeats, (double)(kern_now_ns() - j.at) / 1e6, (double)period / 1e6, dup);
         }
         last_at = j.at;
         // TOTK_TRACE=present: one line per present: the host present's interval, the interval of the game's present
