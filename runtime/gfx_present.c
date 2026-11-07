@@ -26,6 +26,7 @@
 #include "platform/platform.h"
 #include "ui/menu.h"
 #include "vk.h"
+#include "vk_fg.h"
 
 #define FRAMES 2
 #define MAX_IMAGES 16
@@ -776,6 +777,7 @@ static void present_image(VkImage src, VkImageLayout layout, VkFormat fmt, int w
     vkBeginCommandBuffer(cb, &bi);
     uint64_t crumb = __atomic_load_n(&gfx_counters.frames, __ATOMIC_RELAXED);
     vk_crumb(cb, VK_CRUMB_PRESENT, crumb);
+    if (general) vk_fg_capture(cb, src, fmt, w, h);   // frame generation keeps the picture it may interpolate into
     VkImage dst = g_sc_img[idx];
     sync_barrier(cb, dst, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_2_TRANSFER_BIT, 0,
                  VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
@@ -941,6 +943,7 @@ void gfx_window_release_vk(void) {
         vk_color_release();
         vk_hdr_release();
         vk_contact_release();
+        vk_fg_shutdown();
         free_capture();
         free_thumbs();
         for (int i = 0; i < FRAMES; i++) {

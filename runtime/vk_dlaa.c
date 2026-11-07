@@ -28,6 +28,7 @@
 #include "vk_dlssg.h"
 #include "vk_fsr31.h"
 #include "vk_exec.h"
+#include "vk_fg.h"
 #include "vk_ngx.h"
 #include "vk_rec.h"
 #include "dlaa_mv_spv.h"
@@ -454,6 +455,11 @@ static int mv_pass(VkExec *ex, struct Size *e, VkImageView zv, float jx, float j
                 }
             have_m = 1;
         }
+    }
+    if (cr) {   // frame generation keys this frame's picture to this camera
+        float fvp[16];
+        for (int i = 0; i < 16; i++) fvp[i] = (float)cur_vp[i];
+        vk_fg_camera(fvp, jx, jy);
     }
     int s = D.cam_slot, had_prev = D.cam_prev_ok;
     VkBufferCopy bc = {cam.offset, (VkDeviceSize)s * CAM_SLOT, CAM_BLOCK};
