@@ -736,14 +736,69 @@ def emit_function(name, text):
                 except Exception as ex:
                     raise ValueError(f'{" ".join(st)[:70]} -> {ex}') from None
     except ValueError as ex:
-        return None, str(ex)
+        return None, str(ex), set()
     out = [f'define void @{name}(ptr %c) {{', 'entry:']
     for lbl, lines in em.blocks.items():
         if lbl != 'entry':
             out.append(f'{lbl}:')
         out.extend(lines)
     out.append('}')
-    return '\n'.join(out), em.wrappers, sorted(em.used_calls)
+    return '\n'.join(out), em.wrappers, em.used_calls
+
+
+FN_HEAD = re.compile(r'(?m)^(?:static )?void ((?:f|fb)_[0-9a-f]+)\(Cpu \*c\) \{')
+
+def split_functions(chunk_text):
+    """[(name, full text)] of every f_/fb_ definition in a chunk, brace-matched."""
+    out = []
+    for m in FN_HEAD.finditer(chunk_text):
+        start = m.start()
+        i = chunk_text.index('{', m.end() - 1)
+        depth, j = 0, i
+        while j < len(chunk_text):
+            if chunk_text[j] == '{':
+                depth += 1
+            elif chunk_text[j] == '}':
+                depth -= 1
+                if depth == 0:
+                    break
+            j += 1
+        out.append((m.group(1), chunk_text[start:j + 1]))
+    return out
+
+def emit_chunk(chunk_text):
+    """Whole-chunk driver: returns (.ll text, wrappers, guest calls) or (None, [(fn, reason)])."""
+    fns = split_functions(chunk_text)
+    if not fns:
+        return None, [('chunk', 'no functions found')]
+    parts, wrappers, calls, fails = [], {}, set(), []
+    seen = set()
+    for name, ftext in fns:
+        if name in seen:
+            continue   # a forward-declared fb_ pair emits once (the definition wins)
+        seen.add(name)
+        ll, w, calls = emit_function(name, ftext)
+        if ll is None:
+            fails.append((name, w))
+            continue
+        wrappers.update(w)
+        calls = calls | set(calls)
+        parts.append(ll)
+    if fails or not parts:
+        return None, fails, set()
+    preamble = [CPU_TYPE, '%Flags = type { i64, i64, i64 }',
+                'declare void @rt_dispatch(ptr)', 'declare void @rt_udf(ptr, i64)',
+                'declare void @rt_brk(ptr, i64)', 'declare void @rt_svc(ptr, i32, i64)',
+                'declare void @rt_spin_gate(ptr, i64)', 'declare void @rt_hook_run(ptr, ptr, ptr)',
+                'declare void @fnprof_hit(i64, i64, i64)']
+    for g in sorted(calls):
+        if re.match(r'^f_[0-9a-f]+$', g):
+            preamble.append(f'declare void @{g}(ptr)')
+        elif re.match(r'^fb_[0-9a-f]+$', g):
+            preamble.append(f'declare void @{g}(ptr)')
+    for h, (ret, atys) in sorted(wrappers.items()):
+        preamble.append(f'declare {ret} @{h}({", ".join(atys)})')
+    return '\n\n'.join(preamble + parts) + '\n', wrappers, sorted(calls)
 
 def main():
     import argparse
