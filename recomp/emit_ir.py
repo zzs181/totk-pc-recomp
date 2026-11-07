@@ -24,6 +24,7 @@ TOK = re.compile(r'''
 ''', re.X)
 
 def toks(text):
+    text = re.sub(r'/\*.*?\*/', ' ', text, flags=re.S)   # /* hint */ and /* prfm */ markers
     out, i = [], 0
     while i < len(text):
         if text[i] in ' \t\n':   # ';' never reaches toks: the statement splitter consumed it
@@ -42,6 +43,9 @@ class Num:
     def __init__(self, v, ty): self.v, self.ty = v, ty
 class Ref:
     def __init__(self, name): self.name = name
+class FlagField:
+    "F.a / F.b / F.nz: a member of the function-local Flags struct."
+    def __init__(self, member): self.member = member
 class CpuField:
     def __init__(self, name, idx=None): self.name, self.idx = name, idx
 class Cast:
@@ -57,11 +61,19 @@ class Tern:
 
 CASTS = {'void': 'void', 'uint64_t': 'i64', 'int64_t': 'i64', 'uint32_t': 'i32', 'int32_t': 'i32',
          'uint16_t': 'i16', 'int16_t': 'i16', 'uint8_t': 'i8', 'int8_t': 'i8',
-         'u128': 'i128', '__uint128_t': 'i128', 'float': 'f32', 'double': 'f64'}
+         'u128': 'i128', '__uint128_t': 'i128', '__int128': 'i128', 'float': 'f32', 'double': 'f64'}
 INT_W = {'i8': 8, 'i16': 16, 'i32': 32, 'i64': 64, 'i128': 128}
 CC_CONSTS = {n: i for i, n in enumerate(
     ['CC_EQ', 'CC_NE', 'CC_CS', 'CC_CC', 'CC_MI', 'CC_PL', 'CC_VS', 'CC_VC',
      'CC_HI', 'CC_LS', 'CC_GE', 'CC_LT', 'CC_GT', 'CC_LE'])}
+
+def parse_expr(t):
+    """Parse a full expression; any trailing tokens are a grammar miss, never a silent drop."""
+    p = Parser(t)
+    e = p.expr()
+    if p.i != len(t):
+        raise ValueError(f'trailing tokens: {" ".join(t[p.i:])!r}')
+    return e
 
 class Parser:
     def __init__(self, t):
@@ -93,6 +105,9 @@ class Parser:
         return a
     def unary(self):
         t = self.peek()
+        if t == '(' and self.peek(1) == 'unsigned' and self.peek(2) == '__int128' and self.peek(3) == ')':
+            self.take(); self.take(); self.take(); self.take()
+            return Cast('i128', self.unary())
         if t == '(' and self.peek(1) in CASTS and self.peek(2) == ')':
             self.take(); ty = CASTS[self.take()]; self.take()
             return Cast(ty, self.unary())
@@ -126,6 +141,9 @@ class Parser:
                     self.take(); idx = self.expr(); self.expect(']')
                     return CpuField(name, idx)
                 return CpuField(name)
+            if t == 'F' and self.peek() == '.':
+                self.take(); self.take()
+                return FlagField(self.take())
             return Ref(t)
         raise ValueError(f'unexpected token {t!r}')
 
@@ -136,8 +154,8 @@ CPU_TYPE = ('%Cpu = type { [32 x i64], i64, i64, i64, i64, i64, i64, i64, ptr, i
 CPU_IDX = {'x': 0, 'sp': 1, 'pc': 2, 'nzcv': 3, 'tpidr': 4, 'tpidrro': 5, 'excl_addr': 6,
            'excl_val': 7, 'thread': 8, 'fpcr': 9, 'fpsr': 10, 'excl_val_hi': 11,
            'excl_gen': 12, 'v': 14}
-LD_SIZES = {'LD8': 'i8', 'LD16': 'i16', 'LD32': 'i32', 'LD64': 'i64',
-            'ST8': 'i8', 'ST16': 'i16', 'ST32': 'i32', 'ST64': 'i64'}
+LD_SIZES = {'LD8': 'i8', 'LD16': 'i16', 'LD32': 'i32', 'LD64': 'i64', 'LD128': 'i128',
+            'ST8': 'i8', 'ST16': 'i16', 'ST32': 'i32', 'ST64': 'i64', 'ST128': 'i128'}
 BIN_IR = {'+': 'add', '-': 'sub', '&': 'and', '|': 'or', '^': 'xor',
           '*': 'mul', '/': 'udiv', '%': 'urem'}
 CMP_IR = {'==': 'eq', '!=': 'ne', '<': 'ult', '>': 'ugt', '<=': 'ule', '>=': 'uge'}
@@ -149,6 +167,7 @@ class Emitter:
         self.cur = 'entry'
         self.n = 0
         self.used_calls = set()
+        self.wrappers = {}   # name -> (ret ty, arg types); signatures from the first call site
 
     def t(self):
         self.n += 1
@@ -200,13 +219,28 @@ class Emitter:
             if want not in INT_W:
                 raise ValueError(f'num into {want}')
             return want, str(e.v & ((1 << INT_W[want]) - 1))
+        if isinstance(e, FlagField):
+            midx = {'a': 0, 'b': 1, 'nz': 2}[e.member]
+            r = self.t()
+            self.emit(f'{r} = getelementptr %Flags, ptr %v.F, i32 0, i32 {midx}')
+            if ty == 'ptr':
+                return 'ptr', r
+            r2 = self.t()
+            self.emit(f'{r2} = load i64, ptr {r}, align 8')
+            return 'i64', r2
+        if isinstance(e, Ref) and e.name in ('rt_patch_on', 'g_fnprof'):
+            raise ValueError(f'global {e.name!r}: needs the Phase-1 indexed-global path')
         if isinstance(e, Ref) and e.name == 'c':
             return 'ptr', '%c'   # the function parameter itself
         if isinstance(e, Ref) and e.name in CC_CONSTS:
             want = ty or 'i32'
             return want, str(CC_CONSTS[e.name] & ((1 << INT_W[want]) - 1))
         if isinstance(e, Ref):
+            if e.name not in self.scopes[-1] and e.name not in CC_CONSTS and e.name != 'c':
+                raise ValueError(f'unknown name {e.name!r} (enum const, global or unhandled macro)')
             want = ty or self.ty_scopes[-1].get(e.name, 'i64')
+            if e.name in CC_CONSTS:
+                return want, str(CC_CONSTS[e.name] & ((1 << INT_W[want]) - 1))
             r = self.t()
             an = self.scopes[-1].get(e.name, e.name)
             self.emit(f'{r} = load {want}, ptr %v.{an}, align 8')
@@ -344,27 +378,42 @@ class Emitter:
             _, v = self.eval(e.args[1], sz)
             self.emit(f'store {sz} {v}, ptr {r}, align 1')
             return 'void', None
-        if not re.match(r'^f_[0-9a-f]+$', name) and not name.startswith('rt_'):
-            name = name + '_w'   # cpu.h/simd.h statics: called through the generated wrapper TU
-        self.used_calls.add(name)
         args = []
         for a in e.args:
             at, av = self.eval(a)
-            args.append(f'{at} {av}')
+            args.append((at, av))
         if re.match(r'^f_[0-9a-f]+$', name):
-            ret = 'void'   # guest functions: void(Cpu *), always
+            self.used_calls.add(name)
+            self.emit(f'call void @{name}(' + ', '.join(f'{t} {v}' for t, v in args) + ')')
+            return 'void', None
+        if name.startswith('rt_') or name in ('memcpy', '__atomic_thread_fence'):
+            ret = RET_TYPES.get(name, 'void')
+            self.used_calls.add(name)
         else:
-            ret = RET_TYPES.get(name[:-2] if name.endswith('_w') else name, ty or 'i64')
+            # cpu.h/simd.h statics: the call site knows the argument types, so the wrapper's
+            # signature comes from here (the first site wins; C implicit conversions at the
+            # wrapper tolerate the rest)
+            name = name + '_w'
+            sig = self.wrappers.get(name)
+            atys = tuple(t for t, _ in args)
+            if sig is None:
+                ret = ty or 'i64'
+                self.wrappers[name] = (ret, atys)
+            else:
+                ret, atys = sig
+                args = [(atys[i], self.cvt(v, t, atys[i])) for i, (t, v) in enumerate(args[:len(atys)])]
+            self.used_calls.add(name)
         if ret == 'void':
-            self.emit(f'call void @{name}({", ".join(args)})')
+            self.emit(f'call void @{name}(' + ', '.join(f'{t} {v}' for t, v in args) + ')')
             return 'void', None
         r = self.t()
-        self.emit(f'{r} = call {ret} @{name}({", ".join(args)})')
+        self.emit(f'{r} = call {ret} @{name}(' + ', '.join(f'{t} {v}' for t, v in args) + ')')
         return ret, r
 
 RET_TYPES = {'rt_dispatch': 'void', 'rt_udf': 'void', 'rt_brk': 'void', 'rt_svc': 'void',
              'rt_spin_gate': 'void', 'rt_hook_run': 'void', 'fnprof_hit': 'void',
-             'memcpy': 'void', 'fc_sub64': 'i32', 'fc_sub32': 'i32', 'fc_add64': 'i32',
+             'memcpy': 'void', '__atomic_thread_fence': 'void', 'rt_fpcr_sync': 'void',
+             'fc_sub64': 'i32', 'fc_sub32': 'i32', 'fc_add64': 'i32',
              'fc_add32': 'i32', 'fc_logic64': 'i32', 'fc_logic32': 'i32',
              'fnz_sub64': 'i32', 'fnz_sub32': 'i32', 'fnz_add64': 'i32', 'fnz_add32': 'i32',
              'fnz_logic64': 'i32', 'fnz_logic32': 'i32'}
@@ -423,7 +472,7 @@ class FnEmitter(Emitter):
                 name = d[0]
                 self.alloca(name, CASTS[ty])
                 self.ty_scopes[-1][name] = CASTS[ty]
-                ty2, v = self.eval(Parser(d[j + 1:]).expr(), CASTS[ty])
+                ty2, v = self.eval(parse_expr(d[j + 1:]), CASTS[ty])
                 self.emit(f'store {ty2} {v}, ptr %v.{name}, align 8')
             else:
                 self.alloca(d[0], CASTS[ty])
@@ -433,6 +482,8 @@ class FnEmitter(Emitter):
     def statement(self, t):
         if not t:
             return None
+        if self.terminated() and t[0] != 'L_':
+            return None   # dead code after an unconditional terminator (rt_udf tails)
         if t[0] == 'FN_ENTER':
             return t[4:] if len(t) > 3 and t[3] == ')' else None
         if t[0] == 'Flags' or (t[0] in CASTS):
@@ -448,7 +499,7 @@ class FnEmitter(Emitter):
             self.jump_ended = True
             return t[2:]
         if t[0] == 'musttail_return':
-            e = Parser(t[1:]).expr()
+            e = parse_expr(t[1:])
             if not isinstance(e, Call):
                 raise ValueError('musttail of non-call')
             self.used_calls.add(e.name)
@@ -471,14 +522,17 @@ class FnEmitter(Emitter):
             depth, cur = 0, []
             stmts = []
             for tk in inner:
-                cur.append(tk)
                 if tk in '([{':
                     depth += 1
                 elif tk in ')]}':
                     depth -= 1
                 elif tk == ';' and depth == 0:
-                    stmts.append(cur); cur = []
-            if cur and any(tk != ';' for tk in cur):
+                    if cur:
+                        stmts.append(cur)
+                    cur = []
+                    continue
+                cur.append(tk)
+            if cur:
                 stmts.append(cur)
             self.push()
             for st in stmts:
@@ -495,12 +549,12 @@ class FnEmitter(Emitter):
                 eq = i
                 break
         if eq is None:
-            e = Parser(t).expr()
+            e = parse_expr(t)
             self.eval(e)
             self.jump_ended = False
             return None
-        lhs = Parser(t[:eq]).expr()
-        rhs = Parser(t[eq + 1:]).expr()
+        lhs = parse_expr(t[:eq])
+        rhs = parse_expr(t[eq + 1:])
         if isinstance(lhs, Ref):
             want = self.ty_scopes[-1].get(lhs.name, 'i64')
             ty, v = self.eval(rhs)
@@ -522,6 +576,17 @@ class FnEmitter(Emitter):
             self.emit(f'store {ty} {v}, ptr {ptr}, {al}')
             self.jump_ended = False
             return None
+        if isinstance(lhs, FlagField):
+            midx = {'a': 0, 'b': 1, 'nz': 2}[lhs.member]
+            r = self.t()
+            self.emit(f'{r} = getelementptr %Flags, ptr %v.F, i32 0, i32 {midx}')
+            ty, v = self.eval(rhs)
+            if ty in INT_W and ty != 'i64':
+                v = self.cvt(v, ty, 'i64')
+                ty = 'i64'
+            self.emit(f'store {ty} {v}, ptr {r}, align 8')
+            self.jump_ended = False
+            return None
         raise ValueError(f'lhs {type(lhs)}')
 
     def peek_eq(self, t, i):
@@ -540,7 +605,7 @@ class FnEmitter(Emitter):
                 if depth == 0:
                     break
             j += 1
-        c = self.eval_i1(Parser(t[i + 1:j]).expr())
+        c = self.eval_i1(parse_expr(t[i + 1:j]))
         then_b = self.block('if.then')
         end_b = self.block('if.end')
         rest = t[j + 1:]
@@ -558,11 +623,16 @@ class FnEmitter(Emitter):
         self.jump_ended = False
         if has_else:
             self.cur = else_b
-            tail = rest[self.match_brace(rest, 0) + 1:]
-            if tail[1:2] == ['if'] if len(tail) > 1 else False:
-                self.if_stmt(tail[1:])
+            if rest[0] == '{':
+                tail = rest[self.match_brace(rest, 0) + 1:]
             else:
-                self.statement(tail[:self.match_brace(tail, 0) + 1] if tail[0] == '{' else tail[:self.stmt_end(tail)])
+                tail = rest[self.stmt_end(rest) + 1:]
+            if tail and tail[0] == 'if':
+                self.if_stmt(tail)
+            elif tail and tail[0] == '{':
+                self.statement(tail[:self.match_brace(tail, 0) + 1])
+            elif tail:
+                self.statement(tail[:self.stmt_end(tail)])
             self.cur = end_b
         return None
 
@@ -592,9 +662,9 @@ class FnEmitter(Emitter):
     def switch_stmt(self, t):
         self.n += 1
         i, j = t.index('('), t.index(')')
-        _, v = self.eval(Parser(t[i + 1:j]).expr(), 'i64')
+        _, v = self.eval(parse_expr(t[i + 1:j]), 'i64')
         flat = ' '.join(t)
-        pairs = [(int(a, 16), b) for a, b in re.findall(r'case (0x[0-9a-fA-F]+)ull: goto (L_[0-9a-f]+);', flat)]
+        pairs = [(int(a, 16), b) for a, b in re.findall(r'case\s+(0x[0-9a-fA-F]+)ull\s*:\s*goto\s+(L_[0-9a-f]+)\s*;', flat)]
         endb = self.block('sw.end')
         if pairs:
             cases = ', '.join(f'i64 {hex(v_)}: label %{lbl}' for v_, lbl in pairs)
@@ -608,7 +678,7 @@ class FnEmitter(Emitter):
 
 def parse_function(text):
     body = text[text.index('{') + 1: text.rindex('}')]
-    body = re.sub(r'__attribute__\(\(musttail\)\)\s*return', 'musttail_return', body)
+    body = re.sub(r'__attribute__\(\(musttail\)\)\s*return', 'musttail_return', body)
     out = []
     for piece in re.split(r'(?m)^(\s*L_[0-9a-f]+:\s*;)\s*$', body, flags=re.M):
         if piece.startswith('L_'):
@@ -646,16 +716,20 @@ def parse_function(text):
     return out
 
 def emit_function(name, text):
+    """Returns (.ll text, used calls) or (None, reason) when the grammar resists."""
     em = FnEmitter(name)
-    for kind, st in parse_function(text):
-        if kind == 'label':
-            em.enter(st.split()[0])
-            em.jump_ended = False
-        else:
-            try:
-                em.statement(st)
-            except Exception as ex:
-                raise type(ex)(f'in {name}: {" ".join(st)[:80]} -> {ex}') from None
+    try:
+        for kind, st in parse_function(text):
+            if kind == 'label':
+                em.enter(st.split()[0])
+                em.jump_ended = False
+            else:
+                try:
+                    em.statement(st)
+                except Exception as ex:
+                    raise ValueError(f'{" ".join(st)[:70]} -> {ex}') from None
+    except ValueError as ex:
+        return None, str(ex)
     out = [f'define void @{name}(ptr %c) {{', 'entry:']
     for lbl, lines in em.blocks.items():
         if lbl != 'entry':
@@ -665,21 +739,66 @@ def emit_function(name, text):
     return '\n'.join(out), sorted(em.used_calls)
 
 def main():
-    chunk, fname = sys.argv[1], sys.argv[2]
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument('chunks', nargs='+')
+    ap.add_argument('--fn', help='emit one function to stdout (debug)')
+    ap.add_argument('--stats', action='store_true', help='parse-coverage report over the chunks')
+    a = ap.parse_args()
+
+    if a.stats:
+        from collections import Counter
+        ok = fail = 0
+        reasons = Counter()
+        per_chunk = []
+        for chunk in a.chunks:
+            s = open(chunk, encoding='utf-8').read()
+            c_ok = c_all = 0
+            for fm in re.finditer(r'void (f_[0-9a-f]+)\(Cpu \*c\) \{', s):
+                start = fm.start()
+                # the body ends at the matching closing brace of this function
+                depth, i = 0, s.index('{', start)
+                while True:
+                    if s[i] == '{':
+                        depth += 1
+                    elif s[i] == '}':
+                        depth -= 1
+                        if depth == 0:
+                            break
+                    i += 1
+                name = fm.group(1)
+                c_all += 1
+                ll, why = emit_function(name, s[start:i + 1])
+                if ll is not None:
+                    ok += 1; c_ok += 1
+                else:
+                    fail += 1
+                    reasons[why.split('->')[0].strip()[:60]] += 1
+            per_chunk.append((chunk, c_ok, c_all))
+        print(f'IR-eligible: {ok}/{ok + fail} functions ({100 * ok / max(1, ok + fail):.1f}%)')
+        print('failure reasons:')
+        for why, n in reasons.most_common(15):
+            print(f'  {n:6d}  {why}')
+        worst = sorted(per_chunk, key=lambda x: x[1] / max(1, x[2]))[:5]
+        print('lowest-coverage chunks:')
+        for chunk, c_ok, c_all in worst:
+            print(f'  {chunk}: {c_ok}/{c_all}')
+        return
+
+    chunk, fname = a.chunks[0], a.fn
     s = open(chunk, encoding='utf-8').read()
     m = re.search(r'(void ' + re.escape(fname) + r'\(Cpu \*c\) \{.*?\n\})', s, re.S)
     if not m:
         sys.exit(f'{fname} not found in {chunk}')
     ll, wraps = emit_function(fname, m.group(1))
+    if ll is None:
+        sys.exit(f'{fname} not IR-eligible: {wraps}')
     known = {'rt_dispatch', 'rt_udf', 'rt_brk', 'rt_svc', 'rt_spin_gate', 'rt_hook_run', 'fnprof_hit'}
-    helpers = [w for w in wraps if not re.match(r'^(f_[0-9a-f]+)$', w) and w not in known and not w.startswith('f_')]
+    helpers = [w for w in wraps if not re.match(r'^f_[0-9a-f]+$', w) and w not in known]
     preamble = [CPU_TYPE, '%Flags = type { i64, i64, i64 }',
                 'declare void @rt_dispatch(ptr)', 'declare void @rt_udf(ptr, i64)',
                 'declare void @rt_brk(ptr, i64)', 'declare void @rt_svc(ptr, i32, i64)',
                 'declare void @rt_spin_gate(ptr, i64)', 'declare void @fnprof_hit(i64, i64, i64)']
-    for w in wraps:
-        if re.match(r'^f_[0-9a-f]+$', w):
-            preamble.append(f'declare void @{w}(ptr)')
     wrappers_c = ['#include "cpu.h"', '#include "simd.h"', '']
     for h in helpers:
         rn = h
