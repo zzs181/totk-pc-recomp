@@ -67,6 +67,17 @@ def merge(build, out, version, toolchain):
           f'recomp tree {tree[:12]}')
 
 
+def show(data: Path, top: int, toolchain: Path | None) -> int:
+    """llvm-profdata show on a merged profile: the summary and the hottest functions."""
+    if not data.is_file():
+        sys.exit(f'pgo: {data} not found (merge first)')
+    r = subprocess.run([str(llvm_profdata(toolchain)), 'show', '--counts', f'--topn={top}', str(data)],
+                       capture_output=True, text=True)
+    out = (r.stdout + r.stderr).strip()
+    print(out or f'pgo: llvm-profdata show wrote nothing (exit {r.returncode})')
+    return r.returncode
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest='cmd', required=True)
@@ -75,9 +86,18 @@ def main():
     m.add_argument('--version', required=True, help='game version the build was made for (v121, v143)')
     m.add_argument('--out', type=Path, help=f'default {DEFAULT_DIR.relative_to(ROOT).as_posix()}/pgo-<version>.profdata')
     m.add_argument('--toolchain', type=Path, help='llvm-mingw directory (default: the newest under toolchain/)')
+    sh = sub.add_parser('show', help='summarise a merged profile and list its hottest functions')
+    sh.add_argument('data', type=Path, nargs='?', help=f'default {DEFAULT_DIR.relative_to(ROOT).as_posix()}/pgo-v<version>.profdata')
+    sh.add_argument('--version', default='v143', help='game version (default v143)')
+    sh.add_argument('--top', type=int, default=8, help='hottest functions to list (default 8)')
+    sh.add_argument('--toolchain', type=Path, help='llvm-mingw directory (default: the newest under toolchain/)')
     a = ap.parse_args()
+    if a.cmd == 'show':
+        data = (a.data or DEFAULT_DIR / f'pgo-{a.version}.profdata').resolve()
+        return show(data, a.top, a.toolchain)
     out = (a.out or DEFAULT_DIR / f'pgo-{a.version}.profdata').resolve()
     merge(a.build.resolve(), out, a.version, a.toolchain)
+    return 0
 
 
 if __name__ == '__main__':

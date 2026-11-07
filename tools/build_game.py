@@ -118,6 +118,22 @@ PGO_NAMES = ['-mllvm', '-static-func-full-module-prefix=false']
 PGO_INPUT = None   # the .profdata of --pgo FILE: every compile depends on it, so a new profile rebuilds them
 
 
+def pgo_can_instrument(clang):
+    """Whether clang can link what -fprofile-generate compiles: its profiling runtime, which MSYS2's UCRT64 clang does
+    not ship (clang64, llvm-mingw and LLVM's own install do). Tested with a trivial link, so a runtime found outside
+    clang's resource directory counts as well."""
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        c, exe = Path(d) / 'pgo_probe.c', Path(d) / 'pgo_probe.exe'
+        c.write_text('int main(void){return 0;}\n', encoding='utf-8')
+        try:
+            r = subprocess.run([str(clang), str(c), '-fprofile-generate', '-o', str(exe)],
+                               capture_output=True, text=True)
+        except OSError:
+            return False
+        return r.returncode == 0
+
+
 def set_pgo(pgo, out):
     """--pgo gen: instrument the generated code and the runtime; totk.exe adds its counts to
     out/pgo/default_<id>.profraw every minute and at exit (runtime/platform win32.c), across runs. --pgo FILE: compile
@@ -968,6 +984,11 @@ def main():
         CLANG = TOOLCHAIN_BIN / f'clang{suffix}'
         AR = TOOLCHAIN_BIN / f'llvm-ar{suffix}'
         WINDRES = TOOLCHAIN_BIN / 'llvm-windres.exe'
+    if args.pgo == 'gen' and not args.compile_only and not pgo_can_instrument(CLANG):
+        # The link probe: a missing runtime found now, not after the 30-60 minute compile. --compile-only never
+        # links, so it is left alone.
+        sys.exit(f'pgo: {CLANG} cannot link -fprofile-generate (its profiling runtime, libclang_rt.profile, is '
+                 f'missing). Train with --toolchain <llvm-mingw>, or pass --compile-only to compile without the link')
     if args.toolchain and WIN or args.deps and (args.toolchain or not WIN):   # Linux: --deps only, never deps-mingw
         DEPS = (args.deps or DEFAULT_DEPS).resolve()
         dlls = sorted((DEPS / 'bin').glob('*.dll')) if WIN else []
