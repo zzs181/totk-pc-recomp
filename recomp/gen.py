@@ -576,7 +576,8 @@ _W = {}  # worker state: 'mods' {name: (path, base)}, 'starts' {name: sorted arr
          # 'reads' {name: [(start, end)]} module bytes read since the last chunk
 
 
-def _worker_init(mods, starts, table, opts, jobs):
+def _worker_init(mods, starts, table, opts, jobs, ir=False):
+    _W['ir'] = ir
     _W['jobs'] = jobs
     _W['mods'] = mods
     _W['starts'] = starts
@@ -634,12 +635,23 @@ def _emit_chunk(task):
         written = write_if_changed(Path(path), text)
     except OSError as ex:
         written, error = False, f'{path}: {ex}'
+    ir_file, ir_wrappers, ir_fails = None, {}, []
+    if _W.get('ir'):
+        import emit_ir
+        ll, wrappers, ir_fails = emit_ir.emit_chunk(text)
+        if ll is not None:
+            ir_path = Path(path).with_suffix('.ll')
+            if write_if_changed(ir_path, ll):
+                pass
+            ir_file = ir_path.name
+            written = True   # the .ll is the file the build compiles
     reads = _W['reads'].get(name, [])
     folded = merge_ranges(reads)
     reads.clear()
-    return {'module': name, 'number': number, 'file': Path(path).name, 'functions': len(fns), 'bytes': len(text),
-            'written': written, 'error': error, 'seconds': time.perf_counter() - t0, 'stats': dict(e.stats),
-            'unsupported': dict(e.unsupported), 'folded': folded}
+    return {'module': name, 'number': number, 'file': ir_file or Path(path).name, 'functions': len(fns),
+            'bytes': len(text), 'written': written, 'error': error, 'seconds': time.perf_counter() - t0,
+            'stats': dict(e.stats), 'unsupported': dict(e.unsupported), 'folded': folded,
+            'ir': ir_file is not None, 'wrappers': ir_wrappers, 'ir_fails': ir_fails}
 
 
 # ------------------------------------------------------------------------------------------------ driver
@@ -713,6 +725,8 @@ def main():
                                                          'module does not link: its functions call the ones left out)')
     ap.add_argument('--chunk-fns', type=int, default=3000, help='functions per chunk at most')
     ap.add_argument('--chunk-bytes', type=int, default=3000000, help='estimated bytes of C per chunk')
+    ap.add_argument('--ir', action='store_true', help='emit chunks whose whole C translates as textual LLVM IR '
+                    '(.ll next to the .c; the build prefers the .ll and compiles everything -flto)')
     ap.add_argument('--big-fn', type=int, default=300000, help='estimated bytes of C from which a function gets '
                                                                'its own chunk')
     ap.add_argument('--patches', type=Path, help='code patch table (recomp/patches.py)')
@@ -722,6 +736,7 @@ def main():
                     help='reload X19-X29 and SP after every call too, instead of trusting AAPCS64 (slower; for '
                          'telling a broken callee from a generator bug)')
     args = ap.parse_args()
+    ir = args.ir
     opts = {'reg_locals': args.reg_locals, 'callee_saved': not args.no_callee_saved_trust}
 
     t0 = time.perf_counter()
@@ -783,7 +798,7 @@ def main():
         try:
             # Chunk writes are atomic and idempotent, so a chunk lost with a failed pool is simply emitted again.
             # Its folded bytes come with its result: a chunk emitted again reads them again in its new worker.
-            with ctx.Pool(jobs, initializer=_worker_init, initargs=(paths, starts_abs, table, opts, jobs)) as pool:
+            with ctx.Pool(jobs, initializer=_worker_init, initargs=(paths, starts_abs, table, opts, jobs, ir)) as pool:
                 for r in pool.imap_unordered(_emit_chunk, pending, chunksize=1):
                     results[r['module']].append(r)
                     folded[r['module']] += r['folded']
@@ -808,6 +823,23 @@ def main():
         rs = sorted(results[name], key=lambda r: r['number'])
         moddir = d['moddir']
         stats, unsupported = Counter(), Counter()
+        ir_chunks = sum(1 for r in rs if r.get('ir'))
+        ir_wrappers = {}
+        for r in rs:
+            for h, sig in r.get('wrappers', {}).items():
+                if h in ir_wrappers and ir_wrappers[h] != sig:
+                    print(f'{name}: wrapper {h} signature clash {ir_wrappers[h]} vs {sig}', file=sys.stderr)
+                ir_wrappers.setdefault(h, sig)
+        if ir_chunks:
+            wlines = ['#include "cpu.h"', '#include "simd.h"', '']
+            for h, (ret, atys) in sorted(ir_wrappers.items()):
+                orig = h[:-2] if h.endswith('_w') else h
+                params = ', '.join(f'{t} a{i}' for i, t in enumerate(atys))
+                call_args = ', '.join(f'a{i}' for i in range(len(atys)))
+                wlines.append(f'{ret} {h}({params}) {{ return {orig}({call_args}); }}')
+            write_if_changed(moddir / f'{name}_irwrappers.c', '\n'.join(wlines) + '\n')
+        elif (moddir / f'{name}_irwrappers.c').exists():
+            (moddir / f'{name}_irwrappers.c').unlink()
         for r in rs:
             stats.update(r['stats'])
             unsupported.update(r['unsupported'])
@@ -821,7 +853,7 @@ def main():
             'base': f'{d["base"]:#x}',
             'text': [f'{d["lo"]:#x}', f'{d["hi"]:#x}'],
             'function_count': len(d['emitted']),
-            'chunks': [r['file'] for r in rs],
+            'chunks': [r['file'] for r in rs] + ([f'{name}_irwrappers.c'] if ir_chunks else []),
             'table': f'{name}_table.c',
             'chunk_info': [{'file': r['file'], 'functions': r['functions'], 'bytes': r['bytes'],
                             'seconds': round(r['seconds'], 2)} for r in rs],

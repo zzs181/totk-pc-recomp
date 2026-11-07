@@ -483,12 +483,18 @@ def ninja_file(gen, out, mods, pool_depth, skip=(), prebuilt=False, runtime_lib=
     # A compiler cache (sccache) may front clang: every lift rewrites the generated chunks with the same contents, so
     # the cached objects save the compile step on the next build.
     cache = f'{cmd_arg(os.environ["SCCACHE"])} ' if os.environ.get('SCCACHE') else ''
+    ir = any(f.suffix == '.ll' for files in mods.values() for f in files)
+    ll_genflags = ' '.join(f for f in GEN_FLAGS
+                           if not f.startswith(('-W', '-ffp-contract', '-fno-strict-aliasing', '-fvisibility'))
+                           ) + ' -flto -Qunused-arguments' if ir else ''
+    if ir:
+        LINK_FLAGS = LINK_FLAGS + ['-flto']
     lines = [
         '# Written by tools/build_game.py; do not edit.',
         'ninja_required_version = 1.10',
         f'builddir = {ninja_path(out)}',
         f'cc = {cache}{cmd_arg(CLANG.as_posix())}',
-        f'genflags = {" ".join(GEN_FLAGS)} {inc}',
+        f'genflags = {" ".join(GEN_FLAGS)}{" -flto" if ir else ""} {inc}',
         f'rtflags = {" ".join(RT_FLAGS)} {rt_inc}',
         f'ldflags = {" ".join(LINK_FLAGS)}',
         f'libs = {" ".join(libs)}',
@@ -527,6 +533,8 @@ def ninja_file(gen, out, mods, pool_depth, skip=(), prebuilt=False, runtime_lib=
             o = out / 'obj' / mod / (f.stem + '.o')
             if not prebuilt:
                 lines.append(f'build {ninja_path(o)}: cc_gen {ninja_path(f)}{pgo_dep}')
+                if f.suffix == '.ll' and ll_genflags:
+                    lines.append(f'  genflags = {ll_genflags}')
                 lines.append('  pool = gen')
             objs[mod].append(o)
     rt = []
