@@ -812,36 +812,69 @@ def split_functions(chunk_text):
         out.append((m.group(1), chunk_text[start:j + 1]))
     return out
 
-def emit_chunk(chunk_text):
-    """Whole-chunk driver: (.ll text, helper names, guest calls) or (None, [(fn, reason)])."""
+def emit_chunk_partial(chunk_text):
+    """Per-function mixing: returns (.ll text, residual C text, helpers, guest calls).
+
+    The .ll defines the functions that translated; the residual C (the chunk's own
+    header — includes and prototypes — plus the rest of the functions) defines the
+    others. Both TUs are compiled and linked; cross-side guest calls resolve through
+    the prototypes. Returns (None, chunk_text, fails, set()) when nothing translated.
+    Static pairs (fb_ + its f_ wrapper, a hook body + its wrapper) stay on one side:
+    a static definition cannot satisfy the other TU's reference."""
+    first = FN_HEAD.search(chunk_text)
+    if not first:
+        return None, chunk_text, [('chunk', 'no functions found')], set()
+    header = chunk_text[:first.start()]
     fns = split_functions(chunk_text)
-    if not fns:
-        return None, [('chunk', 'no functions found')], set()
-    parts, helpers, calls, fails, seen = [], set(), set(), [], set()
+    translated, residual, fails = {}, [], []
     for name, ftext in fns:
-        if name in seen:
-            continue   # a forward-declared fb_ pair emits once (the definition wins)
-        seen.add(name)
         ll, used = emit_function(name, ftext)
         if ll is None:
             fails.append((name, used))
-            continue
+            residual.append((name, ftext))
+        else:
+            translated[name] = (ll, used)
+    # static-pair coupling: fb_X is static and only its f_X wrapper calls it; a hook
+    # body f_X_body is static too. Keep each pair on one side (the residual side).
+    changed = True
+    while changed:
+        changed = False
+        for name in list(translated):
+            pair = None
+            if name.startswith('fb_'):
+                pair = 'f_' + name[3:]
+            elif name.endswith('_body'):
+                pair = name[:-5]
+            if pair and pair in residual_names(residual):
+                fails.append((name, 'static pair with residual ' + pair))
+                residual.append((name, translated.pop(name)[0]))
+                translated.pop(name, None)
+                changed = True
+            elif pair and pair in translated and pair not in residual:
+                pass   # both translated: fine (same TU, same side)
+    if not translated:
+        return None, chunk_text, fails, set()
+    helpers, calls, ir_defined = set(), set(), set()
+    for name, (ll, used) in translated.items():
         helpers |= {u for u in used if u.endswith('_w')}
         calls |= {u for u in used if re.match(r'^(f|fb)_[0-9a-f]+$', u)}
-        parts.append(ll)
-    if fails or not parts:
-        return None, fails, set()
+        ir_defined.add(name)
     preamble = [CPU_TYPE, '%Flags = type { i64, i64, i64 }',
                 'declare void @rt_dispatch(ptr)', 'declare void @rt_udf(ptr, i64)',
                 'declare void @rt_brk(ptr, i64)', 'declare void @rt_svc(ptr, i32, i64)',
-                'declare void @rt_spin_gate(ptr, i64)', 'declare void @rt_hook_run(ptr, ptr, ptr)',
+                'declare void @rt_spin_gate(ptr, i64)', 'declare void @rt_hook_run(i32, ptr, ptr)',
                 'declare void @fnprof_hit(i64, i64, i64)']
-    for g in sorted(calls):
+    for g in sorted(calls - ir_defined):
         preamble.append(f'declare void @{g}(ptr)')
     for h in sorted(helpers):
         sig = _tbl['functions'][h[:-2]]
         preamble.append(f'declare {sig["ret"]} @{h}({", ".join(sig["params"])})')
-    return '\n\n'.join(preamble + parts) + '\n', helpers, calls
+    ll = '\n\n'.join(preamble + [ll for name, (ll, _) in translated.items()]) + '\n'
+    res = header + '\n\n'.join(ftext for name, ftext in residual) + '\n' if residual else ''
+    return ll, res, helpers, calls
+
+def residual_names(residual):
+    return {name for name, _ in residual}
 
 def main():
     import argparse

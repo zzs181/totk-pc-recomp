@@ -638,12 +638,13 @@ def _emit_chunk(task):
     ir_file, ir_helpers, ir_fails = None, set(), []
     if _W.get('ir'):
         import emit_ir
-        ll, ir_helpers, ir_fails = emit_ir.emit_chunk(text)
+        ll, residual, ir_helpers, ir_fails = emit_ir.emit_chunk_partial(text)
         if ll is not None:
             ir_path = Path(path).with_suffix('.ll')
             write_if_changed(ir_path, ll)
+            write_if_changed(Path(path), residual)   # the residual C: header + the rest
             ir_file = ir_path.name
-            written = True   # the .ll is the file the build compiles
+            written = True
     reads = _W['reads'].get(name, [])
     folded = merge_ranges(reads)
     reads.clear()
@@ -674,13 +675,15 @@ def folded_text(name, ranges):
     return '\n'.join(lines) + '\n'
 
 
-def remove_stale(moddir, name, nchunks, errors):
+def remove_stale(moddir, name, nchunks, errors, keep_ll=()):
     """Delete chunks an earlier run wrote beyond this run's count, and temporary files an interrupted run left."""
-    pat = re.compile(re.escape(name) + r'_(\d{4})\.c')
+    pat = re.compile(re.escape(name) + r'_(\d{4})\.(c|ll)')
     removed = 0
     for p in moddir.iterdir():
         m = pat.fullmatch(p.name)
-        if (m and int(m.group(1)) >= nchunks) or (p.name.startswith('.') and p.name.endswith('.tmp')):
+        over = m and int(m.group(1)) >= nchunks
+        stale_ll = m and p.suffix == '.ll' and m.group(1) not in keep_ll
+        if (over and not stale_ll) or stale_ll or (p.name.startswith('.') and p.name.endswith('.tmp')):
             try:
                 _retry(p.unlink)
                 removed += 1
@@ -849,7 +852,8 @@ def main():
         t = time.perf_counter()
         table_written = write_if_changed(moddir / f'{name}_table.c', table_text(name, d['emitted']))
         write_if_changed(moddir / 'folded.txt', folded_text(name, merge_ranges(folded[name])))
-        removed = remove_stale(moddir, name, d['chunks'], errors)
+        ir_stems = {r['number'] for r in rs if r.get('ir')}
+        removed = remove_stale(moddir, name, d['chunks'], errors, keep_ll=ir_stems)
         manifest = {
             'module': name,
             'marker': GENERATED_MARKER,

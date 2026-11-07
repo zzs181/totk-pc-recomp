@@ -534,7 +534,7 @@ def ninja_file(gen, out, mods, pool_depth, skip=(), prebuilt=False, runtime_lib=
     for mod, files in mods.items():
         objs[mod] = []
         for f in files:
-            o = out / 'obj' / mod / (f.stem + '.o')
+            o = out / 'obj' / mod / (f.stem + ('.ir.o' if f.suffix == '.ll' else '.o'))
             if not prebuilt:
                 lines.append(f'build {ninja_path(o)}: cc_gen {ninja_path(f)}{pgo_dep}')
                 if f.suffix == '.ll' and ll_genflags:
