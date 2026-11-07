@@ -43,9 +43,6 @@ class Num:
     def __init__(self, v, ty): self.v, self.ty = v, ty
 class Ref:
     def __init__(self, name): self.name = name
-class FlagField:
-    "F.a / F.b / F.nz: a member of the function-local Flags struct."
-    def __init__(self, member): self.member = member
 class CpuField:
     def __init__(self, name, idx=None): self.name, self.idx = name, idx
 class Cast:
@@ -61,7 +58,7 @@ class Tern:
 
 CASTS = {'void': 'void', 'uint64_t': 'i64', 'int64_t': 'i64', 'uint32_t': 'i32', 'int32_t': 'i32',
          'uint16_t': 'i16', 'int16_t': 'i16', 'uint8_t': 'i8', 'int8_t': 'i8',
-         'u128': 'i128', '__uint128_t': 'i128', '__int128': 'i128', 'float': 'f32', 'double': 'f64'}
+         'u128': 'i128', '__uint128_t': 'i128', 'float': 'f32', 'double': 'f64'}
 INT_W = {'i8': 8, 'i16': 16, 'i32': 32, 'i64': 64, 'i128': 128}
 CC_CONSTS = {n: i for i, n in enumerate(
     ['CC_EQ', 'CC_NE', 'CC_CS', 'CC_CC', 'CC_MI', 'CC_PL', 'CC_VS', 'CC_VC',
@@ -105,9 +102,6 @@ class Parser:
         return a
     def unary(self):
         t = self.peek()
-        if t == '(' and self.peek(1) == 'unsigned' and self.peek(2) == '__int128' and self.peek(3) == ')':
-            self.take(); self.take(); self.take(); self.take()
-            return Cast('i128', self.unary())
         if t == '(' and self.peek(1) in CASTS and self.peek(2) == ')':
             self.take(); ty = CASTS[self.take()]; self.take()
             return Cast(ty, self.unary())
@@ -141,9 +135,6 @@ class Parser:
                     self.take(); idx = self.expr(); self.expect(']')
                     return CpuField(name, idx)
                 return CpuField(name)
-            if t == 'F' and self.peek() == '.':
-                self.take(); self.take()
-                return FlagField(self.take())
             return Ref(t)
         raise ValueError(f'unexpected token {t!r}')
 
@@ -154,8 +145,8 @@ CPU_TYPE = ('%Cpu = type { [32 x i64], i64, i64, i64, i64, i64, i64, i64, ptr, i
 CPU_IDX = {'x': 0, 'sp': 1, 'pc': 2, 'nzcv': 3, 'tpidr': 4, 'tpidrro': 5, 'excl_addr': 6,
            'excl_val': 7, 'thread': 8, 'fpcr': 9, 'fpsr': 10, 'excl_val_hi': 11,
            'excl_gen': 12, 'v': 14}
-LD_SIZES = {'LD8': 'i8', 'LD16': 'i16', 'LD32': 'i32', 'LD64': 'i64', 'LD128': 'i128',
-            'ST8': 'i8', 'ST16': 'i16', 'ST32': 'i32', 'ST64': 'i64', 'ST128': 'i128'}
+LD_SIZES = {'LD8': 'i8', 'LD16': 'i16', 'LD32': 'i32', 'LD64': 'i64',
+            'ST8': 'i8', 'ST16': 'i16', 'ST32': 'i32', 'ST64': 'i64'}
 BIN_IR = {'+': 'add', '-': 'sub', '&': 'and', '|': 'or', '^': 'xor',
           '*': 'mul', '/': 'udiv', '%': 'urem'}
 CMP_IR = {'==': 'eq', '!=': 'ne', '<': 'ult', '>': 'ugt', '<=': 'ule', '>=': 'uge'}
@@ -167,7 +158,6 @@ class Emitter:
         self.cur = 'entry'
         self.n = 0
         self.used_calls = set()
-        self.wrappers = {}   # name -> (ret ty, arg types); signatures from the first call site
 
     def t(self):
         self.n += 1
@@ -187,7 +177,7 @@ class Emitter:
         if not lines:
             return False
         last = lines[-1].strip()
-        return last.startswith(('br ', 'ret ', 'switch ')) or 'musttail' in last
+        return last.startswith(('br ', 'ret ', 'switch ', 'unreachable')) or 'musttail' in last
 
     def enter(self, lbl):
         lbl = lbl.rstrip(':').strip()
@@ -202,6 +192,7 @@ class Emitter:
         self.emit(f'%v.{an} = alloca {ty}, {al}')
         if init is not None:
             self.emit(f'store {ty} {init}, ptr %v.{an}, {al}')
+        return an
 
     def cvt(self, v, src, want):
         if src == want:
@@ -219,17 +210,6 @@ class Emitter:
             if want not in INT_W:
                 raise ValueError(f'num into {want}')
             return want, str(e.v & ((1 << INT_W[want]) - 1))
-        if isinstance(e, FlagField):
-            midx = {'a': 0, 'b': 1, 'nz': 2}[e.member]
-            r = self.t()
-            self.emit(f'{r} = getelementptr %Flags, ptr %v.F, i32 0, i32 {midx}')
-            if ty == 'ptr':
-                return 'ptr', r
-            r2 = self.t()
-            self.emit(f'{r2} = load i64, ptr {r}, align 8')
-            return 'i64', r2
-        if isinstance(e, Ref) and e.name in ('rt_patch_on', 'g_fnprof'):
-            raise ValueError(f'global {e.name!r}: needs the Phase-1 indexed-global path')
         if isinstance(e, Ref) and e.name == 'c':
             return 'ptr', '%c'   # the function parameter itself
         if isinstance(e, Ref) and e.name in CC_CONSTS:
@@ -299,13 +279,6 @@ class Emitter:
         self.emit(f'{r} = load {it}, ptr {tmp}, align 8')
         return it, r
 
-    def cond_i1(self, e):
-        """A call used directly as a condition: evaluate with its known return type, compare against 0."""
-        t, v = self.eval(e, RET_TYPES.get(e.name) or 'i32')
-        r = self.t()
-        self.emit(f'{r} = icmp ne {t} {v}, 0')
-        return r
-
     def eval_i1(self, e):
         if isinstance(e, Bin) and e.op in CMP_IR:
             t, a = self.eval(e.a)
@@ -313,7 +286,7 @@ class Emitter:
             r = self.t()
             self.emit(f'{r} = icmp {CMP_IR[e.op]} {t} {a}, {b}')
             return r
-        t, v = self.eval(e, RET_TYPES.get(e.name) if isinstance(e, Call) else None)
+        t, v = self.eval(e)
         r = self.t()
         self.emit(f'{r} = icmp ne {t} {v}, 0')
         return r
@@ -369,6 +342,9 @@ class Emitter:
 
     def call(self, e, ty):
         name = e.name
+        if name not in ALLOWED and not re.match(r'^f_[0-9a-f]+$', name) and not name.startswith('rt_') \
+                and name not in LD_SIZES:
+            raise ValueError(f'call to {name!r}: not a helper in the signature table (macro or unknown)')
         if name in LD_SIZES and name.startswith('LD'):
             _, a = self.eval(e.args[0], 'i64')
             r = self.t()
@@ -382,48 +358,48 @@ class Emitter:
             r = self.t()
             self.emit(f'{r} = inttoptr i64 {a} to ptr')
             sz = LD_SIZES[name]
-            _, v = self.eval(e.args[1], sz)
+            vt, v = self.eval(e.args[1], sz)
+            if vt in INT_W and sz in INT_W:
+                v = self.cvt(v, vt, sz)
             self.emit(f'store {sz} {v}, ptr {r}, align 1')
             return 'void', None
+        wrap = not re.match(r'^f_[0-9a-f]+$', name) and not name.startswith('rt_')
+        if wrap:
+            sig = _tbl['functions'][name]   # the true signature; the gate above guarantees presence
+            atys, ret = sig['params'], sig['ret']
+            name = name + '_w'   # cpu.h/simd.h statics: called through the generated wrapper TU
+        self.used_calls.add(name)
         args = []
-        for a in e.args:
-            at, av = self.eval(a)
-            args.append((at, av))
+        for i, a in enumerate(e.args):
+            at, av = self.eval(a, atys[i] if wrap and i < len(atys) else None)
+            args.append(f'{at} {av}')
         if re.match(r'^f_[0-9a-f]+$', name):
-            self.used_calls.add(name)
-            self.emit(f'call void @{name}(' + ', '.join(f'{t} {v}' for t, v in args) + ')')
-            return 'void', None
-        if name.startswith('rt_') or name in ('memcpy', '__atomic_thread_fence'):
-            ret = RET_TYPES.get(name, 'void')
-            self.used_calls.add(name)
+            ret = 'void'   # guest functions: void(Cpu *), always
         else:
-            # cpu.h/simd.h statics: the call site knows the argument types, so the wrapper's
-            # signature comes from here (the first site wins; C implicit conversions at the
-            # wrapper tolerate the rest)
-            name = name + '_w'
-            sig = self.wrappers.get(name)
-            atys = tuple(t for t, _ in args)
-            if sig is None:
-                ret = ty or 'i64'
-                self.wrappers[name] = (ret, atys)
-            else:
-                ret, atys = sig
-                args = [(atys[i], self.cvt(v, t, atys[i])) for i, (t, v) in enumerate(args[:len(atys)])]
-            self.used_calls.add(name)
+            ret = _tbl['functions'].get(name[:-2], {}).get('ret') if name.endswith('_w') else None
+            if ret is None:
+                ret = RET_TYPES.get(name[:-2] if name.endswith('_w') else name, ty or 'i64')
         if ret == 'void':
-            self.emit(f'call void @{name}(' + ', '.join(f'{t} {v}' for t, v in args) + ')')
+            self.emit(f'call void @{name}({", ".join(args)})')
+            if name in NORETURN:
+                self.emit('unreachable')
             return 'void', None
         r = self.t()
-        self.emit(f'{r} = call {ret} @{name}(' + ', '.join(f'{t} {v}' for t, v in args) + ')')
+        self.emit(f'{r} = call {ret} @{name}({", ".join(args)})')
         return ret, r
 
+import json as _json, pathlib as _path
+_tbl = _json.loads((_path.Path(__file__).parent / 'sig' / 'table.json').read_text(encoding='utf-8'))
+FN_HEAD = re.compile(r'(?m)^(?:static )?void ((?:f|fb)_[0-9a-f]+)\(Cpu \*c\) \{')
+ALLOWED = set(_tbl['functions']) | {'memcpy', 'memset', 'memmove'}
+
+NORETURN = {'rt_udf', 'rt_brk'}
 RET_TYPES = {'rt_dispatch': 'void', 'rt_udf': 'void', 'rt_brk': 'void', 'rt_svc': 'void',
              'rt_spin_gate': 'void', 'rt_hook_run': 'void', 'fnprof_hit': 'void',
-             'memcpy': 'void', '__atomic_thread_fence': 'void', 'rt_fpcr_sync': 'void',
-             'fc_sub64': 'i32', 'fc_sub32': 'i32', 'fc_add64': 'i32',
+             'memcpy': 'void', 'fc_sub64': 'i32', 'fc_sub32': 'i32', 'fc_add64': 'i32',
              'fc_add32': 'i32', 'fc_logic64': 'i32', 'fc_logic32': 'i32',
-             'fnz_sub64': 'i32', 'fnz_sub32': 'i32', 'fnz_add64': 'i32', 'fnz_add32': 'i32',
-             'fnz_logic64': 'i32', 'fnz_logic32': 'i32'}
+             'fnz_sub64': 'i64', 'fnz_sub32': 'i64', 'fnz_add64': 'i64', 'fnz_add32': 'i64',
+             'fnz_logic64': 'i64', 'fnz_logic32': 'i64', 'fnz_nz': 'i64'}
 
 # ---------------------------------------------------------------- statements
 
@@ -477,20 +453,18 @@ class FnEmitter(Emitter):
             if '=' in d:
                 j = d.index('=')
                 name = d[0]
-                self.alloca(name, CASTS[ty])
+                an = self.alloca(name, CASTS[ty])
                 self.ty_scopes[-1][name] = CASTS[ty]
                 ty2, v = self.eval(parse_expr(d[j + 1:]), CASTS[ty])
-                self.emit(f'store {ty2} {v}, ptr %v.{name}, align 8')
+                self.emit(f'store {ty2} {v}, ptr %v.{an}, align 8')
             else:
                 self.alloca(d[0], CASTS[ty])
-                self.ty_scopes[-1][name] = CASTS[ty]
+                self.ty_scopes[-1][d[0]] = CASTS[ty]
         return None
 
     def statement(self, t):
         if not t:
             return None
-        if self.terminated() and t[0] != 'L_':
-            return None   # dead code after an unconditional terminator (rt_udf tails)
         if t[0] == 'FN_ENTER':
             return t[4:] if len(t) > 3 and t[3] == ')' else None
         if t[0] == 'Flags' or (t[0] in CASTS):
@@ -583,17 +557,6 @@ class FnEmitter(Emitter):
             self.emit(f'store {ty} {v}, ptr {ptr}, {al}')
             self.jump_ended = False
             return None
-        if isinstance(lhs, FlagField):
-            midx = {'a': 0, 'b': 1, 'nz': 2}[lhs.member]
-            r = self.t()
-            self.emit(f'{r} = getelementptr %Flags, ptr %v.F, i32 0, i32 {midx}')
-            ty, v = self.eval(rhs)
-            if ty in INT_W and ty != 'i64':
-                v = self.cvt(v, ty, 'i64')
-                ty = 'i64'
-            self.emit(f'store {ty} {v}, ptr {r}, align 8')
-            self.jump_ended = False
-            return None
         raise ValueError(f'lhs {type(lhs)}')
 
     def peek_eq(self, t, i):
@@ -602,9 +565,10 @@ class FnEmitter(Emitter):
     def if_stmt(self, t):
         self.n += 1
         i = 1
-        assert t[i] == '('
+        if t[i] != '(':
+            raise ValueError('if without a parenthesised condition')
         depth, j = 0, i
-        while True:
+        while j < len(t):
             if t[j] == '(':
                 depth += 1
             elif t[j] == ')':
@@ -612,35 +576,41 @@ class FnEmitter(Emitter):
                 if depth == 0:
                     break
             j += 1
+        if j >= len(t):
+            raise ValueError('unbalanced if condition')
         c = self.eval_i1(parse_expr(t[i + 1:j]))
         then_b = self.block('if.then')
         end_b = self.block('if.end')
         rest = t[j + 1:]
-        has_else = bool(rest) and rest[0] == 'else'
+        if not rest:
+            raise ValueError('if without a body')
+        has_else = rest[0] == 'else'
         else_b = self.block('if.else') if has_else else end_b
         self.emit(f'br i1 {c}, label %{then_b}, label %{else_b}')
         self.cur = then_b
-        if rest[0] == '{':
-            self.statement(rest[:self.match_brace(rest, 0) + 1])
-        else:
-            self.statement(rest[:self.stmt_end(rest)])
+        used = self.match_brace(rest, 0) + 1 if rest[0] == '{' else self.stmt_end(rest)
+        self.statement(rest[:used])
         if not self.terminated() and not self.jump_ended:
             self.enter(end_b)
         self.cur = end_b
         self.jump_ended = False
+        tail = rest[used:]
         if has_else:
+            if not tail or tail[0] != 'else':
+                raise ValueError('else without a body')
             self.cur = else_b
-            if rest[0] == '{':
-                tail = rest[self.match_brace(rest, 0) + 1:]
-            else:
-                tail = rest[self.stmt_end(rest) + 1:]
-            if tail and tail[0] == 'if':
-                self.if_stmt(tail)
-            elif tail and tail[0] == '{':
-                self.statement(tail[:self.match_brace(tail, 0) + 1])
-            elif tail:
-                self.statement(tail[:self.stmt_end(tail)])
+            if len(tail) > 1 and tail[1] == 'if':
+                self.if_stmt(tail[1:])
+                return None
+            used = self.match_brace(tail, 1) + 1 if tail[1:2] == ['{'] else self.stmt_end(tail)
+            self.statement(tail[1:used])
+            if not self.terminated() and not self.jump_ended:
+                self.enter(end_b)
             self.cur = end_b
+            self.jump_ended = False
+            tail = tail[used:]
+        if tail:
+            raise ValueError(f'tokens after the if statement: {" ".join(tail[:8])}')
         return None
 
     def match_brace(self, t, start):
@@ -670,11 +640,27 @@ class FnEmitter(Emitter):
         self.n += 1
         i, j = t.index('('), t.index(')')
         _, v = self.eval(parse_expr(t[i + 1:j]), 'i64')
-        flat = ' '.join(t)
-        pairs = [(int(a, 16), b) for a, b in re.findall(r'case\s+(0x[0-9a-fA-F]+)ull\s*:\s*goto\s+(L_[0-9a-f]+)\s*;', flat)]
+        # Token-wise, not a regex over the joined text: ' '.join() puts a space before ':',
+        # which the old pattern (r'ull: goto') could never match, dropping every case.
+        pairs, k = [], j + 1
+        if t[k] != '{':
+            raise ValueError('switch without a braced body')
+        end = self.match_brace(t, k)
+        while k < end:
+            if t[k] == 'case' and k + 4 < end and t[k + 2] == ':':
+                lab = t[k + 4].rstrip(';')
+                if t[k + 3] != 'goto' or not re.fullmatch(r'L_[0-9a-f]+', lab):
+                    raise ValueError(f'switch case body is not a goto: {" ".join(t[k:k + 6])}')
+                pairs.append((int(t[k + 1].rstrip('uUlL'), 16 if t[k + 1].lower().startswith('0x') else 10), lab))
+                k += 6
+                continue
+            k += 1
+        tail = t[end + 1:]
+        if tail:
+            raise ValueError(f'tokens after the switch body: {" ".join(tail[:8])}')
         endb = self.block('sw.end')
         if pairs:
-            cases = ', '.join(f'i64 {hex(v_)}: label %{lbl}' for v_, lbl in pairs)
+            cases = ' '.join(f'i64 {v_}, label %{lbl}' for v_, lbl in pairs)
             self.emit(f'switch i64 {v}, label %{endb} [ {cases} ]')
         else:
             self.emit(f'br label %{endb}')
@@ -682,6 +668,71 @@ class FnEmitter(Emitter):
         return None
 
 # ---------------------------------------------------------------- function driver
+
+def _brace_end(t, i):
+    """Index of the '}' that matches t[i] == '{'."""
+    depth = 0
+    while i < len(t):
+        if t[i] == '{':
+            depth += 1
+        elif t[i] == '}':
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    raise ValueError('unbalanced braces')
+
+
+def _paren_end(t, i):
+    depth = 0
+    while i < len(t):
+        if t[i] in '([':
+            depth += 1
+        elif t[i] in ')]':
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    raise ValueError('unbalanced parentheses')
+
+
+def _simple_end(t, i):
+    """Index of the ';' ending the statement that starts at t[i]."""
+    depth = 0
+    while i < len(t):
+        if t[i] in '([{':
+            depth += 1
+        elif t[i] in ')]}':
+            depth -= 1
+        elif t[i] == ';' and depth == 0:
+            return i
+        i += 1
+    raise ValueError('statement without a ;')
+
+
+def _construct_end(t, i):
+    """Index of the last token of the if/switch statement starting at t[i].
+
+    A braced if/else body ends at its '}' and carries no ';', so scanning to the next
+    top-level ';' would swallow the statements that follow it. That merge is what dropped
+    the tail of every `if (...) { ... }` (86,650 functions of main, measured 2026-11-07).
+    """
+    kw = t[i]
+    j = _paren_end(t, i + 1)
+    if kw == 'switch':
+        if t[j + 1] != '{':
+            raise ValueError('switch without a braced body')
+        return _brace_end(t, j + 1)
+
+    def body(k):
+        return _brace_end(t, k) if t[k] == '{' else _simple_end(t, k)
+
+    j = body(j + 1)
+    while j + 1 < len(t) and t[j + 1] == 'else':
+        k = j + 2
+        j = _construct_end(t, k) if t[k] == 'if' else body(k)
+    return j
+
 
 def parse_function(text):
     body = text[text.index('{') + 1: text.rindex('}')]
@@ -695,16 +746,14 @@ def parse_function(text):
         i, depth, start = 0, 0, 0
         while i < len(t):
             tk = t[i]
+            if depth == 0 and i == start and tk in ('if', 'switch'):
+                j = _construct_end(t, i)
+                out.append(('stmt', t[i:j + 1]))
+                i = j + 1
+                start = i
+                continue
             if tk == '{' and depth == 0 and i == start:
-                d2, j = 0, i
-                while j < len(t):
-                    if t[j] == '{':
-                        d2 += 1
-                    elif t[j] == '}':
-                        d2 -= 1
-                        if d2 == 0:
-                            break
-                    j += 1
+                j = _brace_end(t, i)
                 out.append(('stmt', t[i:j + 1]))
                 i = j + 1
                 start = i
@@ -735,18 +784,15 @@ def emit_function(name, text):
                     em.statement(st)
                 except Exception as ex:
                     raise ValueError(f'{" ".join(st)[:70]} -> {ex}') from None
-    except ValueError as ex:
-        return None, str(ex), set()
+    except Exception as ex:
+        return None, f'{name}: {ex}'
     out = [f'define void @{name}(ptr %c) {{', 'entry:']
     for lbl, lines in em.blocks.items():
         if lbl != 'entry':
             out.append(f'{lbl}:')
         out.extend(lines)
     out.append('}')
-    return '\n'.join(out), em.wrappers, em.used_calls
-
-
-FN_HEAD = re.compile(r'(?m)^(?:static )?void ((?:f|fb)_[0-9a-f]+)\(Cpu \*c\) \{')
+    return '\n'.join(out), sorted(em.used_calls)
 
 def split_functions(chunk_text):
     """[(name, full text)] of every f_/fb_ definition in a chunk, brace-matched."""
@@ -767,22 +813,21 @@ def split_functions(chunk_text):
     return out
 
 def emit_chunk(chunk_text):
-    """Whole-chunk driver: returns (.ll text, wrappers, guest calls) or (None, [(fn, reason)])."""
+    """Whole-chunk driver: (.ll text, helper names, guest calls) or (None, [(fn, reason)])."""
     fns = split_functions(chunk_text)
     if not fns:
-        return None, [('chunk', 'no functions found')]
-    parts, wrappers, calls, fails = [], {}, set(), []
-    seen = set()
+        return None, [('chunk', 'no functions found')], set()
+    parts, helpers, calls, fails, seen = [], set(), set(), [], set()
     for name, ftext in fns:
         if name in seen:
             continue   # a forward-declared fb_ pair emits once (the definition wins)
         seen.add(name)
-        ll, w, calls = emit_function(name, ftext)
+        ll, used = emit_function(name, ftext)
         if ll is None:
-            fails.append((name, w))
+            fails.append((name, used))
             continue
-        wrappers.update(w)
-        calls = calls | set(calls)
+        helpers |= {u for u in used if u.endswith('_w')}
+        calls |= {u for u in used if re.match(r'^(f|fb)_[0-9a-f]+$', u)}
         parts.append(ll)
     if fails or not parts:
         return None, fails, set()
@@ -792,13 +837,11 @@ def emit_chunk(chunk_text):
                 'declare void @rt_spin_gate(ptr, i64)', 'declare void @rt_hook_run(ptr, ptr, ptr)',
                 'declare void @fnprof_hit(i64, i64, i64)']
     for g in sorted(calls):
-        if re.match(r'^f_[0-9a-f]+$', g):
-            preamble.append(f'declare void @{g}(ptr)')
-        elif re.match(r'^fb_[0-9a-f]+$', g):
-            preamble.append(f'declare void @{g}(ptr)')
-    for h, (ret, atys) in sorted(wrappers.items()):
-        preamble.append(f'declare {ret} @{h}({", ".join(atys)})')
-    return '\n\n'.join(preamble + parts) + '\n', wrappers, sorted(calls)
+        preamble.append(f'declare void @{g}(ptr)')
+    for h in sorted(helpers):
+        sig = _tbl['functions'][h[:-2]]
+        preamble.append(f'declare {sig["ret"]} @{h}({", ".join(sig["params"])})')
+    return '\n\n'.join(preamble + parts) + '\n', helpers, calls
 
 def main():
     import argparse
@@ -852,27 +895,28 @@ def main():
     m = re.search(r'(void ' + re.escape(fname) + r'\(Cpu \*c\) \{.*?\n\})', s, re.S)
     if not m:
         sys.exit(f'{fname} not found in {chunk}')
-    ll, wrappers, calls = emit_function(fname, m.group(1))
+    ll, wraps = emit_function(fname, m.group(1))
     if ll is None:
         sys.exit(f'{fname} not IR-eligible: {wraps}')
+    known = {'rt_dispatch', 'rt_udf', 'rt_brk', 'rt_svc', 'rt_spin_gate', 'rt_hook_run', 'fnprof_hit'}
+    helpers = [w for w in wraps if not re.match(r'^(f|fb)_[0-9a-f]+$', w) and w not in known]
     preamble = [CPU_TYPE, '%Flags = type { i64, i64, i64 }',
                 'declare void @rt_dispatch(ptr)', 'declare void @rt_udf(ptr, i64)',
                 'declare void @rt_brk(ptr, i64)', 'declare void @rt_svc(ptr, i32, i64)',
                 'declare void @rt_spin_gate(ptr, i64)', 'declare void @fnprof_hit(i64, i64, i64)']
-    for g in calls:
-        if re.match(r'^f_[0-9a-f]+$', g):
-            preamble.append(f'declare void @{g}(ptr)')
-    for h, (ret, atys) in sorted(wrappers.items()):
-        preamble.append(f'declare {ret} @{h}({", ".join(atys)})')
+    wrappers_c = ['#include "cpu.h"', '#include "simd.h"', '']
+    CTY = {'i64': 'uint64_t', 'i32': 'uint32_t', 'i16': 'uint16_t', 'i8': 'uint8_t',
+           'i128': '__uint128_t', 'ptr': 'void *', 'f32': 'float', 'f64': 'double'}
+    for h in helpers:
+        orig = h[:-2] if h.endswith('_w') else h
+        sig = _tbl['functions'][orig]
+        preamble.append(f'declare {sig["ret"]} @{h}({", ".join(sig["params"])})')
+        params = ', '.join(f'{CTY[t]} a{i}' for i, t in enumerate(sig['params']))
+        call_args = ', '.join(f'a{i}' for i in range(len(sig['params'])))
+        wrappers_c.append(f'{sig["ret"]} {h}({params}) {{ return {orig}({call_args}); }}')
     print('\n'.join(preamble))
     print(ll)
-    out = ['#include "cpu.h"', '#include "simd.h"', '']
-    for h, (ret, atys) in sorted(wrappers.items()):
-        orig = h[:-2] if h.endswith('_w') else h
-        params = ', '.join(f'{t} a{i}' for i, t in enumerate(atys))
-        call_args = ', '.join(f'a{i}' for i in range(len(atys)))
-        out.append(f'{ret} {h}({params}) {{ return {orig}({call_args}); }}')
-    open('ir_wrappers.c', 'w', encoding='utf-8', newline='\n').write('\n'.join(out))
+    open('ir_wrappers.c', 'w', encoding='utf-8', newline='\n').write('\n'.join(wrappers_c))
 
 if __name__ == '__main__':
     main()

@@ -635,14 +635,13 @@ def _emit_chunk(task):
         written = write_if_changed(Path(path), text)
     except OSError as ex:
         written, error = False, f'{path}: {ex}'
-    ir_file, ir_wrappers, ir_fails = None, {}, []
+    ir_file, ir_helpers, ir_fails = None, set(), []
     if _W.get('ir'):
         import emit_ir
-        ll, wrappers, ir_fails = emit_ir.emit_chunk(text)
+        ll, ir_helpers, ir_fails = emit_ir.emit_chunk(text)
         if ll is not None:
             ir_path = Path(path).with_suffix('.ll')
-            if write_if_changed(ir_path, ll):
-                pass
+            write_if_changed(ir_path, ll)
             ir_file = ir_path.name
             written = True   # the .ll is the file the build compiles
     reads = _W['reads'].get(name, [])
@@ -651,7 +650,7 @@ def _emit_chunk(task):
     return {'module': name, 'number': number, 'file': ir_file or Path(path).name, 'functions': len(fns),
             'bytes': len(text), 'written': written, 'error': error, 'seconds': time.perf_counter() - t0,
             'stats': dict(e.stats), 'unsupported': dict(e.unsupported), 'folded': folded,
-            'ir': ir_file is not None, 'wrappers': ir_wrappers, 'ir_fails': ir_fails}
+            'ir': ir_file is not None, 'ir_helpers': ir_helpers, 'ir_fails': ir_fails}
 
 
 # ------------------------------------------------------------------------------------------------ driver
@@ -819,24 +818,28 @@ def main():
             done = {(r['module'], r['number']) for rs in results.values() for r in rs}
             pending = [t for t in pending if (t[0], t[1]) not in done]
 
+    module_helpers = {}
     for name, d in info.items():
         rs = sorted(results[name], key=lambda r: r['number'])
         moddir = d['moddir']
         stats, unsupported = Counter(), Counter()
         ir_chunks = sum(1 for r in rs if r.get('ir'))
-        ir_wrappers = {}
+        ir_helpers = set()
+        module_helpers[name] = ir_helpers
         for r in rs:
-            for h, sig in r.get('wrappers', {}).items():
-                if h in ir_wrappers and ir_wrappers[h] != sig:
-                    print(f'{name}: wrapper {h} signature clash {ir_wrappers[h]} vs {sig}', file=sys.stderr)
-                ir_wrappers.setdefault(h, sig)
+            if r.get('ir'):
+                ir_helpers |= set(r.get('ir_helpers') or [])
         if ir_chunks:
+            import emit_ir
+            CTY = {'i64': 'uint64_t', 'i32': 'uint32_t', 'i16': 'uint16_t', 'i8': 'uint8_t',
+                   'i128': '__uint128_t', 'ptr': 'void *', 'f32': 'float', 'f64': 'double'}
             wlines = ['#include "cpu.h"', '#include "simd.h"', '']
-            for h, (ret, atys) in sorted(ir_wrappers.items()):
+            for h in sorted(ir_helpers):
                 orig = h[:-2] if h.endswith('_w') else h
-                params = ', '.join(f'{t} a{i}' for i, t in enumerate(atys))
-                call_args = ', '.join(f'a{i}' for i in range(len(atys)))
-                wlines.append(f'{ret} {h}({params}) {{ return {orig}({call_args}); }}')
+                sig = emit_ir._tbl['functions'][orig]
+                params = ', '.join(f'{CTY[t]} a{i}' for i, t in enumerate(sig['params']))
+                call_args = ', '.join(f'a{i}' for i in range(len(sig['params'])))
+                wlines.append(f'{CTY[sig["ret"]]} {h}({params}) {{ return {orig}({call_args}); }}')
             write_if_changed(moddir / f'{name}_irwrappers.c', '\n'.join(wlines) + '\n')
         elif (moddir / f'{name}_irwrappers.c').exists():
             (moddir / f'{name}_irwrappers.c').unlink()
@@ -853,7 +856,7 @@ def main():
             'base': f'{d["base"]:#x}',
             'text': [f'{d["lo"]:#x}', f'{d["hi"]:#x}'],
             'function_count': len(d['emitted']),
-            'chunks': [r['file'] for r in rs] + ([f'{name}_irwrappers.c'] if ir_chunks else []),
+            'chunks': [r['file'] for r in rs],
             'table': f'{name}_table.c',
             'chunk_info': [{'file': r['file'], 'functions': r['functions'], 'bytes': r['bytes'],
                             'seconds': round(r['seconds'], 2)} for r in rs],
@@ -897,6 +900,23 @@ def main():
               f'{s["jump_tables"]} jump tables, {s["all_label_fallbacks"]} all-label fallbacks, '
               f'{s["br_dispatch"]} br via dispatch, {s["traps"]} traps ({s["unsupported"]} unsupported)',
               file=sys.stderr)
+    all_helpers = set()
+    for hs in module_helpers.values():
+        all_helpers |= hs
+    if all_helpers:
+        import emit_ir
+        CTY = {'i64': 'uint64_t', 'i32': 'uint32_t', 'i16': 'uint16_t', 'i8': 'uint8_t',
+               'i128': '__uint128_t', 'ptr': 'void *', 'f32': 'float', 'f64': 'double'}
+        wlines = ['#include "cpu.h"', '#include "simd.h"', '']
+        for h in sorted(all_helpers):
+            orig = h[:-2] if h.endswith('_w') else h
+            sig = emit_ir._tbl['functions'][orig]
+            params = ', '.join(f'{CTY[t]} a{i}' for i, t in enumerate(sig['params']))
+            call_args = ', '.join(f'a{i}' for i in range(len(sig['params'])))
+            wlines.append(f'{CTY[sig["ret"]]} {h}({params}) {{ return {orig}({call_args}); }}')
+        write_if_changed(args.out / 'irwrappers.c', '\n'.join(wlines) + '\n')
+    elif (args.out / 'irwrappers.c').exists():
+        (args.out / 'irwrappers.c').unlink()
     print(f'total {time.perf_counter() - t0:.0f}s', file=sys.stderr)
     if errors:
         print(f'{len(errors)} files could not be written or removed (held open by another process?):',

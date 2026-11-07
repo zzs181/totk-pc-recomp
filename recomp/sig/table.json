@@ -1,0 +1,4171 @@
+{
+ "functions": {
+  "rt_get_fpcr": {
+   "ret": "i64",
+   "params": []
+  },
+  "rt_get_fpsr": {
+   "ret": "i64",
+   "params": []
+  },
+  "rt_set_fpcr": {
+   "ret": "void",
+   "params": [
+    "i64"
+   ]
+  },
+  "rt_set_fpsr": {
+   "ret": "void",
+   "params": [
+    "i64"
+   ]
+  },
+  "rt_fpcr_sync": {
+   "ret": "void",
+   "params": [
+    "ptr"
+   ]
+  },
+  "ldx8": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "i64"
+   ]
+  },
+  "stx8": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i64",
+    "i64"
+   ]
+  },
+  "lda8": {
+   "ret": "i64",
+   "params": [
+    "i64"
+   ]
+  },
+  "ldx16": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "i64"
+   ]
+  },
+  "stx16": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i64",
+    "i64"
+   ]
+  },
+  "lda16": {
+   "ret": "i64",
+   "params": [
+    "i64"
+   ]
+  },
+  "ldx32": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "i64"
+   ]
+  },
+  "stx32": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i64",
+    "i64"
+   ]
+  },
+  "lda32": {
+   "ret": "i64",
+   "params": [
+    "i64"
+   ]
+  },
+  "ldx64": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "i64"
+   ]
+  },
+  "stx64": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i64",
+    "i64"
+   ]
+  },
+  "lda64": {
+   "ret": "i64",
+   "params": [
+    "i64"
+   ]
+  },
+  "ldxp128": {
+   "ret": "i128",
+   "params": [
+    "ptr",
+    "i64"
+   ]
+  },
+  "stxp128": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i64",
+    "i64",
+    "i64"
+   ]
+  },
+  "atomic_smax8": {
+   "ret": "i8",
+   "params": [
+    "i64",
+    "i8"
+   ]
+  },
+  "atomic_smin8": {
+   "ret": "i8",
+   "params": [
+    "i64",
+    "i8"
+   ]
+  },
+  "atomic_umax8": {
+   "ret": "i8",
+   "params": [
+    "i64",
+    "i8"
+   ]
+  },
+  "atomic_umin8": {
+   "ret": "i8",
+   "params": [
+    "i64",
+    "i8"
+   ]
+  },
+  "atomic_smax16": {
+   "ret": "i16",
+   "params": [
+    "i64",
+    "i16"
+   ]
+  },
+  "atomic_smin16": {
+   "ret": "i16",
+   "params": [
+    "i64",
+    "i16"
+   ]
+  },
+  "atomic_umax16": {
+   "ret": "i16",
+   "params": [
+    "i64",
+    "i16"
+   ]
+  },
+  "atomic_umin16": {
+   "ret": "i16",
+   "params": [
+    "i64",
+    "i16"
+   ]
+  },
+  "atomic_smax32": {
+   "ret": "i32",
+   "params": [
+    "i64",
+    "i32"
+   ]
+  },
+  "atomic_smin32": {
+   "ret": "i32",
+   "params": [
+    "i64",
+    "i32"
+   ]
+  },
+  "atomic_umax32": {
+   "ret": "i32",
+   "params": [
+    "i64",
+    "i32"
+   ]
+  },
+  "atomic_umin32": {
+   "ret": "i32",
+   "params": [
+    "i64",
+    "i32"
+   ]
+  },
+  "atomic_smax64": {
+   "ret": "i64",
+   "params": [
+    "i64",
+    "i64"
+   ]
+  },
+  "atomic_smin64": {
+   "ret": "i64",
+   "params": [
+    "i64",
+    "i64"
+   ]
+  },
+  "atomic_umax64": {
+   "ret": "i64",
+   "params": [
+    "i64",
+    "i64"
+   ]
+  },
+  "atomic_umin64": {
+   "ret": "i64",
+   "params": [
+    "i64",
+    "i64"
+   ]
+  },
+  "adds64": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "i64",
+    "i64"
+   ]
+  },
+  "subs64": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "i64",
+    "i64"
+   ]
+  },
+  "adds32": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32",
+    "i32"
+   ]
+  },
+  "subs32": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32",
+    "i32"
+   ]
+  },
+  "logic64": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "i64"
+   ]
+  },
+  "logic32": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32"
+   ]
+  },
+  "adc64": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "i64",
+    "i64"
+   ]
+  },
+  "sbc64": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "i64",
+    "i64"
+   ]
+  },
+  "adcs64": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "i64",
+    "i64"
+   ]
+  },
+  "sbcs64": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "i64",
+    "i64"
+   ]
+  },
+  "adc32": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32",
+    "i32"
+   ]
+  },
+  "sbc32": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32",
+    "i32"
+   ]
+  },
+  "adcs32": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32",
+    "i32"
+   ]
+  },
+  "sbcs32": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32",
+    "i32"
+   ]
+  },
+  "fl_cond": {
+   "ret": "i32",
+   "params": [
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "fsub64": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "i64",
+    "i64"
+   ]
+  },
+  "fc_sub64": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32"
+   ]
+  },
+  "nz_sub64": {
+   "ret": "i64",
+   "params": [
+    "i64",
+    "i64"
+   ]
+  },
+  "fnz_sub64": {
+   "ret": "i64",
+   "params": [
+    "ptr"
+   ]
+  },
+  "fsub32": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32",
+    "i32"
+   ]
+  },
+  "fc_sub32": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32"
+   ]
+  },
+  "nz_sub32": {
+   "ret": "i64",
+   "params": [
+    "i32",
+    "i32"
+   ]
+  },
+  "fnz_sub32": {
+   "ret": "i64",
+   "params": [
+    "ptr"
+   ]
+  },
+  "fadd64": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "i64",
+    "i64"
+   ]
+  },
+  "nz_add64": {
+   "ret": "i64",
+   "params": [
+    "i64",
+    "i64"
+   ]
+  },
+  "fc_add64": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32"
+   ]
+  },
+  "fnz_add64": {
+   "ret": "i64",
+   "params": [
+    "ptr"
+   ]
+  },
+  "flogic64": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "i64"
+   ]
+  },
+  "fc_logic64": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32"
+   ]
+  },
+  "fnz_logic64": {
+   "ret": "i64",
+   "params": [
+    "ptr"
+   ]
+  },
+  "fadd32": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32",
+    "i32"
+   ]
+  },
+  "nz_add32": {
+   "ret": "i64",
+   "params": [
+    "i32",
+    "i32"
+   ]
+  },
+  "fc_add32": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32"
+   ]
+  },
+  "fnz_add32": {
+   "ret": "i64",
+   "params": [
+    "ptr"
+   ]
+  },
+  "flogic32": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32"
+   ]
+  },
+  "fc_logic32": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32"
+   ]
+  },
+  "fnz_logic32": {
+   "ret": "i64",
+   "params": [
+    "ptr"
+   ]
+  },
+  "fc_nz": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32"
+   ]
+  },
+  "fnz_nz": {
+   "ret": "i64",
+   "params": [
+    "ptr"
+   ]
+  },
+  "adc64f": {
+   "ret": "i64",
+   "params": [
+    "i32",
+    "i64",
+    "i64"
+   ]
+  },
+  "sbc64f": {
+   "ret": "i64",
+   "params": [
+    "i32",
+    "i64",
+    "i64"
+   ]
+  },
+  "adcs64f": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "i32",
+    "i64",
+    "i64"
+   ]
+  },
+  "sbcs64f": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "i32",
+    "i64",
+    "i64"
+   ]
+  },
+  "adc32f": {
+   "ret": "i32",
+   "params": [
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "sbc32f": {
+   "ret": "i32",
+   "params": [
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "adcs32f": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "sbcs32f": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "clz64": {
+   "ret": "i64",
+   "params": [
+    "i64"
+   ]
+  },
+  "clz32": {
+   "ret": "i32",
+   "params": [
+    "i32"
+   ]
+  },
+  "cls64": {
+   "ret": "i64",
+   "params": [
+    "i64"
+   ]
+  },
+  "cls32": {
+   "ret": "i32",
+   "params": [
+    "i32"
+   ]
+  },
+  "rbit64": {
+   "ret": "i64",
+   "params": [
+    "i64"
+   ]
+  },
+  "rbit32": {
+   "ret": "i32",
+   "params": [
+    "i32"
+   ]
+  },
+  "rev16_32": {
+   "ret": "i32",
+   "params": [
+    "i32"
+   ]
+  },
+  "rev16_64": {
+   "ret": "i64",
+   "params": [
+    "i64"
+   ]
+  },
+  "rev32_64": {
+   "ret": "i64",
+   "params": [
+    "i64"
+   ]
+  },
+  "udiv64": {
+   "ret": "i64",
+   "params": [
+    "i64",
+    "i64"
+   ]
+  },
+  "udiv32": {
+   "ret": "i32",
+   "params": [
+    "i32",
+    "i32"
+   ]
+  },
+  "sdiv64": {
+   "ret": "i64",
+   "params": [
+    "i64",
+    "i64"
+   ]
+  },
+  "sdiv32": {
+   "ret": "i32",
+   "params": [
+    "i32",
+    "i32"
+   ]
+  },
+  "_clui": {
+   "ret": "void",
+   "params": []
+  },
+  "_stui": {
+   "ret": "void",
+   "params": []
+  },
+  "_mm_crc32_u32": {
+   "ret": "i32",
+   "params": [
+    "i32",
+    "i32"
+   ]
+  },
+  "_m_prefetchit1": {
+   "ret": "void",
+   "params": [
+    "ptr"
+   ]
+  },
+  "_aand_i32": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32"
+   ]
+  },
+  "_aor_i32": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32"
+   ]
+  },
+  "_axor_i32": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32"
+   ]
+  },
+  "_mm_empty": {
+   "ret": "void",
+   "params": []
+  },
+  "_mm_free": {
+   "ret": "void",
+   "params": [
+    "ptr"
+   ]
+  },
+  "_mm_stream_si32": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32"
+   ]
+  },
+  "_mm_monitor": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32"
+   ]
+  },
+  "_mm_mwait": {
+   "ret": "void",
+   "params": [
+    "i32",
+    "i32"
+   ]
+  },
+  "_mm256_zeroall": {
+   "ret": "void",
+   "params": []
+  },
+  "_mm256_zeroupper": {
+   "ret": "void",
+   "params": []
+  },
+  "__tzcnt_u32": {
+   "ret": "i32",
+   "params": [
+    "i32"
+   ]
+  },
+  "_mm_tzcnt_32": {
+   "ret": "i32",
+   "params": [
+    "i32"
+   ]
+  },
+  "__andn_u32": {
+   "ret": "i32",
+   "params": [
+    "i32",
+    "i32"
+   ]
+  },
+  "__bextr_u32": {
+   "ret": "i32",
+   "params": [
+    "i32",
+    "i32"
+   ]
+  },
+  "_bextr_u32": {
+   "ret": "i32",
+   "params": [
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "_bextr2_u32": {
+   "ret": "i32",
+   "params": [
+    "i32",
+    "i32"
+   ]
+  },
+  "__blsi_u32": {
+   "ret": "i32",
+   "params": [
+    "i32"
+   ]
+  },
+  "__blsmsk_u32": {
+   "ret": "i32",
+   "params": [
+    "i32"
+   ]
+  },
+  "__blsr_u32": {
+   "ret": "i32",
+   "params": [
+    "i32"
+   ]
+  },
+  "_pdep_u32": {
+   "ret": "i32",
+   "params": [
+    "i32",
+    "i32"
+   ]
+  },
+  "_pext_u32": {
+   "ret": "i32",
+   "params": [
+    "i32",
+    "i32"
+   ]
+  },
+  "_mulx_u32": {
+   "ret": "i32",
+   "params": [
+    "i32",
+    "i32",
+    "ptr"
+   ]
+  },
+  "_lzcnt_u32": {
+   "ret": "i32",
+   "params": [
+    "i32"
+   ]
+  },
+  "_wrpkru": {
+   "ret": "void",
+   "params": [
+    "i32"
+   ]
+  },
+  "_rdrand16_step": {
+   "ret": "i32",
+   "params": [
+    "ptr"
+   ]
+  },
+  "_rdrand32_step": {
+   "ret": "i32",
+   "params": [
+    "ptr"
+   ]
+  },
+  "_rdrand64_step": {
+   "ret": "i32",
+   "params": [
+    "ptr"
+   ]
+  },
+  "_readfsbase_u32": {
+   "ret": "i32",
+   "params": []
+  },
+  "_readgsbase_u32": {
+   "ret": "i32",
+   "params": []
+  },
+  "_writefsbase_u32": {
+   "ret": "void",
+   "params": [
+    "i32"
+   ]
+  },
+  "_writegsbase_u32": {
+   "ret": "void",
+   "params": [
+    "i32"
+   ]
+  },
+  "_loadbe_i32": {
+   "ret": "i32",
+   "params": [
+    "ptr"
+   ]
+  },
+  "_storebe_i32": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32"
+   ]
+  },
+  "_xend": {
+   "ret": "void",
+   "params": []
+  },
+  "_fxrstor": {
+   "ret": "void",
+   "params": [
+    "ptr"
+   ]
+  },
+  "_fxsave64": {
+   "ret": "void",
+   "params": [
+    "ptr"
+   ]
+  },
+  "_fxrstor64": {
+   "ret": "void",
+   "params": [
+    "ptr"
+   ]
+  },
+  "_inc_ssp": {
+   "ret": "void",
+   "params": [
+    "i32"
+   ]
+  },
+  "_rdsspd": {
+   "ret": "i32",
+   "params": [
+    "i32"
+   ]
+  },
+  "_rdsspd_i32": {
+   "ret": "i32",
+   "params": []
+  },
+  "_saveprevssp": {
+   "ret": "void",
+   "params": []
+  },
+  "_rstorssp": {
+   "ret": "void",
+   "params": [
+    "ptr"
+   ]
+  },
+  "_wrssd": {
+   "ret": "void",
+   "params": [
+    "i32",
+    "ptr"
+   ]
+  },
+  "_wrussd": {
+   "ret": "void",
+   "params": [
+    "i32",
+    "ptr"
+   ]
+  },
+  "_setssbsy": {
+   "ret": "void",
+   "params": []
+  },
+  "_clrssbsy": {
+   "ret": "void",
+   "params": [
+    "ptr"
+   ]
+  },
+  "_rdseed32_step": {
+   "ret": "i32",
+   "params": [
+    "ptr"
+   ]
+  },
+  "_rdseed64_step": {
+   "ret": "i32",
+   "params": [
+    "ptr"
+   ]
+  },
+  "_movdir64b": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "ptr"
+   ]
+  },
+  "_movrs_i32": {
+   "ret": "i32",
+   "params": [
+    "ptr"
+   ]
+  },
+  "_m_prefetchrs": {
+   "ret": "void",
+   "params": [
+    "ptr"
+   ]
+  },
+  "_encls_u32": {
+   "ret": "i32",
+   "params": [
+    "i32",
+    "ptr"
+   ]
+  },
+  "_enclv_u32": {
+   "ret": "i32",
+   "params": [
+    "i32",
+    "ptr"
+   ]
+  },
+  "_tile_storeconfig": {
+   "ret": "void",
+   "params": [
+    "ptr"
+   ]
+  },
+  "_tile_release": {
+   "ret": "void",
+   "params": []
+  },
+  "__tile_zero": {
+   "ret": "void",
+   "params": [
+    "ptr"
+   ]
+  },
+  "_enqcmds": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "ptr"
+   ]
+  },
+  "_xresldtrk": {
+   "ret": "void",
+   "params": []
+  },
+  "simd_fe_mode": {
+   "ret": "i32",
+   "params": [
+    "i64"
+   ]
+  },
+  "simd_rm_set_rc": {
+   "ret": "i32",
+   "params": [
+    "i32",
+    "i32"
+   ]
+  },
+  "simd_rm_enter": {
+   "ret": "i32",
+   "params": [
+    "i64"
+   ]
+  },
+  "simd_rm_rz": {
+   "ret": "void",
+   "params": []
+  },
+  "simd_rm_leave": {
+   "ret": "void",
+   "params": [
+    "i32"
+   ]
+  },
+  "simd_directed": {
+   "ret": "i32",
+   "params": [
+    "ptr"
+   ]
+  },
+  "fb_s": {
+   "ret": "i32",
+   "params": [
+    "f32"
+   ]
+  },
+  "fv_s": {
+   "ret": "f32",
+   "params": [
+    "i32"
+   ]
+  },
+  "isnan_s": {
+   "ret": "i32",
+   "params": [
+    "i32"
+   ]
+  },
+  "issnan_s": {
+   "ret": "i32",
+   "params": [
+    "i32"
+   ]
+  },
+  "isqnan_s": {
+   "ret": "i32",
+   "params": [
+    "i32"
+   ]
+  },
+  "isinf_s": {
+   "ret": "i32",
+   "params": [
+    "i32"
+   ]
+  },
+  "iszero_s": {
+   "ret": "i32",
+   "params": [
+    "i32"
+   ]
+  },
+  "isden_s": {
+   "ret": "i32",
+   "params": [
+    "i32"
+   ]
+  },
+  "flush_s": {
+   "ret": "f32",
+   "params": [
+    "f32"
+   ]
+  },
+  "fz_s": {
+   "ret": "f32",
+   "params": [
+    "ptr",
+    "f32"
+   ]
+  },
+  "neg_s": {
+   "ret": "f32",
+   "params": [
+    "f32"
+   ]
+  },
+  "fma_any_s": {
+   "ret": "f32",
+   "params": [
+    "f32",
+    "f32",
+    "f32"
+   ]
+  },
+  "minmax_s": {
+   "ret": "f32",
+   "params": [
+    "ptr",
+    "i32",
+    "f32",
+    "f32"
+   ]
+  },
+  "op_s": {
+   "ret": "f32",
+   "params": [
+    "ptr",
+    "i32",
+    "f32",
+    "f32",
+    "f32"
+   ]
+  },
+  "cmp_s": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "f32",
+    "f32"
+   ]
+  },
+  "rnd_s": {
+   "ret": "f32",
+   "params": [
+    "f32",
+    "i32"
+   ]
+  },
+  "toint_s": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "f32",
+    "i32",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "fromint_s": {
+   "ret": "f32",
+   "params": [
+    "ptr",
+    "i64",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "recpe_s": {
+   "ret": "f32",
+   "params": [
+    "ptr",
+    "f32"
+   ]
+  },
+  "rsqrte_s": {
+   "ret": "f32",
+   "params": [
+    "ptr",
+    "f32"
+   ]
+  },
+  "recpx_s": {
+   "ret": "f32",
+   "params": [
+    "ptr",
+    "f32"
+   ]
+  },
+  "fb_d": {
+   "ret": "i64",
+   "params": [
+    "f64"
+   ]
+  },
+  "fv_d": {
+   "ret": "f64",
+   "params": [
+    "i64"
+   ]
+  },
+  "isnan_d": {
+   "ret": "i32",
+   "params": [
+    "i64"
+   ]
+  },
+  "issnan_d": {
+   "ret": "i32",
+   "params": [
+    "i64"
+   ]
+  },
+  "isqnan_d": {
+   "ret": "i32",
+   "params": [
+    "i64"
+   ]
+  },
+  "isinf_d": {
+   "ret": "i32",
+   "params": [
+    "i64"
+   ]
+  },
+  "iszero_d": {
+   "ret": "i32",
+   "params": [
+    "i64"
+   ]
+  },
+  "isden_d": {
+   "ret": "i32",
+   "params": [
+    "i64"
+   ]
+  },
+  "flush_d": {
+   "ret": "f64",
+   "params": [
+    "f64"
+   ]
+  },
+  "fz_d": {
+   "ret": "f64",
+   "params": [
+    "ptr",
+    "f64"
+   ]
+  },
+  "neg_d": {
+   "ret": "f64",
+   "params": [
+    "f64"
+   ]
+  },
+  "minmax_d": {
+   "ret": "f64",
+   "params": [
+    "ptr",
+    "i32",
+    "f64",
+    "f64"
+   ]
+  },
+  "op_d": {
+   "ret": "f64",
+   "params": [
+    "ptr",
+    "i32",
+    "f64",
+    "f64",
+    "f64"
+   ]
+  },
+  "cmp_d": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "f64",
+    "f64"
+   ]
+  },
+  "rnd_d": {
+   "ret": "f64",
+   "params": [
+    "f64",
+    "i32"
+   ]
+  },
+  "frint_d": {
+   "ret": "f64",
+   "params": [
+    "ptr",
+    "f64",
+    "i32"
+   ]
+  },
+  "toint_d": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "f64",
+    "i32",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "fromint_d": {
+   "ret": "f64",
+   "params": [
+    "ptr",
+    "i64",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "recpe_d": {
+   "ret": "f64",
+   "params": [
+    "ptr",
+    "f64"
+   ]
+  },
+  "rsqrte_d": {
+   "ret": "f64",
+   "params": [
+    "ptr",
+    "f64"
+   ]
+  },
+  "recpx_d": {
+   "ret": "f64",
+   "params": [
+    "ptr",
+    "f64"
+   ]
+  },
+  "simd_s2d": {
+   "ret": "f64",
+   "params": [
+    "ptr",
+    "f32"
+   ]
+  },
+  "simd_d2s": {
+   "ret": "f32",
+   "params": [
+    "ptr",
+    "f64"
+   ]
+  },
+  "simd_d2s_odd": {
+   "ret": "f32",
+   "params": [
+    "ptr",
+    "f64"
+   ]
+  },
+  "simd_rnd_shift": {
+   "ret": "i64",
+   "params": [
+    "i64",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "simd_d2h": {
+   "ret": "i16",
+   "params": [
+    "ptr",
+    "i64"
+   ]
+  },
+  "simd_s2h": {
+   "ret": "i16",
+   "params": [
+    "ptr",
+    "f32"
+   ]
+  },
+  "simd_dd2h": {
+   "ret": "i16",
+   "params": [
+    "ptr",
+    "f64"
+   ]
+  },
+  "simd_h2dbits": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "i16"
+   ]
+  },
+  "simd_h2d": {
+   "ret": "f64",
+   "params": [
+    "ptr",
+    "i16"
+   ]
+  },
+  "simd_h2s": {
+   "ret": "f32",
+   "params": [
+    "ptr",
+    "i16"
+   ]
+  },
+  "fp_op_s": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "fp_op_d": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "fp_fma_s": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "fp_fma_d": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "lmask": {
+   "ret": "i64",
+   "params": [
+    "i32"
+   ]
+  },
+  "lsx": {
+   "ret": "i64",
+   "params": [
+    "i64",
+    "i32"
+   ]
+  },
+  "lget": {
+   "ret": "i64",
+   "params": [
+    "ptr",
+    "i32",
+    "i32"
+   ]
+  },
+  "lset": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i64"
+   ]
+  },
+  "pmul64": {
+   "ret": "i64",
+   "params": [
+    "i64",
+    "i64",
+    "ptr"
+   ]
+  },
+  "lop": {
+   "ret": "i64",
+   "params": [
+    "i32",
+    "i32",
+    "i64",
+    "i64",
+    "i64"
+   ]
+  },
+  "sl_gen": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i64"
+   ]
+  },
+  "sl_addlp": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "sl_across": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "sl_pmull64": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "pair_s": {
+   "ret": "f32",
+   "params": [
+    "ptr",
+    "i32",
+    "f32",
+    "f32"
+   ]
+  },
+  "pair_d": {
+   "ret": "f64",
+   "params": [
+    "ptr",
+    "i32",
+    "f64",
+    "f64"
+   ]
+  },
+  "sv_fred_s": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "sv_fcvtl": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "sv_fcvtn": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "sv_tbl": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "simd_crc": {
+   "ret": "i32",
+   "params": [
+    "ptr",
+    "i32",
+    "i64",
+    "i32"
+   ]
+  },
+  "aes_xt": {
+   "ret": "i8",
+   "params": [
+    "i8"
+   ]
+  },
+  "aes_mul": {
+   "ret": "i8",
+   "params": [
+    "i8",
+    "i32"
+   ]
+  },
+  "sv_aes": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "rol32_": {
+   "ret": "i32",
+   "params": [
+    "i32",
+    "i32"
+   ]
+  },
+  "ror32_": {
+   "ret": "i32",
+   "params": [
+    "i32",
+    "i32"
+   ]
+  },
+  "sv_sha1hash": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "sv_sha256hash": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "sv_sha_misc": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32"
+   ]
+  },
+  "simd_ld": {
+   "ret": "i64",
+   "params": [
+    "i64",
+    "i32"
+   ]
+  },
+  "simd_st": {
+   "ret": "void",
+   "params": [
+    "i64",
+    "i32",
+    "i64"
+   ]
+  },
+  "sl_ldm": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i64"
+   ]
+  },
+  "sl_stm": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i64"
+   ]
+  },
+  "sl_lds": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i64"
+   ]
+  },
+  "sl_sts": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i64"
+   ]
+  },
+  "sl_ldr": {
+   "ret": "void",
+   "params": [
+    "ptr",
+    "i32",
+    "i32",
+    "i32",
+    "i32",
+    "i64"
+   ]
+  }
+ },
+ "macros": [
+  "ADC_IMPL",
+  "ATOMIC_MINMAX",
+  "COND_CC",
+  "COND_CS",
+  "COND_EQ",
+  "COND_GE",
+  "COND_GT",
+  "COND_HI",
+  "COND_LE",
+  "COND_LS",
+  "COND_LT",
+  "COND_MI",
+  "COND_NE",
+  "COND_PL",
+  "COND_VC",
+  "COND_VS",
+  "CRC32",
+  "CRC32C",
+  "EXCL",
+  "FBAD",
+  "FCALC",
+  "FLAG_C",
+  "FLAG_N",
+  "FLAG_V",
+  "FLAG_Z",
+  "FL_ADC",
+  "FL_ADD",
+  "FL_SUB",
+  "FMINMAX",
+  "FN_ENTER",
+  "FOK",
+  "FP_SETD",
+  "FP_SETS",
+  "FREDO",
+  "INT16_C",
+  "INT32_C",
+  "INT64_C",
+  "INT8_C",
+  "INTMAX_C",
+  "LD128",
+  "LD16",
+  "LD32",
+  "LD64",
+  "LD8",
+  "MKFLAGS",
+  "ROR32",
+  "ROR64",
+  "SIMD_CAT",
+  "SIMD_CAT2",
+  "SIMD_VT",
+  "ST128",
+  "ST16",
+  "ST32",
+  "ST64",
+  "ST8",
+  "SV_FOP_D",
+  "SV_FOP_S",
+  "UINT16_C",
+  "UINT32_C",
+  "UINT64_C",
+  "UINT8_C",
+  "UINTMAX_C",
+  "VHI64",
+  "VQ",
+  "VREG",
+  "VS16",
+  "VS32",
+  "VS64",
+  "VS8",
+  "VSF32",
+  "VSF64",
+  "VW",
+  "_ADDRESSOF",
+  "_CRT_ALIGN",
+  "_CRT_DEPRECATE_TEXT",
+  "_CRT_INSECURE_DEPRECATE_GLOBALS",
+  "_CRT_INSECURE_DEPRECATE_MEMORY",
+  "_CRT_OBSOLETE",
+  "_CRT_STRINGIZE",
+  "_CRT_UNUSED",
+  "_CRT_WIDE",
+  "_MM_EXTRACT_FLOAT",
+  "_MM_GET_DENORMALS_ZERO_MODE",
+  "_MM_GET_EXCEPTION_MASK",
+  "_MM_GET_EXCEPTION_STATE",
+  "_MM_GET_FLUSH_ZERO_MODE",
+  "_MM_GET_ROUNDING_MODE",
+  "_MM_MK_INSERTPS_NDX",
+  "_MM_PICK_OUT_PS",
+  "_MM_SET_DENORMALS_ZERO_MODE",
+  "_MM_SET_EXCEPTION_MASK",
+  "_MM_SET_EXCEPTION_STATE",
+  "_MM_SET_FLUSH_ZERO_MODE",
+  "_MM_SET_ROUNDING_MODE",
+  "_MM_SHUFFLE",
+  "_MM_SHUFFLE2",
+  "_MM_TRANSPOSE4_PS",
+  "_PTR_LD",
+  "_STATIC_ASSERT",
+  "_STRUCT_NAME",
+  "_UNION_NAME",
+  "_XABORT_CODE",
+  "__CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_MEMORY_0_3_",
+  "__CRT_STRINGIZE",
+  "__CRT_UUID_DECL",
+  "__CRT_WIDE",
+  "__DEFINE_CPP_OVERLOAD_SECURE_FUNC_0_0",
+  "__DEFINE_CPP_OVERLOAD_SECURE_FUNC_0_1",
+  "__DEFINE_CPP_OVERLOAD_SECURE_FUNC_0_1_ARGLIST",
+  "__DEFINE_CPP_OVERLOAD_SECURE_FUNC_0_2",
+  "__DEFINE_CPP_OVERLOAD_SECURE_FUNC_0_2_ARGLIST",
+  "__DEFINE_CPP_OVERLOAD_SECURE_FUNC_0_3",
+  "__DEFINE_CPP_OVERLOAD_SECURE_FUNC_0_4",
+  "__DEFINE_CPP_OVERLOAD_SECURE_FUNC_1_1",
+  "__DEFINE_CPP_OVERLOAD_SECURE_FUNC_1_2",
+  "__DEFINE_CPP_OVERLOAD_SECURE_FUNC_1_3",
+  "__DEFINE_CPP_OVERLOAD_SECURE_FUNC_2_0",
+  "__DEFINE_CPP_OVERLOAD_SECURE_FUNC_SPLITPATH",
+  "__DEFINE_CPP_OVERLOAD_STANDARD_FUNC_0_0",
+  "__DEFINE_CPP_OVERLOAD_STANDARD_FUNC_0_0_EX",
+  "__DEFINE_CPP_OVERLOAD_STANDARD_FUNC_0_1",
+  "__DEFINE_CPP_OVERLOAD_STANDARD_FUNC_0_1_EX",
+  "__DEFINE_CPP_OVERLOAD_STANDARD_FUNC_0_2",
+  "__DEFINE_CPP_OVERLOAD_STANDARD_FUNC_0_2_EX",
+  "__DEFINE_CPP_OVERLOAD_STANDARD_FUNC_0_3",
+  "__DEFINE_CPP_OVERLOAD_STANDARD_FUNC_0_3_EX",
+  "__DEFINE_CPP_OVERLOAD_STANDARD_FUNC_0_4",
+  "__DEFINE_CPP_OVERLOAD_STANDARD_FUNC_0_4_EX",
+  "__INT16_C",
+  "__INT32_C",
+  "__INT64_C",
+  "__INT8_C",
+  "__INTMAX_C",
+  "__MINGW64_PASTE",
+  "__MINGW64_PASTE2",
+  "__MINGW64_STRINGIFY",
+  "__MINGW_ASM_CALL",
+  "__MINGW_ASM_CRT_CALL",
+  "__MINGW_ATTRIB_DEPRECATED_MSG",
+  "__MINGW_ATTRIB_DEPRECATED_STR",
+  "__MINGW_ATTRIB_NONNULL",
+  "__MINGW_BROKEN_INTERFACE",
+  "__MINGW_CRT_NAME_CONCAT2",
+  "__MINGW_GNUC_PREREQ",
+  "__MINGW_GNU_PRINTF",
+  "__MINGW_GNU_SCANF",
+  "__MINGW_IMP_LSYMBOL",
+  "__MINGW_IMP_SYMBOL",
+  "__MINGW_LSYMBOL",
+  "__MINGW_MSC_PREREQ",
+  "__MINGW_MS_PRINTF",
+  "__MINGW_MS_SCANF",
+  "__MINGW_POISON_NAME",
+  "__MINGW_PRAGMA_PARAM",
+  "__MINGW_PRAGMA_PARAM_IMPL",
+  "__MINGW_UCRT_ASM_CALL",
+  "__MINGW_USYMBOL",
+  "__MSABI_LONG",
+  "__SSC_MARK",
+  "__STRINGIFY",
+  "__UINT16_C",
+  "__UINT32_C",
+  "__UINT64_C",
+  "__UINT8_C",
+  "__UINTMAX_C",
+  "__UNUSED_PARAM",
+  "__crt_typefix",
+  "__declspec",
+  "__dfp_expansion",
+  "__lzcnt16",
+  "__lzcnt64",
+  "__max",
+  "__min",
+  "__mingw_types_compatible_p",
+  "_alloca",
+  "_cmpccxadd_epi32",
+  "_cmpccxadd_epi64",
+  "_countof",
+  "_crt_va_arg",
+  "_crt_va_copy",
+  "_crt_va_end",
+  "_crt_va_start",
+  "_cvtss_sh",
+  "_kshiftli_mask16",
+  "_kshiftli_mask32",
+  "_kshiftli_mask64",
+  "_kshiftli_mask8",
+  "_kshiftri_mask16",
+  "_kshiftri_mask32",
+  "_kshiftri_mask64",
+  "_kshiftri_mask8",
+  "_malloca",
+  "_mm256_alignr_epi32",
+  "_mm256_alignr_epi64",
+  "_mm256_alignr_epi8",
+  "_mm256_blend_epi16",
+  "_mm256_blend_epi32",
+  "_mm256_blend_pd",
+  "_mm256_blend_ps",
+  "_mm256_bslli_epi128",
+  "_mm256_bsrli_epi128",
+  "_mm256_ceil_pd",
+  "_mm256_ceil_ps",
+  "_mm256_clmulepi64_epi128",
+  "_mm256_cmp_epi16_mask",
+  "_mm256_cmp_epi32_mask",
+  "_mm256_cmp_epi64_mask",
+  "_mm256_cmp_epi8_mask",
+  "_mm256_cmp_epu16_mask",
+  "_mm256_cmp_epu32_mask",
+  "_mm256_cmp_epu64_mask",
+  "_mm256_cmp_epu8_mask",
+  "_mm256_cmp_pbh_mask",
+  "_mm256_cmp_pd",
+  "_mm256_cmp_pd_mask",
+  "_mm256_cmp_ph_mask",
+  "_mm256_cmp_ps",
+  "_mm256_cmp_ps_mask",
+  "_mm256_cmpeq_epi16_mask",
+  "_mm256_cmpeq_epi32_mask",
+  "_mm256_cmpeq_epi64_mask",
+  "_mm256_cmpeq_epi8_mask",
+  "_mm256_cmpeq_epu16_mask",
+  "_mm256_cmpeq_epu32_mask",
+  "_mm256_cmpeq_epu64_mask",
+  "_mm256_cmpeq_epu8_mask",
+  "_mm256_cmpge_epi16_mask",
+  "_mm256_cmpge_epi32_mask",
+  "_mm256_cmpge_epi64_mask",
+  "_mm256_cmpge_epi8_mask",
+  "_mm256_cmpge_epu16_mask",
+  "_mm256_cmpge_epu32_mask",
+  "_mm256_cmpge_epu64_mask",
+  "_mm256_cmpge_epu8_mask",
+  "_mm256_cmpgt_epi16_mask",
+  "_mm256_cmpgt_epi32_mask",
+  "_mm256_cmpgt_epi64_mask",
+  "_mm256_cmpgt_epi8_mask",
+  "_mm256_cmpgt_epu16_mask",
+  "_mm256_cmpgt_epu32_mask",
+  "_mm256_cmpgt_epu64_mask",
+  "_mm256_cmpgt_epu8_mask",
+  "_mm256_cmple_epi16_mask",
+  "_mm256_cmple_epi32_mask",
+  "_mm256_cmple_epi64_mask",
+  "_mm256_cmple_epi8_mask",
+  "_mm256_cmple_epu16_mask",
+  "_mm256_cmple_epu32_mask",
+  "_mm256_cmple_epu64_mask",
+  "_mm256_cmple_epu8_mask",
+  "_mm256_cmplt_epi16_mask",
+  "_mm256_cmplt_epi32_mask",
+  "_mm256_cmplt_epi64_mask",
+  "_mm256_cmplt_epi8_mask",
+  "_mm256_cmplt_epu16_mask",
+  "_mm256_cmplt_epu32_mask",
+  "_mm256_cmplt_epu64_mask",
+  "_mm256_cmplt_epu8_mask",
+  "_mm256_cmpneq_epi16_mask",
+  "_mm256_cmpneq_epi32_mask",
+  "_mm256_cmpneq_epi64_mask",
+  "_mm256_cmpneq_epi8_mask",
+  "_mm256_cmpneq_epu16_mask",
+  "_mm256_cmpneq_epu32_mask",
+  "_mm256_cmpneq_epu64_mask",
+  "_mm256_cmpneq_epu8_mask",
+  "_mm256_cmul_pch",
+  "_mm256_cvtneps_pbh",
+  "_mm256_cvtps_ph",
+  "_mm256_dbsad_epu8",
+  "_mm256_dp_ps",
+  "_mm256_dpbssd_epi32",
+  "_mm256_dpbssds_epi32",
+  "_mm256_dpbsud_epi32",
+  "_mm256_dpbsuds_epi32",
+  "_mm256_dpbusd_epi32",
+  "_mm256_dpbusds_epi32",
+  "_mm256_dpbuud_epi32",
+  "_mm256_dpbuuds_epi32",
+  "_mm256_dpwssd_epi32",
+  "_mm256_dpwssds_epi32",
+  "_mm256_dpwsud_epi32",
+  "_mm256_dpwsuds_epi32",
+  "_mm256_dpwusd_epi32",
+  "_mm256_dpwusds_epi32",
+  "_mm256_dpwuud_epi32",
+  "_mm256_dpwuuds_epi32",
+  "_mm256_extract_epi16",
+  "_mm256_extract_epi32",
+  "_mm256_extract_epi64",
+  "_mm256_extract_epi8",
+  "_mm256_extractf128_pd",
+  "_mm256_extractf128_ps",
+  "_mm256_extractf128_si256",
+  "_mm256_extractf32x4_ps",
+  "_mm256_extractf64x2_pd",
+  "_mm256_extracti128_si256",
+  "_mm256_extracti32x4_epi32",
+  "_mm256_extracti64x2_epi64",
+  "_mm256_fixupimm_pd",
+  "_mm256_fixupimm_ps",
+  "_mm256_floor_pd",
+  "_mm256_floor_ps",
+  "_mm256_fpclass_pbh_mask",
+  "_mm256_fpclass_pd_mask",
+  "_mm256_fpclass_ph_mask",
+  "_mm256_fpclass_ps_mask",
+  "_mm256_getmant_pbh",
+  "_mm256_getmant_pd",
+  "_mm256_getmant_ph",
+  "_mm256_getmant_ps",
+  "_mm256_gf2p8affine_epi64_epi8",
+  "_mm256_gf2p8affineinv_epi64_epi8",
+  "_mm256_i32gather_epi32",
+  "_mm256_i32gather_epi64",
+  "_mm256_i32gather_pd",
+  "_mm256_i32gather_ps",
+  "_mm256_i32scatter_epi32",
+  "_mm256_i32scatter_epi64",
+  "_mm256_i32scatter_pd",
+  "_mm256_i32scatter_ps",
+  "_mm256_i64gather_epi32",
+  "_mm256_i64gather_epi64",
+  "_mm256_i64gather_pd",
+  "_mm256_i64gather_ps",
+  "_mm256_i64scatter_epi32",
+  "_mm256_i64scatter_epi64",
+  "_mm256_i64scatter_pd",
+  "_mm256_i64scatter_ps",
+  "_mm256_insert_epi16",
+  "_mm256_insert_epi32",
+  "_mm256_insert_epi64",
+  "_mm256_insert_epi8",
+  "_mm256_insertf128_pd",
+  "_mm256_insertf128_ps",
+  "_mm256_insertf128_si256",
+  "_mm256_insertf32x4",
+  "_mm256_insertf64x2",
+  "_mm256_inserti128_si256",
+  "_mm256_inserti32x4",
+  "_mm256_inserti64x2",
+  "_mm256_ipcvts_bf16_epi8",
+  "_mm256_ipcvts_bf16_epu8",
+  "_mm256_ipcvts_ph_epi8",
+  "_mm256_ipcvts_ph_epu8",
+  "_mm256_ipcvts_ps_epi8",
+  "_mm256_ipcvts_ps_epu8",
+  "_mm256_ipcvtts_bf16_epi8",
+  "_mm256_ipcvtts_bf16_epu8",
+  "_mm256_ipcvtts_ph_epi8",
+  "_mm256_ipcvtts_ph_epu8",
+  "_mm256_ipcvtts_ps_epi8",
+  "_mm256_ipcvtts_ps_epu8",
+  "_mm256_madd52hi_epu64",
+  "_mm256_madd52lo_epu64",
+  "_mm256_mask_alignr_epi32",
+  "_mm256_mask_alignr_epi64",
+  "_mm256_mask_alignr_epi8",
+  "_mm256_mask_cmp_epi16_mask",
+  "_mm256_mask_cmp_epi32_mask",
+  "_mm256_mask_cmp_epi64_mask",
+  "_mm256_mask_cmp_epi8_mask",
+  "_mm256_mask_cmp_epu16_mask",
+  "_mm256_mask_cmp_epu32_mask",
+  "_mm256_mask_cmp_epu64_mask",
+  "_mm256_mask_cmp_epu8_mask",
+  "_mm256_mask_cmp_pbh_mask",
+  "_mm256_mask_cmp_pd_mask",
+  "_mm256_mask_cmp_ph_mask",
+  "_mm256_mask_cmp_ps_mask",
+  "_mm256_mask_cmpeq_epi16_mask",
+  "_mm256_mask_cmpeq_epi32_mask",
+  "_mm256_mask_cmpeq_epi64_mask",
+  "_mm256_mask_cmpeq_epi8_mask",
+  "_mm256_mask_cmpeq_epu16_mask",
+  "_mm256_mask_cmpeq_epu32_mask",
+  "_mm256_mask_cmpeq_epu64_mask",
+  "_mm256_mask_cmpeq_epu8_mask",
+  "_mm256_mask_cmpge_epi16_mask",
+  "_mm256_mask_cmpge_epi32_mask",
+  "_mm256_mask_cmpge_epi64_mask",
+  "_mm256_mask_cmpge_epi8_mask",
+  "_mm256_mask_cmpge_epu16_mask",
+  "_mm256_mask_cmpge_epu32_mask",
+  "_mm256_mask_cmpge_epu64_mask",
+  "_mm256_mask_cmpge_epu8_mask",
+  "_mm256_mask_cmpgt_epi16_mask",
+  "_mm256_mask_cmpgt_epi32_mask",
+  "_mm256_mask_cmpgt_epi64_mask",
+  "_mm256_mask_cmpgt_epi8_mask",
+  "_mm256_mask_cmpgt_epu16_mask",
+  "_mm256_mask_cmpgt_epu32_mask",
+  "_mm256_mask_cmpgt_epu64_mask",
+  "_mm256_mask_cmpgt_epu8_mask",
+  "_mm256_mask_cmple_epi16_mask",
+  "_mm256_mask_cmple_epi32_mask",
+  "_mm256_mask_cmple_epi64_mask",
+  "_mm256_mask_cmple_epi8_mask",
+  "_mm256_mask_cmple_epu16_mask",
+  "_mm256_mask_cmple_epu32_mask",
+  "_mm256_mask_cmple_epu64_mask",
+  "_mm256_mask_cmple_epu8_mask",
+  "_mm256_mask_cmplt_epi16_mask",
+  "_mm256_mask_cmplt_epi32_mask",
+  "_mm256_mask_cmplt_epi64_mask",
+  "_mm256_mask_cmplt_epi8_mask",
+  "_mm256_mask_cmplt_epu16_mask",
+  "_mm256_mask_cmplt_epu32_mask",
+  "_mm256_mask_cmplt_epu64_mask",
+  "_mm256_mask_cmplt_epu8_mask",
+  "_mm256_mask_cmpneq_epi16_mask",
+  "_mm256_mask_cmpneq_epi32_mask",
+  "_mm256_mask_cmpneq_epi64_mask",
+  "_mm256_mask_cmpneq_epi8_mask",
+  "_mm256_mask_cmpneq_epu16_mask",
+  "_mm256_mask_cmpneq_epu32_mask",
+  "_mm256_mask_cmpneq_epu64_mask",
+  "_mm256_mask_cmpneq_epu8_mask",
+  "_mm256_mask_cmul_pch",
+  "_mm256_mask_cvt_roundps_ph",
+  "_mm256_mask_dbsad_epu8",
+  "_mm256_mask_extractf32x4_ps",
+  "_mm256_mask_extractf64x2_pd",
+  "_mm256_mask_extracti32x4_epi32",
+  "_mm256_mask_extracti64x2_epi64",
+  "_mm256_mask_fixupimm_pd",
+  "_mm256_mask_fixupimm_ps",
+  "_mm256_mask_fpclass_pbh_mask",
+  "_mm256_mask_fpclass_pd_mask",
+  "_mm256_mask_fpclass_ph_mask",
+  "_mm256_mask_fpclass_ps_mask",
+  "_mm256_mask_getmant_pbh",
+  "_mm256_mask_getmant_pd",
+  "_mm256_mask_getmant_ph",
+  "_mm256_mask_getmant_ps",
+  "_mm256_mask_gf2p8affine_epi64_epi8",
+  "_mm256_mask_gf2p8affineinv_epi64_epi8",
+  "_mm256_mask_i32gather_epi32",
+  "_mm256_mask_i32gather_epi64",
+  "_mm256_mask_i32gather_pd",
+  "_mm256_mask_i32gather_ps",
+  "_mm256_mask_i32scatter_epi32",
+  "_mm256_mask_i32scatter_epi64",
+  "_mm256_mask_i32scatter_pd",
+  "_mm256_mask_i32scatter_ps",
+  "_mm256_mask_i64gather_epi32",
+  "_mm256_mask_i64gather_epi64",
+  "_mm256_mask_i64gather_pd",
+  "_mm256_mask_i64gather_ps",
+  "_mm256_mask_i64scatter_epi32",
+  "_mm256_mask_i64scatter_epi64",
+  "_mm256_mask_i64scatter_pd",
+  "_mm256_mask_i64scatter_ps",
+  "_mm256_mask_insertf32x4",
+  "_mm256_mask_insertf64x2",
+  "_mm256_mask_inserti32x4",
+  "_mm256_mask_inserti64x2",
+  "_mm256_mask_ipcvts_bf16_epi8",
+  "_mm256_mask_ipcvts_bf16_epu8",
+  "_mm256_mask_ipcvts_ph_epi8",
+  "_mm256_mask_ipcvts_ph_epu8",
+  "_mm256_mask_ipcvts_ps_epi8",
+  "_mm256_mask_ipcvts_ps_epu8",
+  "_mm256_mask_ipcvtts_bf16_epi8",
+  "_mm256_mask_ipcvtts_bf16_epu8",
+  "_mm256_mask_ipcvtts_ph_epi8",
+  "_mm256_mask_ipcvtts_ph_epu8",
+  "_mm256_mask_ipcvtts_ps_epi8",
+  "_mm256_mask_ipcvtts_ps_epu8",
+  "_mm256_mask_minmax_pbh",
+  "_mm256_mask_minmax_pd",
+  "_mm256_mask_minmax_ph",
+  "_mm256_mask_minmax_ps",
+  "_mm256_mask_mpsadbw_epu8",
+  "_mm256_mask_mul_pch",
+  "_mm256_mask_permute_pd",
+  "_mm256_mask_permute_ps",
+  "_mm256_mask_permutex_epi64",
+  "_mm256_mask_permutex_pd",
+  "_mm256_mask_range_pd",
+  "_mm256_mask_range_ps",
+  "_mm256_mask_reduce_pbh",
+  "_mm256_mask_reduce_pd",
+  "_mm256_mask_reduce_ph",
+  "_mm256_mask_reduce_ps",
+  "_mm256_mask_rol_epi32",
+  "_mm256_mask_rol_epi64",
+  "_mm256_mask_ror_epi32",
+  "_mm256_mask_ror_epi64",
+  "_mm256_mask_roundscale_pbh",
+  "_mm256_mask_roundscale_pd",
+  "_mm256_mask_roundscale_ph",
+  "_mm256_mask_roundscale_ps",
+  "_mm256_mask_shldi_epi16",
+  "_mm256_mask_shldi_epi32",
+  "_mm256_mask_shldi_epi64",
+  "_mm256_mask_shrdi_epi16",
+  "_mm256_mask_shrdi_epi32",
+  "_mm256_mask_shrdi_epi64",
+  "_mm256_mask_shuffle_epi32",
+  "_mm256_mask_shuffle_f32x4",
+  "_mm256_mask_shuffle_f64x2",
+  "_mm256_mask_shuffle_i32x4",
+  "_mm256_mask_shuffle_i64x2",
+  "_mm256_mask_shuffle_pd",
+  "_mm256_mask_shuffle_ps",
+  "_mm256_mask_shufflehi_epi16",
+  "_mm256_mask_shufflelo_epi16",
+  "_mm256_mask_ternarylogic_epi32",
+  "_mm256_mask_ternarylogic_epi64",
+  "_mm256_maskz_alignr_epi32",
+  "_mm256_maskz_alignr_epi64",
+  "_mm256_maskz_alignr_epi8",
+  "_mm256_maskz_cmul_pch",
+  "_mm256_maskz_cvt_roundps_ph",
+  "_mm256_maskz_dbsad_epu8",
+  "_mm256_maskz_extractf32x4_ps",
+  "_mm256_maskz_extractf64x2_pd",
+  "_mm256_maskz_extracti32x4_epi32",
+  "_mm256_maskz_extracti64x2_epi64",
+  "_mm256_maskz_fixupimm_pd",
+  "_mm256_maskz_fixupimm_ps",
+  "_mm256_maskz_getmant_pbh",
+  "_mm256_maskz_getmant_pd",
+  "_mm256_maskz_getmant_ph",
+  "_mm256_maskz_getmant_ps",
+  "_mm256_maskz_gf2p8affine_epi64_epi8",
+  "_mm256_maskz_gf2p8affineinv_epi64_epi8",
+  "_mm256_maskz_insertf32x4",
+  "_mm256_maskz_insertf64x2",
+  "_mm256_maskz_inserti32x4",
+  "_mm256_maskz_inserti64x2",
+  "_mm256_maskz_ipcvts_bf16_epi8",
+  "_mm256_maskz_ipcvts_bf16_epu8",
+  "_mm256_maskz_ipcvts_ph_epi8",
+  "_mm256_maskz_ipcvts_ph_epu8",
+  "_mm256_maskz_ipcvts_ps_epi8",
+  "_mm256_maskz_ipcvts_ps_epu8",
+  "_mm256_maskz_ipcvtts_bf16_epi8",
+  "_mm256_maskz_ipcvtts_bf16_epu8",
+  "_mm256_maskz_ipcvtts_ph_epi8",
+  "_mm256_maskz_ipcvtts_ph_epu8",
+  "_mm256_maskz_ipcvtts_ps_epi8",
+  "_mm256_maskz_ipcvtts_ps_epu8",
+  "_mm256_maskz_minmax_pbh",
+  "_mm256_maskz_minmax_pd",
+  "_mm256_maskz_minmax_ph",
+  "_mm256_maskz_minmax_ps",
+  "_mm256_maskz_mpsadbw_epu8",
+  "_mm256_maskz_mul_pch",
+  "_mm256_maskz_permute_pd",
+  "_mm256_maskz_permute_ps",
+  "_mm256_maskz_permutex_epi64",
+  "_mm256_maskz_permutex_pd",
+  "_mm256_maskz_range_pd",
+  "_mm256_maskz_range_ps",
+  "_mm256_maskz_reduce_pbh",
+  "_mm256_maskz_reduce_pd",
+  "_mm256_maskz_reduce_ph",
+  "_mm256_maskz_reduce_ps",
+  "_mm256_maskz_rol_epi32",
+  "_mm256_maskz_rol_epi64",
+  "_mm256_maskz_ror_epi32",
+  "_mm256_maskz_ror_epi64",
+  "_mm256_maskz_roundscale_pbh",
+  "_mm256_maskz_roundscale_pd",
+  "_mm256_maskz_roundscale_ph",
+  "_mm256_maskz_roundscale_ps",
+  "_mm256_maskz_shldi_epi16",
+  "_mm256_maskz_shldi_epi32",
+  "_mm256_maskz_shldi_epi64",
+  "_mm256_maskz_shrdi_epi16",
+  "_mm256_maskz_shrdi_epi32",
+  "_mm256_maskz_shrdi_epi64",
+  "_mm256_maskz_shuffle_epi32",
+  "_mm256_maskz_shuffle_f32x4",
+  "_mm256_maskz_shuffle_f64x2",
+  "_mm256_maskz_shuffle_i32x4",
+  "_mm256_maskz_shuffle_i64x2",
+  "_mm256_maskz_shuffle_pd",
+  "_mm256_maskz_shuffle_ps",
+  "_mm256_maskz_shufflehi_epi16",
+  "_mm256_maskz_shufflelo_epi16",
+  "_mm256_maskz_ternarylogic_epi32",
+  "_mm256_maskz_ternarylogic_epi64",
+  "_mm256_minmax_pbh",
+  "_mm256_minmax_pd",
+  "_mm256_minmax_ph",
+  "_mm256_minmax_ps",
+  "_mm256_mmask_i32gather_epi32",
+  "_mm256_mmask_i32gather_epi64",
+  "_mm256_mmask_i32gather_pd",
+  "_mm256_mmask_i32gather_ps",
+  "_mm256_mmask_i64gather_epi32",
+  "_mm256_mmask_i64gather_epi64",
+  "_mm256_mmask_i64gather_pd",
+  "_mm256_mmask_i64gather_ps",
+  "_mm256_mpsadbw_epu8",
+  "_mm256_mul_pch",
+  "_mm256_permute2f128_pd",
+  "_mm256_permute2f128_ps",
+  "_mm256_permute2f128_si256",
+  "_mm256_permute2x128_si256",
+  "_mm256_permute4x64_epi64",
+  "_mm256_permute4x64_pd",
+  "_mm256_permute_pd",
+  "_mm256_permute_ps",
+  "_mm256_permutex_epi64",
+  "_mm256_permutex_pd",
+  "_mm256_permutexvar_epi32",
+  "_mm256_permutexvar_ps",
+  "_mm256_range_pd",
+  "_mm256_range_ps",
+  "_mm256_reduce_pbh",
+  "_mm256_reduce_pd",
+  "_mm256_reduce_ph",
+  "_mm256_reduce_ps",
+  "_mm256_rol_epi32",
+  "_mm256_rol_epi64",
+  "_mm256_ror_epi32",
+  "_mm256_ror_epi64",
+  "_mm256_round_pd",
+  "_mm256_round_ps",
+  "_mm256_roundscale_pbh",
+  "_mm256_roundscale_pd",
+  "_mm256_roundscale_ph",
+  "_mm256_roundscale_ps",
+  "_mm256_setr_pbh",
+  "_mm256_shldi_epi16",
+  "_mm256_shldi_epi32",
+  "_mm256_shldi_epi64",
+  "_mm256_shrdi_epi16",
+  "_mm256_shrdi_epi32",
+  "_mm256_shrdi_epi64",
+  "_mm256_shuffle_epi32",
+  "_mm256_shuffle_f32x4",
+  "_mm256_shuffle_f64x2",
+  "_mm256_shuffle_i32x4",
+  "_mm256_shuffle_i64x2",
+  "_mm256_shuffle_pd",
+  "_mm256_shuffle_ps",
+  "_mm256_shufflehi_epi16",
+  "_mm256_shufflelo_epi16",
+  "_mm256_slli_si256",
+  "_mm256_sm4key4_epi32",
+  "_mm256_sm4rnds4_epi32",
+  "_mm256_srli_si256",
+  "_mm256_ternarylogic_epi32",
+  "_mm256_ternarylogic_epi64",
+  "_mm512_add_round_pd",
+  "_mm512_add_round_ph",
+  "_mm512_add_round_ps",
+  "_mm512_alignr_epi32",
+  "_mm512_alignr_epi64",
+  "_mm512_alignr_epi8",
+  "_mm512_bslli_epi128",
+  "_mm512_bsrli_epi128",
+  "_mm512_clmulepi64_epi128",
+  "_mm512_cmp_epi16_mask",
+  "_mm512_cmp_epi32_mask",
+  "_mm512_cmp_epi64_mask",
+  "_mm512_cmp_epi8_mask",
+  "_mm512_cmp_epu16_mask",
+  "_mm512_cmp_epu32_mask",
+  "_mm512_cmp_epu64_mask",
+  "_mm512_cmp_epu8_mask",
+  "_mm512_cmp_pbh_mask",
+  "_mm512_cmp_pd_mask",
+  "_mm512_cmp_ph_mask",
+  "_mm512_cmp_ps_mask",
+  "_mm512_cmp_round_pd_mask",
+  "_mm512_cmp_round_ph_mask",
+  "_mm512_cmp_round_ps_mask",
+  "_mm512_cmpeq_epi16_mask",
+  "_mm512_cmpeq_epi32_mask",
+  "_mm512_cmpeq_epi64_mask",
+  "_mm512_cmpeq_epi8_mask",
+  "_mm512_cmpeq_epu16_mask",
+  "_mm512_cmpeq_epu32_mask",
+  "_mm512_cmpeq_epu64_mask",
+  "_mm512_cmpeq_epu8_mask",
+  "_mm512_cmpeq_pd_mask",
+  "_mm512_cmpeq_ps_mask",
+  "_mm512_cmpge_epi16_mask",
+  "_mm512_cmpge_epi32_mask",
+  "_mm512_cmpge_epi64_mask",
+  "_mm512_cmpge_epi8_mask",
+  "_mm512_cmpge_epu16_mask",
+  "_mm512_cmpge_epu32_mask",
+  "_mm512_cmpge_epu64_mask",
+  "_mm512_cmpge_epu8_mask",
+  "_mm512_cmpgt_epi16_mask",
+  "_mm512_cmpgt_epi32_mask",
+  "_mm512_cmpgt_epi64_mask",
+  "_mm512_cmpgt_epi8_mask",
+  "_mm512_cmpgt_epu16_mask",
+  "_mm512_cmpgt_epu32_mask",
+  "_mm512_cmpgt_epu64_mask",
+  "_mm512_cmpgt_epu8_mask",
+  "_mm512_cmple_epi16_mask",
+  "_mm512_cmple_epi32_mask",
+  "_mm512_cmple_epi64_mask",
+  "_mm512_cmple_epi8_mask",
+  "_mm512_cmple_epu16_mask",
+  "_mm512_cmple_epu32_mask",
+  "_mm512_cmple_epu64_mask",
+  "_mm512_cmple_epu8_mask",
+  "_mm512_cmple_pd_mask",
+  "_mm512_cmple_ps_mask",
+  "_mm512_cmplt_epi16_mask",
+  "_mm512_cmplt_epi32_mask",
+  "_mm512_cmplt_epi64_mask",
+  "_mm512_cmplt_epi8_mask",
+  "_mm512_cmplt_epu16_mask",
+  "_mm512_cmplt_epu32_mask",
+  "_mm512_cmplt_epu64_mask",
+  "_mm512_cmplt_epu8_mask",
+  "_mm512_cmplt_pd_mask",
+  "_mm512_cmplt_ps_mask",
+  "_mm512_cmpneq_epi16_mask",
+  "_mm512_cmpneq_epi32_mask",
+  "_mm512_cmpneq_epi64_mask",
+  "_mm512_cmpneq_epi8_mask",
+  "_mm512_cmpneq_epu16_mask",
+  "_mm512_cmpneq_epu32_mask",
+  "_mm512_cmpneq_epu64_mask",
+  "_mm512_cmpneq_epu8_mask",
+  "_mm512_cmpneq_pd_mask",
+  "_mm512_cmpneq_ps_mask",
+  "_mm512_cmpnle_pd_mask",
+  "_mm512_cmpnle_ps_mask",
+  "_mm512_cmpnlt_pd_mask",
+  "_mm512_cmpnlt_ps_mask",
+  "_mm512_cmpord_pd_mask",
+  "_mm512_cmpord_ps_mask",
+  "_mm512_cmpunord_pd_mask",
+  "_mm512_cmpunord_ps_mask",
+  "_mm512_cmul_pch",
+  "_mm512_cmul_round_pch",
+  "_mm512_cvt_roundepi16_ph",
+  "_mm512_cvt_roundepi32_ph",
+  "_mm512_cvt_roundepi32_ps",
+  "_mm512_cvt_roundepi64_pd",
+  "_mm512_cvt_roundepi64_ph",
+  "_mm512_cvt_roundepi64_ps",
+  "_mm512_cvt_roundepu16_ph",
+  "_mm512_cvt_roundepu32_ph",
+  "_mm512_cvt_roundepu32_ps",
+  "_mm512_cvt_roundepu64_pd",
+  "_mm512_cvt_roundepu64_ph",
+  "_mm512_cvt_roundepu64_ps",
+  "_mm512_cvt_roundpd_epi32",
+  "_mm512_cvt_roundpd_epi64",
+  "_mm512_cvt_roundpd_epu32",
+  "_mm512_cvt_roundpd_epu64",
+  "_mm512_cvt_roundpd_ph",
+  "_mm512_cvt_roundpd_ps",
+  "_mm512_cvt_roundph_epi16",
+  "_mm512_cvt_roundph_epi32",
+  "_mm512_cvt_roundph_epi64",
+  "_mm512_cvt_roundph_epu16",
+  "_mm512_cvt_roundph_epu32",
+  "_mm512_cvt_roundph_epu64",
+  "_mm512_cvt_roundph_pd",
+  "_mm512_cvt_roundph_ps",
+  "_mm512_cvt_roundps_epi32",
+  "_mm512_cvt_roundps_epi64",
+  "_mm512_cvt_roundps_epu32",
+  "_mm512_cvt_roundps_epu64",
+  "_mm512_cvt_roundps_pd",
+  "_mm512_cvt_roundps_ph",
+  "_mm512_cvtt_roundpd_epi32",
+  "_mm512_cvtt_roundpd_epi64",
+  "_mm512_cvtt_roundpd_epu32",
+  "_mm512_cvtt_roundpd_epu64",
+  "_mm512_cvtt_roundph_epi16",
+  "_mm512_cvtt_roundph_epi32",
+  "_mm512_cvtt_roundph_epi64",
+  "_mm512_cvtt_roundph_epu16",
+  "_mm512_cvtt_roundph_epu32",
+  "_mm512_cvtt_roundph_epu64",
+  "_mm512_cvtt_roundps_epi32",
+  "_mm512_cvtt_roundps_epi64",
+  "_mm512_cvtt_roundps_epu32",
+  "_mm512_cvtt_roundps_epu64",
+  "_mm512_cvtts_roundpd_epi32",
+  "_mm512_cvtts_roundpd_epi64",
+  "_mm512_cvtts_roundpd_epu32",
+  "_mm512_cvtts_roundpd_epu64",
+  "_mm512_cvtts_roundps_epi32",
+  "_mm512_cvtts_roundps_epi64",
+  "_mm512_cvtts_roundps_epu32",
+  "_mm512_cvtts_roundps_epu64",
+  "_mm512_cvtx_round2ps_ph",
+  "_mm512_cvtx_roundph_ps",
+  "_mm512_cvtx_roundps_ph",
+  "_mm512_dbsad_epu8",
+  "_mm512_div_round_pd",
+  "_mm512_div_round_ph",
+  "_mm512_div_round_ps",
+  "_mm512_extractf32x4_ps",
+  "_mm512_extractf32x8_ps",
+  "_mm512_extractf64x2_pd",
+  "_mm512_extractf64x4_pd",
+  "_mm512_extracti32x4_epi32",
+  "_mm512_extracti32x8_epi32",
+  "_mm512_extracti64x2_epi64",
+  "_mm512_extracti64x4_epi64",
+  "_mm512_fcmadd_round_pch",
+  "_mm512_fcmul_round_pch",
+  "_mm512_fixupimm_pd",
+  "_mm512_fixupimm_ps",
+  "_mm512_fixupimm_round_pd",
+  "_mm512_fixupimm_round_ps",
+  "_mm512_fmadd_round_pch",
+  "_mm512_fmadd_round_pd",
+  "_mm512_fmadd_round_ph",
+  "_mm512_fmadd_round_ps",
+  "_mm512_fmaddsub_round_pd",
+  "_mm512_fmaddsub_round_ph",
+  "_mm512_fmaddsub_round_ps",
+  "_mm512_fmsub_round_pd",
+  "_mm512_fmsub_round_ph",
+  "_mm512_fmsub_round_ps",
+  "_mm512_fmsubadd_round_pd",
+  "_mm512_fmsubadd_round_ph",
+  "_mm512_fmsubadd_round_ps",
+  "_mm512_fmul_round_pch",
+  "_mm512_fnmadd_round_pd",
+  "_mm512_fnmadd_round_ph",
+  "_mm512_fnmadd_round_ps",
+  "_mm512_fnmsub_round_pd",
+  "_mm512_fnmsub_round_ph",
+  "_mm512_fnmsub_round_ps",
+  "_mm512_fpclass_pbh_mask",
+  "_mm512_fpclass_pd_mask",
+  "_mm512_fpclass_ph_mask",
+  "_mm512_fpclass_ps_mask",
+  "_mm512_getexp_round_pd",
+  "_mm512_getexp_round_ph",
+  "_mm512_getexp_round_ps",
+  "_mm512_getmant_pbh",
+  "_mm512_getmant_pd",
+  "_mm512_getmant_ph",
+  "_mm512_getmant_ps",
+  "_mm512_getmant_round_pd",
+  "_mm512_getmant_round_ph",
+  "_mm512_getmant_round_ps",
+  "_mm512_gf2p8affine_epi64_epi8",
+  "_mm512_gf2p8affineinv_epi64_epi8",
+  "_mm512_i32gather_epi32",
+  "_mm512_i32gather_epi64",
+  "_mm512_i32gather_pd",
+  "_mm512_i32gather_ps",
+  "_mm512_i32logather_epi64",
+  "_mm512_i32logather_pd",
+  "_mm512_i32loscatter_epi64",
+  "_mm512_i32loscatter_pd",
+  "_mm512_i32scatter_epi32",
+  "_mm512_i32scatter_epi64",
+  "_mm512_i32scatter_pd",
+  "_mm512_i32scatter_ps",
+  "_mm512_i64gather_epi32",
+  "_mm512_i64gather_epi64",
+  "_mm512_i64gather_pd",
+  "_mm512_i64gather_ps",
+  "_mm512_i64scatter_epi32",
+  "_mm512_i64scatter_epi64",
+  "_mm512_i64scatter_pd",
+  "_mm512_i64scatter_ps",
+  "_mm512_insertf32x4",
+  "_mm512_insertf32x8",
+  "_mm512_insertf64x2",
+  "_mm512_insertf64x4",
+  "_mm512_inserti32x4",
+  "_mm512_inserti32x8",
+  "_mm512_inserti64x2",
+  "_mm512_inserti64x4",
+  "_mm512_ipcvts_bf16_epi8",
+  "_mm512_ipcvts_bf16_epu8",
+  "_mm512_ipcvts_ph_epi8",
+  "_mm512_ipcvts_ph_epu8",
+  "_mm512_ipcvts_ps_epi8",
+  "_mm512_ipcvts_ps_epu8",
+  "_mm512_ipcvts_roundph_epi8",
+  "_mm512_ipcvts_roundph_epu8",
+  "_mm512_ipcvts_roundps_epi8",
+  "_mm512_ipcvts_roundps_epu8",
+  "_mm512_ipcvtts_bf16_epi8",
+  "_mm512_ipcvtts_bf16_epu8",
+  "_mm512_ipcvtts_ph_epi8",
+  "_mm512_ipcvtts_ph_epu8",
+  "_mm512_ipcvtts_ps_epi8",
+  "_mm512_ipcvtts_ps_epu8",
+  "_mm512_ipcvtts_roundph_epi8",
+  "_mm512_ipcvtts_roundph_epu8",
+  "_mm512_ipcvtts_roundps_epi8",
+  "_mm512_ipcvtts_roundps_epu8",
+  "_mm512_mask3_fcmadd_round_pch",
+  "_mm512_mask3_fmadd_round_pch",
+  "_mm512_mask3_fmadd_round_pd",
+  "_mm512_mask3_fmadd_round_ph",
+  "_mm512_mask3_fmadd_round_ps",
+  "_mm512_mask3_fmaddsub_round_pd",
+  "_mm512_mask3_fmaddsub_round_ph",
+  "_mm512_mask3_fmaddsub_round_ps",
+  "_mm512_mask3_fmsub_round_pd",
+  "_mm512_mask3_fmsub_round_ph",
+  "_mm512_mask3_fmsub_round_ps",
+  "_mm512_mask3_fmsubadd_round_pd",
+  "_mm512_mask3_fmsubadd_round_ph",
+  "_mm512_mask3_fmsubadd_round_ps",
+  "_mm512_mask3_fnmadd_round_pd",
+  "_mm512_mask3_fnmadd_round_ph",
+  "_mm512_mask3_fnmadd_round_ps",
+  "_mm512_mask3_fnmsub_round_pd",
+  "_mm512_mask3_fnmsub_round_ph",
+  "_mm512_mask3_fnmsub_round_ps",
+  "_mm512_mask_add_round_pd",
+  "_mm512_mask_add_round_ph",
+  "_mm512_mask_add_round_ps",
+  "_mm512_mask_alignr_epi32",
+  "_mm512_mask_alignr_epi64",
+  "_mm512_mask_alignr_epi8",
+  "_mm512_mask_cmp_epi16_mask",
+  "_mm512_mask_cmp_epi32_mask",
+  "_mm512_mask_cmp_epi64_mask",
+  "_mm512_mask_cmp_epi8_mask",
+  "_mm512_mask_cmp_epu16_mask",
+  "_mm512_mask_cmp_epu32_mask",
+  "_mm512_mask_cmp_epu64_mask",
+  "_mm512_mask_cmp_epu8_mask",
+  "_mm512_mask_cmp_pbh_mask",
+  "_mm512_mask_cmp_pd_mask",
+  "_mm512_mask_cmp_ph_mask",
+  "_mm512_mask_cmp_ps_mask",
+  "_mm512_mask_cmp_round_pd_mask",
+  "_mm512_mask_cmp_round_ph_mask",
+  "_mm512_mask_cmp_round_ps_mask",
+  "_mm512_mask_cmpeq_epi16_mask",
+  "_mm512_mask_cmpeq_epi32_mask",
+  "_mm512_mask_cmpeq_epi64_mask",
+  "_mm512_mask_cmpeq_epi8_mask",
+  "_mm512_mask_cmpeq_epu16_mask",
+  "_mm512_mask_cmpeq_epu32_mask",
+  "_mm512_mask_cmpeq_epu64_mask",
+  "_mm512_mask_cmpeq_epu8_mask",
+  "_mm512_mask_cmpeq_pd_mask",
+  "_mm512_mask_cmpeq_ps_mask",
+  "_mm512_mask_cmpge_epi16_mask",
+  "_mm512_mask_cmpge_epi32_mask",
+  "_mm512_mask_cmpge_epi64_mask",
+  "_mm512_mask_cmpge_epi8_mask",
+  "_mm512_mask_cmpge_epu16_mask",
+  "_mm512_mask_cmpge_epu32_mask",
+  "_mm512_mask_cmpge_epu64_mask",
+  "_mm512_mask_cmpge_epu8_mask",
+  "_mm512_mask_cmpgt_epi16_mask",
+  "_mm512_mask_cmpgt_epi32_mask",
+  "_mm512_mask_cmpgt_epi64_mask",
+  "_mm512_mask_cmpgt_epi8_mask",
+  "_mm512_mask_cmpgt_epu16_mask",
+  "_mm512_mask_cmpgt_epu32_mask",
+  "_mm512_mask_cmpgt_epu64_mask",
+  "_mm512_mask_cmpgt_epu8_mask",
+  "_mm512_mask_cmple_epi16_mask",
+  "_mm512_mask_cmple_epi32_mask",
+  "_mm512_mask_cmple_epi64_mask",
+  "_mm512_mask_cmple_epi8_mask",
+  "_mm512_mask_cmple_epu16_mask",
+  "_mm512_mask_cmple_epu32_mask",
+  "_mm512_mask_cmple_epu64_mask",
+  "_mm512_mask_cmple_epu8_mask",
+  "_mm512_mask_cmple_pd_mask",
+  "_mm512_mask_cmple_ps_mask",
+  "_mm512_mask_cmplt_epi16_mask",
+  "_mm512_mask_cmplt_epi32_mask",
+  "_mm512_mask_cmplt_epi64_mask",
+  "_mm512_mask_cmplt_epi8_mask",
+  "_mm512_mask_cmplt_epu16_mask",
+  "_mm512_mask_cmplt_epu32_mask",
+  "_mm512_mask_cmplt_epu64_mask",
+  "_mm512_mask_cmplt_epu8_mask",
+  "_mm512_mask_cmplt_pd_mask",
+  "_mm512_mask_cmplt_ps_mask",
+  "_mm512_mask_cmpneq_epi16_mask",
+  "_mm512_mask_cmpneq_epi32_mask",
+  "_mm512_mask_cmpneq_epi64_mask",
+  "_mm512_mask_cmpneq_epi8_mask",
+  "_mm512_mask_cmpneq_epu16_mask",
+  "_mm512_mask_cmpneq_epu32_mask",
+  "_mm512_mask_cmpneq_epu64_mask",
+  "_mm512_mask_cmpneq_epu8_mask",
+  "_mm512_mask_cmpneq_pd_mask",
+  "_mm512_mask_cmpneq_ps_mask",
+  "_mm512_mask_cmpnle_pd_mask",
+  "_mm512_mask_cmpnle_ps_mask",
+  "_mm512_mask_cmpnlt_pd_mask",
+  "_mm512_mask_cmpnlt_ps_mask",
+  "_mm512_mask_cmpord_pd_mask",
+  "_mm512_mask_cmpord_ps_mask",
+  "_mm512_mask_cmpunord_pd_mask",
+  "_mm512_mask_cmpunord_ps_mask",
+  "_mm512_mask_cmul_pch",
+  "_mm512_mask_cmul_round_pch",
+  "_mm512_mask_cvt_roundepi16_ph",
+  "_mm512_mask_cvt_roundepi32_ph",
+  "_mm512_mask_cvt_roundepi32_ps",
+  "_mm512_mask_cvt_roundepi64_pd",
+  "_mm512_mask_cvt_roundepi64_ph",
+  "_mm512_mask_cvt_roundepi64_ps",
+  "_mm512_mask_cvt_roundepu16_ph",
+  "_mm512_mask_cvt_roundepu32_ph",
+  "_mm512_mask_cvt_roundepu32_ps",
+  "_mm512_mask_cvt_roundepu64_pd",
+  "_mm512_mask_cvt_roundepu64_ph",
+  "_mm512_mask_cvt_roundepu64_ps",
+  "_mm512_mask_cvt_roundpd_epi32",
+  "_mm512_mask_cvt_roundpd_epi64",
+  "_mm512_mask_cvt_roundpd_epu32",
+  "_mm512_mask_cvt_roundpd_epu64",
+  "_mm512_mask_cvt_roundpd_ph",
+  "_mm512_mask_cvt_roundpd_ps",
+  "_mm512_mask_cvt_roundph_epi16",
+  "_mm512_mask_cvt_roundph_epi32",
+  "_mm512_mask_cvt_roundph_epi64",
+  "_mm512_mask_cvt_roundph_epu16",
+  "_mm512_mask_cvt_roundph_epu32",
+  "_mm512_mask_cvt_roundph_epu64",
+  "_mm512_mask_cvt_roundph_pd",
+  "_mm512_mask_cvt_roundph_ps",
+  "_mm512_mask_cvt_roundps_epi32",
+  "_mm512_mask_cvt_roundps_epi64",
+  "_mm512_mask_cvt_roundps_epu32",
+  "_mm512_mask_cvt_roundps_epu64",
+  "_mm512_mask_cvt_roundps_pd",
+  "_mm512_mask_cvt_roundps_ph",
+  "_mm512_mask_cvtt_roundpd_epi32",
+  "_mm512_mask_cvtt_roundpd_epi64",
+  "_mm512_mask_cvtt_roundpd_epu32",
+  "_mm512_mask_cvtt_roundpd_epu64",
+  "_mm512_mask_cvtt_roundph_epi16",
+  "_mm512_mask_cvtt_roundph_epi32",
+  "_mm512_mask_cvtt_roundph_epi64",
+  "_mm512_mask_cvtt_roundph_epu16",
+  "_mm512_mask_cvtt_roundph_epu32",
+  "_mm512_mask_cvtt_roundph_epu64",
+  "_mm512_mask_cvtt_roundps_epi32",
+  "_mm512_mask_cvtt_roundps_epi64",
+  "_mm512_mask_cvtt_roundps_epu32",
+  "_mm512_mask_cvtt_roundps_epu64",
+  "_mm512_mask_cvtts_roundpd_epi32",
+  "_mm512_mask_cvtts_roundpd_epi64",
+  "_mm512_mask_cvtts_roundpd_epu32",
+  "_mm512_mask_cvtts_roundpd_epu64",
+  "_mm512_mask_cvtts_roundps_epi32",
+  "_mm512_mask_cvtts_roundps_epi64",
+  "_mm512_mask_cvtts_roundps_epu32",
+  "_mm512_mask_cvtts_roundps_epu64",
+  "_mm512_mask_cvtx_round2ps_ph",
+  "_mm512_mask_cvtx_roundph_ps",
+  "_mm512_mask_cvtx_roundps_ph",
+  "_mm512_mask_dbsad_epu8",
+  "_mm512_mask_div_round_pd",
+  "_mm512_mask_div_round_ph",
+  "_mm512_mask_div_round_ps",
+  "_mm512_mask_extractf32x4_ps",
+  "_mm512_mask_extractf32x8_ps",
+  "_mm512_mask_extractf64x2_pd",
+  "_mm512_mask_extractf64x4_pd",
+  "_mm512_mask_extracti32x4_epi32",
+  "_mm512_mask_extracti32x8_epi32",
+  "_mm512_mask_extracti64x2_epi64",
+  "_mm512_mask_extracti64x4_epi64",
+  "_mm512_mask_fcmadd_round_pch",
+  "_mm512_mask_fcmul_round_pch",
+  "_mm512_mask_fixupimm_pd",
+  "_mm512_mask_fixupimm_ps",
+  "_mm512_mask_fixupimm_round_pd",
+  "_mm512_mask_fixupimm_round_ps",
+  "_mm512_mask_fmadd_round_pch",
+  "_mm512_mask_fmadd_round_pd",
+  "_mm512_mask_fmadd_round_ph",
+  "_mm512_mask_fmadd_round_ps",
+  "_mm512_mask_fmaddsub_round_pd",
+  "_mm512_mask_fmaddsub_round_ph",
+  "_mm512_mask_fmaddsub_round_ps",
+  "_mm512_mask_fmsub_round_pd",
+  "_mm512_mask_fmsub_round_ph",
+  "_mm512_mask_fmsub_round_ps",
+  "_mm512_mask_fmsubadd_round_pd",
+  "_mm512_mask_fmsubadd_round_ph",
+  "_mm512_mask_fmsubadd_round_ps",
+  "_mm512_mask_fmul_round_pch",
+  "_mm512_mask_fnmadd_round_pd",
+  "_mm512_mask_fnmadd_round_ph",
+  "_mm512_mask_fnmadd_round_ps",
+  "_mm512_mask_fnmsub_round_pd",
+  "_mm512_mask_fnmsub_round_ph",
+  "_mm512_mask_fnmsub_round_ps",
+  "_mm512_mask_fpclass_pbh_mask",
+  "_mm512_mask_fpclass_pd_mask",
+  "_mm512_mask_fpclass_ph_mask",
+  "_mm512_mask_fpclass_ps_mask",
+  "_mm512_mask_getexp_round_pd",
+  "_mm512_mask_getexp_round_ph",
+  "_mm512_mask_getexp_round_ps",
+  "_mm512_mask_getmant_pbh",
+  "_mm512_mask_getmant_pd",
+  "_mm512_mask_getmant_ph",
+  "_mm512_mask_getmant_ps",
+  "_mm512_mask_getmant_round_pd",
+  "_mm512_mask_getmant_round_ph",
+  "_mm512_mask_getmant_round_ps",
+  "_mm512_mask_gf2p8affine_epi64_epi8",
+  "_mm512_mask_gf2p8affineinv_epi64_epi8",
+  "_mm512_mask_i32gather_epi32",
+  "_mm512_mask_i32gather_epi64",
+  "_mm512_mask_i32gather_pd",
+  "_mm512_mask_i32gather_ps",
+  "_mm512_mask_i32logather_epi64",
+  "_mm512_mask_i32logather_pd",
+  "_mm512_mask_i32loscatter_epi64",
+  "_mm512_mask_i32loscatter_pd",
+  "_mm512_mask_i32scatter_epi32",
+  "_mm512_mask_i32scatter_epi64",
+  "_mm512_mask_i32scatter_pd",
+  "_mm512_mask_i32scatter_ps",
+  "_mm512_mask_i64gather_epi32",
+  "_mm512_mask_i64gather_epi64",
+  "_mm512_mask_i64gather_pd",
+  "_mm512_mask_i64gather_ps",
+  "_mm512_mask_i64scatter_epi32",
+  "_mm512_mask_i64scatter_epi64",
+  "_mm512_mask_i64scatter_pd",
+  "_mm512_mask_i64scatter_ps",
+  "_mm512_mask_insertf32x4",
+  "_mm512_mask_insertf32x8",
+  "_mm512_mask_insertf64x2",
+  "_mm512_mask_insertf64x4",
+  "_mm512_mask_inserti32x4",
+  "_mm512_mask_inserti32x8",
+  "_mm512_mask_inserti64x2",
+  "_mm512_mask_inserti64x4",
+  "_mm512_mask_ipcvts_bf16_epi8",
+  "_mm512_mask_ipcvts_bf16_epu8",
+  "_mm512_mask_ipcvts_ph_epi8",
+  "_mm512_mask_ipcvts_ph_epu8",
+  "_mm512_mask_ipcvts_ps_epi8",
+  "_mm512_mask_ipcvts_ps_epu8",
+  "_mm512_mask_ipcvts_roundph_epi8",
+  "_mm512_mask_ipcvts_roundph_epu8",
+  "_mm512_mask_ipcvts_roundps_epi8",
+  "_mm512_mask_ipcvts_roundps_epu8",
+  "_mm512_mask_ipcvtts_bf16_epi8",
+  "_mm512_mask_ipcvtts_bf16_epu8",
+  "_mm512_mask_ipcvtts_ph_epi8",
+  "_mm512_mask_ipcvtts_ph_epu8",
+  "_mm512_mask_ipcvtts_ps_epi8",
+  "_mm512_mask_ipcvtts_ps_epu8",
+  "_mm512_mask_ipcvtts_roundph_epi8",
+  "_mm512_mask_ipcvtts_roundph_epu8",
+  "_mm512_mask_ipcvtts_roundps_epi8",
+  "_mm512_mask_ipcvtts_roundps_epu8",
+  "_mm512_mask_max_round_pd",
+  "_mm512_mask_max_round_ph",
+  "_mm512_mask_max_round_ps",
+  "_mm512_mask_min_round_pd",
+  "_mm512_mask_min_round_ph",
+  "_mm512_mask_min_round_ps",
+  "_mm512_mask_minmax_pbh",
+  "_mm512_mask_minmax_pd",
+  "_mm512_mask_minmax_ph",
+  "_mm512_mask_minmax_ps",
+  "_mm512_mask_minmax_round_pd",
+  "_mm512_mask_minmax_round_ph",
+  "_mm512_mask_minmax_round_ps",
+  "_mm512_mask_mpsadbw_epu8",
+  "_mm512_mask_mul_pch",
+  "_mm512_mask_mul_round_pch",
+  "_mm512_mask_mul_round_pd",
+  "_mm512_mask_mul_round_ph",
+  "_mm512_mask_mul_round_ps",
+  "_mm512_mask_permute_pd",
+  "_mm512_mask_permute_ps",
+  "_mm512_mask_permutex_epi64",
+  "_mm512_mask_permutex_pd",
+  "_mm512_mask_range_pd",
+  "_mm512_mask_range_ps",
+  "_mm512_mask_range_round_pd",
+  "_mm512_mask_range_round_ps",
+  "_mm512_mask_reduce_pbh",
+  "_mm512_mask_reduce_pd",
+  "_mm512_mask_reduce_ph",
+  "_mm512_mask_reduce_ps",
+  "_mm512_mask_reduce_round_pd",
+  "_mm512_mask_reduce_round_ph",
+  "_mm512_mask_reduce_round_ps",
+  "_mm512_mask_rol_epi32",
+  "_mm512_mask_rol_epi64",
+  "_mm512_mask_ror_epi32",
+  "_mm512_mask_ror_epi64",
+  "_mm512_mask_roundscale_pbh",
+  "_mm512_mask_roundscale_pd",
+  "_mm512_mask_roundscale_ph",
+  "_mm512_mask_roundscale_ps",
+  "_mm512_mask_roundscale_round_pd",
+  "_mm512_mask_roundscale_round_ph",
+  "_mm512_mask_roundscale_round_ps",
+  "_mm512_mask_scalef_round_pd",
+  "_mm512_mask_scalef_round_ph",
+  "_mm512_mask_scalef_round_ps",
+  "_mm512_mask_shldi_epi16",
+  "_mm512_mask_shldi_epi32",
+  "_mm512_mask_shldi_epi64",
+  "_mm512_mask_shrdi_epi16",
+  "_mm512_mask_shrdi_epi32",
+  "_mm512_mask_shrdi_epi64",
+  "_mm512_mask_shuffle_epi32",
+  "_mm512_mask_shuffle_f32x4",
+  "_mm512_mask_shuffle_f64x2",
+  "_mm512_mask_shuffle_i32x4",
+  "_mm512_mask_shuffle_i64x2",
+  "_mm512_mask_shuffle_pd",
+  "_mm512_mask_shuffle_ps",
+  "_mm512_mask_shufflehi_epi16",
+  "_mm512_mask_shufflelo_epi16",
+  "_mm512_mask_sqrt_round_pd",
+  "_mm512_mask_sqrt_round_ph",
+  "_mm512_mask_sqrt_round_ps",
+  "_mm512_mask_sub_round_pd",
+  "_mm512_mask_sub_round_ph",
+  "_mm512_mask_sub_round_ps",
+  "_mm512_mask_ternarylogic_epi32",
+  "_mm512_mask_ternarylogic_epi64",
+  "_mm512_maskz_add_round_pd",
+  "_mm512_maskz_add_round_ph",
+  "_mm512_maskz_add_round_ps",
+  "_mm512_maskz_alignr_epi32",
+  "_mm512_maskz_alignr_epi64",
+  "_mm512_maskz_alignr_epi8",
+  "_mm512_maskz_cmul_pch",
+  "_mm512_maskz_cmul_round_pch",
+  "_mm512_maskz_cvt_roundepi16_ph",
+  "_mm512_maskz_cvt_roundepi32_ph",
+  "_mm512_maskz_cvt_roundepi32_ps",
+  "_mm512_maskz_cvt_roundepi64_pd",
+  "_mm512_maskz_cvt_roundepi64_ph",
+  "_mm512_maskz_cvt_roundepi64_ps",
+  "_mm512_maskz_cvt_roundepu16_ph",
+  "_mm512_maskz_cvt_roundepu32_ph",
+  "_mm512_maskz_cvt_roundepu32_ps",
+  "_mm512_maskz_cvt_roundepu64_pd",
+  "_mm512_maskz_cvt_roundepu64_ph",
+  "_mm512_maskz_cvt_roundepu64_ps",
+  "_mm512_maskz_cvt_roundpd_epi32",
+  "_mm512_maskz_cvt_roundpd_epi64",
+  "_mm512_maskz_cvt_roundpd_epu32",
+  "_mm512_maskz_cvt_roundpd_epu64",
+  "_mm512_maskz_cvt_roundpd_ph",
+  "_mm512_maskz_cvt_roundpd_ps",
+  "_mm512_maskz_cvt_roundph_epi16",
+  "_mm512_maskz_cvt_roundph_epi32",
+  "_mm512_maskz_cvt_roundph_epi64",
+  "_mm512_maskz_cvt_roundph_epu16",
+  "_mm512_maskz_cvt_roundph_epu32",
+  "_mm512_maskz_cvt_roundph_epu64",
+  "_mm512_maskz_cvt_roundph_pd",
+  "_mm512_maskz_cvt_roundph_ps",
+  "_mm512_maskz_cvt_roundps_epi32",
+  "_mm512_maskz_cvt_roundps_epi64",
+  "_mm512_maskz_cvt_roundps_epu32",
+  "_mm512_maskz_cvt_roundps_epu64",
+  "_mm512_maskz_cvt_roundps_pd",
+  "_mm512_maskz_cvt_roundps_ph",
+  "_mm512_maskz_cvtt_roundpd_epi32",
+  "_mm512_maskz_cvtt_roundpd_epi64",
+  "_mm512_maskz_cvtt_roundpd_epu32",
+  "_mm512_maskz_cvtt_roundpd_epu64",
+  "_mm512_maskz_cvtt_roundph_epi16",
+  "_mm512_maskz_cvtt_roundph_epi32",
+  "_mm512_maskz_cvtt_roundph_epi64",
+  "_mm512_maskz_cvtt_roundph_epu16",
+  "_mm512_maskz_cvtt_roundph_epu32",
+  "_mm512_maskz_cvtt_roundph_epu64",
+  "_mm512_maskz_cvtt_roundps_epi32",
+  "_mm512_maskz_cvtt_roundps_epi64",
+  "_mm512_maskz_cvtt_roundps_epu32",
+  "_mm512_maskz_cvtt_roundps_epu64",
+  "_mm512_maskz_cvtts_roundpd_epi32",
+  "_mm512_maskz_cvtts_roundpd_epi64",
+  "_mm512_maskz_cvtts_roundpd_epu32",
+  "_mm512_maskz_cvtts_roundpd_epu64",
+  "_mm512_maskz_cvtts_roundps_epi32",
+  "_mm512_maskz_cvtts_roundps_epi64",
+  "_mm512_maskz_cvtts_roundps_epu32",
+  "_mm512_maskz_cvtts_roundps_epu64",
+  "_mm512_maskz_cvtx_round2ps_ph",
+  "_mm512_maskz_cvtx_roundph_ps",
+  "_mm512_maskz_cvtx_roundps_ph",
+  "_mm512_maskz_dbsad_epu8",
+  "_mm512_maskz_div_round_pd",
+  "_mm512_maskz_div_round_ph",
+  "_mm512_maskz_div_round_ps",
+  "_mm512_maskz_extractf32x4_ps",
+  "_mm512_maskz_extractf32x8_ps",
+  "_mm512_maskz_extractf64x2_pd",
+  "_mm512_maskz_extractf64x4_pd",
+  "_mm512_maskz_extracti32x4_epi32",
+  "_mm512_maskz_extracti32x8_epi32",
+  "_mm512_maskz_extracti64x2_epi64",
+  "_mm512_maskz_extracti64x4_epi64",
+  "_mm512_maskz_fcmadd_round_pch",
+  "_mm512_maskz_fcmul_round_pch",
+  "_mm512_maskz_fixupimm_pd",
+  "_mm512_maskz_fixupimm_ps",
+  "_mm512_maskz_fixupimm_round_pd",
+  "_mm512_maskz_fixupimm_round_ps",
+  "_mm512_maskz_fmadd_round_pch",
+  "_mm512_maskz_fmadd_round_pd",
+  "_mm512_maskz_fmadd_round_ph",
+  "_mm512_maskz_fmadd_round_ps",
+  "_mm512_maskz_fmaddsub_round_pd",
+  "_mm512_maskz_fmaddsub_round_ph",
+  "_mm512_maskz_fmaddsub_round_ps",
+  "_mm512_maskz_fmsub_round_pd",
+  "_mm512_maskz_fmsub_round_ph",
+  "_mm512_maskz_fmsub_round_ps",
+  "_mm512_maskz_fmsubadd_round_pd",
+  "_mm512_maskz_fmsubadd_round_ph",
+  "_mm512_maskz_fmsubadd_round_ps",
+  "_mm512_maskz_fmul_round_pch",
+  "_mm512_maskz_fnmadd_round_pd",
+  "_mm512_maskz_fnmadd_round_ph",
+  "_mm512_maskz_fnmadd_round_ps",
+  "_mm512_maskz_fnmsub_round_pd",
+  "_mm512_maskz_fnmsub_round_ph",
+  "_mm512_maskz_fnmsub_round_ps",
+  "_mm512_maskz_getexp_round_pd",
+  "_mm512_maskz_getexp_round_ph",
+  "_mm512_maskz_getexp_round_ps",
+  "_mm512_maskz_getmant_pbh",
+  "_mm512_maskz_getmant_pd",
+  "_mm512_maskz_getmant_ph",
+  "_mm512_maskz_getmant_ps",
+  "_mm512_maskz_getmant_round_pd",
+  "_mm512_maskz_getmant_round_ph",
+  "_mm512_maskz_getmant_round_ps",
+  "_mm512_maskz_gf2p8affine_epi64_epi8",
+  "_mm512_maskz_gf2p8affineinv_epi64_epi8",
+  "_mm512_maskz_insertf32x4",
+  "_mm512_maskz_insertf32x8",
+  "_mm512_maskz_insertf64x2",
+  "_mm512_maskz_insertf64x4",
+  "_mm512_maskz_inserti32x4",
+  "_mm512_maskz_inserti32x8",
+  "_mm512_maskz_inserti64x2",
+  "_mm512_maskz_inserti64x4",
+  "_mm512_maskz_ipcvts_bf16_epi8",
+  "_mm512_maskz_ipcvts_bf16_epu8",
+  "_mm512_maskz_ipcvts_ph_epi8",
+  "_mm512_maskz_ipcvts_ph_epu8",
+  "_mm512_maskz_ipcvts_ps_epi8",
+  "_mm512_maskz_ipcvts_ps_epu8",
+  "_mm512_maskz_ipcvts_roundph_epi8",
+  "_mm512_maskz_ipcvts_roundph_epu8",
+  "_mm512_maskz_ipcvts_roundps_epi8",
+  "_mm512_maskz_ipcvts_roundps_epu8",
+  "_mm512_maskz_ipcvtts_bf16_epi8",
+  "_mm512_maskz_ipcvtts_bf16_epu8",
+  "_mm512_maskz_ipcvtts_ph_epi8",
+  "_mm512_maskz_ipcvtts_ph_epu8",
+  "_mm512_maskz_ipcvtts_ps_epi8",
+  "_mm512_maskz_ipcvtts_ps_epu8",
+  "_mm512_maskz_ipcvtts_roundph_epi8",
+  "_mm512_maskz_ipcvtts_roundph_epu8",
+  "_mm512_maskz_ipcvtts_roundps_epi8",
+  "_mm512_maskz_ipcvtts_roundps_epu8",
+  "_mm512_maskz_max_round_pd",
+  "_mm512_maskz_max_round_ph",
+  "_mm512_maskz_max_round_ps",
+  "_mm512_maskz_min_round_pd",
+  "_mm512_maskz_min_round_ph",
+  "_mm512_maskz_min_round_ps",
+  "_mm512_maskz_minmax_pbh",
+  "_mm512_maskz_minmax_pd",
+  "_mm512_maskz_minmax_ph",
+  "_mm512_maskz_minmax_ps",
+  "_mm512_maskz_minmax_round_pd",
+  "_mm512_maskz_minmax_round_ph",
+  "_mm512_maskz_minmax_round_ps",
+  "_mm512_maskz_mpsadbw_epu8",
+  "_mm512_maskz_mul_pch",
+  "_mm512_maskz_mul_round_pch",
+  "_mm512_maskz_mul_round_pd",
+  "_mm512_maskz_mul_round_ph",
+  "_mm512_maskz_mul_round_ps",
+  "_mm512_maskz_permute_pd",
+  "_mm512_maskz_permute_ps",
+  "_mm512_maskz_permutex_epi64",
+  "_mm512_maskz_permutex_pd",
+  "_mm512_maskz_range_pd",
+  "_mm512_maskz_range_ps",
+  "_mm512_maskz_range_round_pd",
+  "_mm512_maskz_range_round_ps",
+  "_mm512_maskz_reduce_pbh",
+  "_mm512_maskz_reduce_pd",
+  "_mm512_maskz_reduce_ph",
+  "_mm512_maskz_reduce_ps",
+  "_mm512_maskz_reduce_round_pd",
+  "_mm512_maskz_reduce_round_ph",
+  "_mm512_maskz_reduce_round_ps",
+  "_mm512_maskz_rol_epi32",
+  "_mm512_maskz_rol_epi64",
+  "_mm512_maskz_ror_epi32",
+  "_mm512_maskz_ror_epi64",
+  "_mm512_maskz_roundscale_pbh",
+  "_mm512_maskz_roundscale_pd",
+  "_mm512_maskz_roundscale_ph",
+  "_mm512_maskz_roundscale_ps",
+  "_mm512_maskz_roundscale_round_pd",
+  "_mm512_maskz_roundscale_round_ph",
+  "_mm512_maskz_roundscale_round_ps",
+  "_mm512_maskz_scalef_round_pd",
+  "_mm512_maskz_scalef_round_ph",
+  "_mm512_maskz_scalef_round_ps",
+  "_mm512_maskz_shldi_epi16",
+  "_mm512_maskz_shldi_epi32",
+  "_mm512_maskz_shldi_epi64",
+  "_mm512_maskz_shrdi_epi16",
+  "_mm512_maskz_shrdi_epi32",
+  "_mm512_maskz_shrdi_epi64",
+  "_mm512_maskz_shuffle_epi32",
+  "_mm512_maskz_shuffle_f32x4",
+  "_mm512_maskz_shuffle_f64x2",
+  "_mm512_maskz_shuffle_i32x4",
+  "_mm512_maskz_shuffle_i64x2",
+  "_mm512_maskz_shuffle_pd",
+  "_mm512_maskz_shuffle_ps",
+  "_mm512_maskz_shufflehi_epi16",
+  "_mm512_maskz_shufflelo_epi16",
+  "_mm512_maskz_sqrt_round_pd",
+  "_mm512_maskz_sqrt_round_ph",
+  "_mm512_maskz_sqrt_round_ps",
+  "_mm512_maskz_sub_round_pd",
+  "_mm512_maskz_sub_round_ph",
+  "_mm512_maskz_sub_round_ps",
+  "_mm512_maskz_ternarylogic_epi32",
+  "_mm512_maskz_ternarylogic_epi64",
+  "_mm512_max_round_pd",
+  "_mm512_max_round_ph",
+  "_mm512_max_round_ps",
+  "_mm512_min_round_pd",
+  "_mm512_min_round_ph",
+  "_mm512_min_round_ps",
+  "_mm512_minmax_pbh",
+  "_mm512_minmax_pd",
+  "_mm512_minmax_ph",
+  "_mm512_minmax_ps",
+  "_mm512_minmax_round_pd",
+  "_mm512_minmax_round_ph",
+  "_mm512_minmax_round_ps",
+  "_mm512_mpsadbw_epu8",
+  "_mm512_mul_pch",
+  "_mm512_mul_round_pch",
+  "_mm512_mul_round_pd",
+  "_mm512_mul_round_ph",
+  "_mm512_mul_round_ps",
+  "_mm512_permute_pd",
+  "_mm512_permute_ps",
+  "_mm512_permutex_epi64",
+  "_mm512_permutex_pd",
+  "_mm512_range_pd",
+  "_mm512_range_ps",
+  "_mm512_range_round_pd",
+  "_mm512_range_round_ps",
+  "_mm512_reduce_pbh",
+  "_mm512_reduce_pd",
+  "_mm512_reduce_ph",
+  "_mm512_reduce_ps",
+  "_mm512_reduce_round_pd",
+  "_mm512_reduce_round_ph",
+  "_mm512_reduce_round_ps",
+  "_mm512_rol_epi32",
+  "_mm512_rol_epi64",
+  "_mm512_ror_epi32",
+  "_mm512_ror_epi64",
+  "_mm512_roundscale_pbh",
+  "_mm512_roundscale_pd",
+  "_mm512_roundscale_ph",
+  "_mm512_roundscale_ps",
+  "_mm512_roundscale_round_pd",
+  "_mm512_roundscale_round_ph",
+  "_mm512_roundscale_round_ps",
+  "_mm512_scalef_round_pd",
+  "_mm512_scalef_round_ph",
+  "_mm512_scalef_round_ps",
+  "_mm512_setr_pbh",
+  "_mm512_shldi_epi16",
+  "_mm512_shldi_epi32",
+  "_mm512_shldi_epi64",
+  "_mm512_shrdi_epi16",
+  "_mm512_shrdi_epi32",
+  "_mm512_shrdi_epi64",
+  "_mm512_shuffle_epi32",
+  "_mm512_shuffle_f32x4",
+  "_mm512_shuffle_f64x2",
+  "_mm512_shuffle_i32x4",
+  "_mm512_shuffle_i64x2",
+  "_mm512_shuffle_pd",
+  "_mm512_shuffle_ps",
+  "_mm512_shufflehi_epi16",
+  "_mm512_shufflelo_epi16",
+  "_mm512_sqrt_round_pd",
+  "_mm512_sqrt_round_ph",
+  "_mm512_sqrt_round_ps",
+  "_mm512_sub_round_pd",
+  "_mm512_sub_round_ph",
+  "_mm512_sub_round_ps",
+  "_mm512_ternarylogic_epi32",
+  "_mm512_ternarylogic_epi64",
+  "_mm_add_round_sd",
+  "_mm_add_round_sh",
+  "_mm_add_round_ss",
+  "_mm_aeskeygenassist_si128",
+  "_mm_alignr_epi32",
+  "_mm_alignr_epi64",
+  "_mm_alignr_epi8",
+  "_mm_alignr_pi8",
+  "_mm_blend_epi16",
+  "_mm_blend_epi32",
+  "_mm_blend_pd",
+  "_mm_blend_ps",
+  "_mm_broadcastsi128_si256",
+  "_mm_bslli_si128",
+  "_mm_bsrli_si128",
+  "_mm_ceil_pd",
+  "_mm_ceil_ps",
+  "_mm_ceil_sd",
+  "_mm_ceil_ss",
+  "_mm_cldemote",
+  "_mm_clmulepi64_si128",
+  "_mm_cmp_epi16_mask",
+  "_mm_cmp_epi32_mask",
+  "_mm_cmp_epi64_mask",
+  "_mm_cmp_epi8_mask",
+  "_mm_cmp_epu16_mask",
+  "_mm_cmp_epu32_mask",
+  "_mm_cmp_epu64_mask",
+  "_mm_cmp_epu8_mask",
+  "_mm_cmp_pbh_mask",
+  "_mm_cmp_pd",
+  "_mm_cmp_pd_mask",
+  "_mm_cmp_ph_mask",
+  "_mm_cmp_ps",
+  "_mm_cmp_ps_mask",
+  "_mm_cmp_round_sd_mask",
+  "_mm_cmp_round_sh_mask",
+  "_mm_cmp_round_ss_mask",
+  "_mm_cmp_sd",
+  "_mm_cmp_sd_mask",
+  "_mm_cmp_sh_mask",
+  "_mm_cmp_ss",
+  "_mm_cmp_ss_mask",
+  "_mm_cmpeq_epi16_mask",
+  "_mm_cmpeq_epi32_mask",
+  "_mm_cmpeq_epi64_mask",
+  "_mm_cmpeq_epi8_mask",
+  "_mm_cmpeq_epu16_mask",
+  "_mm_cmpeq_epu32_mask",
+  "_mm_cmpeq_epu64_mask",
+  "_mm_cmpeq_epu8_mask",
+  "_mm_cmpestra",
+  "_mm_cmpestrc",
+  "_mm_cmpestri",
+  "_mm_cmpestrm",
+  "_mm_cmpestro",
+  "_mm_cmpestrs",
+  "_mm_cmpestrz",
+  "_mm_cmpge_epi16_mask",
+  "_mm_cmpge_epi32_mask",
+  "_mm_cmpge_epi64_mask",
+  "_mm_cmpge_epi8_mask",
+  "_mm_cmpge_epu16_mask",
+  "_mm_cmpge_epu32_mask",
+  "_mm_cmpge_epu64_mask",
+  "_mm_cmpge_epu8_mask",
+  "_mm_cmpgt_epi16_mask",
+  "_mm_cmpgt_epi32_mask",
+  "_mm_cmpgt_epi64_mask",
+  "_mm_cmpgt_epi8_mask",
+  "_mm_cmpgt_epu16_mask",
+  "_mm_cmpgt_epu32_mask",
+  "_mm_cmpgt_epu64_mask",
+  "_mm_cmpgt_epu8_mask",
+  "_mm_cmpistra",
+  "_mm_cmpistrc",
+  "_mm_cmpistri",
+  "_mm_cmpistrm",
+  "_mm_cmpistro",
+  "_mm_cmpistrs",
+  "_mm_cmpistrz",
+  "_mm_cmple_epi16_mask",
+  "_mm_cmple_epi32_mask",
+  "_mm_cmple_epi64_mask",
+  "_mm_cmple_epi8_mask",
+  "_mm_cmple_epu16_mask",
+  "_mm_cmple_epu32_mask",
+  "_mm_cmple_epu64_mask",
+  "_mm_cmple_epu8_mask",
+  "_mm_cmplt_epi16_mask",
+  "_mm_cmplt_epi32_mask",
+  "_mm_cmplt_epi64_mask",
+  "_mm_cmplt_epi8_mask",
+  "_mm_cmplt_epu16_mask",
+  "_mm_cmplt_epu32_mask",
+  "_mm_cmplt_epu64_mask",
+  "_mm_cmplt_epu8_mask",
+  "_mm_cmpneq_epi16_mask",
+  "_mm_cmpneq_epi32_mask",
+  "_mm_cmpneq_epi64_mask",
+  "_mm_cmpneq_epi8_mask",
+  "_mm_cmpneq_epu16_mask",
+  "_mm_cmpneq_epu32_mask",
+  "_mm_cmpneq_epu64_mask",
+  "_mm_cmpneq_epu8_mask",
+  "_mm_cmul_pch",
+  "_mm_cmul_round_sch",
+  "_mm_cmul_sch",
+  "_mm_comi_round_sd",
+  "_mm_comi_round_sh",
+  "_mm_comi_round_ss",
+  "_mm_comi_sh",
+  "_mm_cvt_roundi32_sh",
+  "_mm_cvt_roundi32_ss",
+  "_mm_cvt_roundi64_sd",
+  "_mm_cvt_roundi64_sh",
+  "_mm_cvt_roundi64_ss",
+  "_mm_cvt_roundsd_i32",
+  "_mm_cvt_roundsd_i64",
+  "_mm_cvt_roundsd_sh",
+  "_mm_cvt_roundsd_si32",
+  "_mm_cvt_roundsd_si64",
+  "_mm_cvt_roundsd_ss",
+  "_mm_cvt_roundsd_u32",
+  "_mm_cvt_roundsd_u64",
+  "_mm_cvt_roundsh_i32",
+  "_mm_cvt_roundsh_i64",
+  "_mm_cvt_roundsh_sd",
+  "_mm_cvt_roundsh_ss",
+  "_mm_cvt_roundsh_u32",
+  "_mm_cvt_roundsh_u64",
+  "_mm_cvt_roundsi32_ss",
+  "_mm_cvt_roundsi64_sd",
+  "_mm_cvt_roundsi64_ss",
+  "_mm_cvt_roundss_i32",
+  "_mm_cvt_roundss_i64",
+  "_mm_cvt_roundss_sd",
+  "_mm_cvt_roundss_sh",
+  "_mm_cvt_roundss_si32",
+  "_mm_cvt_roundss_si64",
+  "_mm_cvt_roundss_u32",
+  "_mm_cvt_roundss_u64",
+  "_mm_cvt_roundu32_sh",
+  "_mm_cvt_roundu32_ss",
+  "_mm_cvt_roundu64_sd",
+  "_mm_cvt_roundu64_sh",
+  "_mm_cvt_roundu64_ss",
+  "_mm_cvtneps_pbh",
+  "_mm_cvtps_ph",
+  "_mm_cvtt_roundsd_i32",
+  "_mm_cvtt_roundsd_i64",
+  "_mm_cvtt_roundsd_si32",
+  "_mm_cvtt_roundsd_si64",
+  "_mm_cvtt_roundsd_u32",
+  "_mm_cvtt_roundsd_u64",
+  "_mm_cvtt_roundsh_i32",
+  "_mm_cvtt_roundsh_i64",
+  "_mm_cvtt_roundsh_u32",
+  "_mm_cvtt_roundsh_u64",
+  "_mm_cvtt_roundss_i32",
+  "_mm_cvtt_roundss_i64",
+  "_mm_cvtt_roundss_si32",
+  "_mm_cvtt_roundss_si64",
+  "_mm_cvtt_roundss_u32",
+  "_mm_cvtt_roundss_u64",
+  "_mm_cvtts_roundsd_i32",
+  "_mm_cvtts_roundsd_i64",
+  "_mm_cvtts_roundsd_si32",
+  "_mm_cvtts_roundsd_si64",
+  "_mm_cvtts_roundsd_u32",
+  "_mm_cvtts_roundsd_u64",
+  "_mm_cvtts_roundss_i32",
+  "_mm_cvtts_roundss_i64",
+  "_mm_cvtts_roundss_si32",
+  "_mm_cvtts_roundss_si64",
+  "_mm_cvtts_roundss_u32",
+  "_mm_cvtts_roundss_u64",
+  "_mm_dbsad_epu8",
+  "_mm_div_round_sd",
+  "_mm_div_round_sh",
+  "_mm_div_round_ss",
+  "_mm_dp_pd",
+  "_mm_dp_ps",
+  "_mm_dpbssd_epi32",
+  "_mm_dpbssds_epi32",
+  "_mm_dpbsud_epi32",
+  "_mm_dpbsuds_epi32",
+  "_mm_dpbusd_epi32",
+  "_mm_dpbusds_epi32",
+  "_mm_dpbuud_epi32",
+  "_mm_dpbuuds_epi32",
+  "_mm_dpwssd_epi32",
+  "_mm_dpwssds_epi32",
+  "_mm_dpwsud_epi32",
+  "_mm_dpwsuds_epi32",
+  "_mm_dpwusd_epi32",
+  "_mm_dpwusds_epi32",
+  "_mm_dpwuud_epi32",
+  "_mm_dpwuuds_epi32",
+  "_mm_extract_epi16",
+  "_mm_extract_epi32",
+  "_mm_extract_epi64",
+  "_mm_extract_epi8",
+  "_mm_extract_pi16",
+  "_mm_extract_ps",
+  "_mm_fcmadd_round_sch",
+  "_mm_fcmul_round_sch",
+  "_mm_fixupimm_pd",
+  "_mm_fixupimm_ps",
+  "_mm_fixupimm_round_sd",
+  "_mm_fixupimm_round_ss",
+  "_mm_fixupimm_sd",
+  "_mm_fixupimm_ss",
+  "_mm_floor_pd",
+  "_mm_floor_ps",
+  "_mm_floor_sd",
+  "_mm_floor_ss",
+  "_mm_fmadd_round_sch",
+  "_mm_fmadd_round_sd",
+  "_mm_fmadd_round_sh",
+  "_mm_fmadd_round_ss",
+  "_mm_fmsub_round_sd",
+  "_mm_fmsub_round_sh",
+  "_mm_fmsub_round_ss",
+  "_mm_fmul_round_sch",
+  "_mm_fnmadd_round_sd",
+  "_mm_fnmadd_round_sh",
+  "_mm_fnmadd_round_ss",
+  "_mm_fnmsub_round_sd",
+  "_mm_fnmsub_round_sh",
+  "_mm_fnmsub_round_ss",
+  "_mm_fpclass_pbh_mask",
+  "_mm_fpclass_pd_mask",
+  "_mm_fpclass_ph_mask",
+  "_mm_fpclass_ps_mask",
+  "_mm_fpclass_sd_mask",
+  "_mm_fpclass_sh_mask",
+  "_mm_fpclass_ss_mask",
+  "_mm_getexp_round_sd",
+  "_mm_getexp_round_sh",
+  "_mm_getexp_round_ss",
+  "_mm_getmant_pbh",
+  "_mm_getmant_pd",
+  "_mm_getmant_ph",
+  "_mm_getmant_ps",
+  "_mm_getmant_round_sd",
+  "_mm_getmant_round_sh",
+  "_mm_getmant_round_ss",
+  "_mm_getmant_sd",
+  "_mm_getmant_sh",
+  "_mm_getmant_ss",
+  "_mm_gf2p8affine_epi64_epi8",
+  "_mm_gf2p8affineinv_epi64_epi8",
+  "_mm_i32gather_epi32",
+  "_mm_i32gather_epi64",
+  "_mm_i32gather_pd",
+  "_mm_i32gather_ps",
+  "_mm_i32scatter_epi32",
+  "_mm_i32scatter_epi64",
+  "_mm_i32scatter_pd",
+  "_mm_i32scatter_ps",
+  "_mm_i64gather_epi32",
+  "_mm_i64gather_epi64",
+  "_mm_i64gather_pd",
+  "_mm_i64gather_ps",
+  "_mm_i64scatter_epi32",
+  "_mm_i64scatter_epi64",
+  "_mm_i64scatter_pd",
+  "_mm_i64scatter_ps",
+  "_mm_insert_epi16",
+  "_mm_insert_epi32",
+  "_mm_insert_epi64",
+  "_mm_insert_epi8",
+  "_mm_insert_pi16",
+  "_mm_insert_ps",
+  "_mm_ipcvts_bf16_epi8",
+  "_mm_ipcvts_bf16_epu8",
+  "_mm_ipcvts_ph_epi8",
+  "_mm_ipcvts_ph_epu8",
+  "_mm_ipcvts_ps_epi8",
+  "_mm_ipcvts_ps_epu8",
+  "_mm_ipcvtts_bf16_epi8",
+  "_mm_ipcvtts_bf16_epu8",
+  "_mm_ipcvtts_ph_epi8",
+  "_mm_ipcvtts_ph_epu8",
+  "_mm_ipcvtts_ps_epi8",
+  "_mm_ipcvtts_ps_epu8",
+  "_mm_load_pd1",
+  "_mm_load_ps1",
+  "_mm_loaddup_pd",
+  "_mm_madd52hi_epu64",
+  "_mm_madd52lo_epu64",
+  "_mm_mask3_fcmadd_round_sch",
+  "_mm_mask3_fmadd_round_sch",
+  "_mm_mask3_fmadd_round_sd",
+  "_mm_mask3_fmadd_round_sh",
+  "_mm_mask3_fmadd_round_ss",
+  "_mm_mask3_fmsub_round_sd",
+  "_mm_mask3_fmsub_round_sh",
+  "_mm_mask3_fmsub_round_ss",
+  "_mm_mask3_fnmadd_round_sd",
+  "_mm_mask3_fnmadd_round_sh",
+  "_mm_mask3_fnmadd_round_ss",
+  "_mm_mask3_fnmsub_round_sd",
+  "_mm_mask3_fnmsub_round_sh",
+  "_mm_mask3_fnmsub_round_ss",
+  "_mm_mask_add_round_sd",
+  "_mm_mask_add_round_sh",
+  "_mm_mask_add_round_ss",
+  "_mm_mask_alignr_epi32",
+  "_mm_mask_alignr_epi64",
+  "_mm_mask_alignr_epi8",
+  "_mm_mask_cmp_epi16_mask",
+  "_mm_mask_cmp_epi32_mask",
+  "_mm_mask_cmp_epi64_mask",
+  "_mm_mask_cmp_epi8_mask",
+  "_mm_mask_cmp_epu16_mask",
+  "_mm_mask_cmp_epu32_mask",
+  "_mm_mask_cmp_epu64_mask",
+  "_mm_mask_cmp_epu8_mask",
+  "_mm_mask_cmp_pbh_mask",
+  "_mm_mask_cmp_pd_mask",
+  "_mm_mask_cmp_ph_mask",
+  "_mm_mask_cmp_ps_mask",
+  "_mm_mask_cmp_round_sd_mask",
+  "_mm_mask_cmp_round_sh_mask",
+  "_mm_mask_cmp_round_ss_mask",
+  "_mm_mask_cmp_sd_mask",
+  "_mm_mask_cmp_sh_mask",
+  "_mm_mask_cmp_ss_mask",
+  "_mm_mask_cmpeq_epi16_mask",
+  "_mm_mask_cmpeq_epi32_mask",
+  "_mm_mask_cmpeq_epi64_mask",
+  "_mm_mask_cmpeq_epi8_mask",
+  "_mm_mask_cmpeq_epu16_mask",
+  "_mm_mask_cmpeq_epu32_mask",
+  "_mm_mask_cmpeq_epu64_mask",
+  "_mm_mask_cmpeq_epu8_mask",
+  "_mm_mask_cmpge_epi16_mask",
+  "_mm_mask_cmpge_epi32_mask",
+  "_mm_mask_cmpge_epi64_mask",
+  "_mm_mask_cmpge_epi8_mask",
+  "_mm_mask_cmpge_epu16_mask",
+  "_mm_mask_cmpge_epu32_mask",
+  "_mm_mask_cmpge_epu64_mask",
+  "_mm_mask_cmpge_epu8_mask",
+  "_mm_mask_cmpgt_epi16_mask",
+  "_mm_mask_cmpgt_epi32_mask",
+  "_mm_mask_cmpgt_epi64_mask",
+  "_mm_mask_cmpgt_epi8_mask",
+  "_mm_mask_cmpgt_epu16_mask",
+  "_mm_mask_cmpgt_epu32_mask",
+  "_mm_mask_cmpgt_epu64_mask",
+  "_mm_mask_cmpgt_epu8_mask",
+  "_mm_mask_cmple_epi16_mask",
+  "_mm_mask_cmple_epi32_mask",
+  "_mm_mask_cmple_epi64_mask",
+  "_mm_mask_cmple_epi8_mask",
+  "_mm_mask_cmple_epu16_mask",
+  "_mm_mask_cmple_epu32_mask",
+  "_mm_mask_cmple_epu64_mask",
+  "_mm_mask_cmple_epu8_mask",
+  "_mm_mask_cmplt_epi16_mask",
+  "_mm_mask_cmplt_epi32_mask",
+  "_mm_mask_cmplt_epi64_mask",
+  "_mm_mask_cmplt_epi8_mask",
+  "_mm_mask_cmplt_epu16_mask",
+  "_mm_mask_cmplt_epu32_mask",
+  "_mm_mask_cmplt_epu64_mask",
+  "_mm_mask_cmplt_epu8_mask",
+  "_mm_mask_cmpneq_epi16_mask",
+  "_mm_mask_cmpneq_epi32_mask",
+  "_mm_mask_cmpneq_epi64_mask",
+  "_mm_mask_cmpneq_epi8_mask",
+  "_mm_mask_cmpneq_epu16_mask",
+  "_mm_mask_cmpneq_epu32_mask",
+  "_mm_mask_cmpneq_epu64_mask",
+  "_mm_mask_cmpneq_epu8_mask",
+  "_mm_mask_cmul_pch",
+  "_mm_mask_cmul_round_sch",
+  "_mm_mask_cmul_sch",
+  "_mm_mask_cvt_roundps_ph",
+  "_mm_mask_cvt_roundsd_sh",
+  "_mm_mask_cvt_roundsd_ss",
+  "_mm_mask_cvt_roundsh_sd",
+  "_mm_mask_cvt_roundsh_ss",
+  "_mm_mask_cvt_roundss_sd",
+  "_mm_mask_cvt_roundss_sh",
+  "_mm_mask_dbsad_epu8",
+  "_mm_mask_div_round_sd",
+  "_mm_mask_div_round_sh",
+  "_mm_mask_div_round_ss",
+  "_mm_mask_fcmadd_round_sch",
+  "_mm_mask_fcmul_round_sch",
+  "_mm_mask_fixupimm_pd",
+  "_mm_mask_fixupimm_ps",
+  "_mm_mask_fixupimm_round_sd",
+  "_mm_mask_fixupimm_round_ss",
+  "_mm_mask_fixupimm_sd",
+  "_mm_mask_fixupimm_ss",
+  "_mm_mask_fmadd_round_sch",
+  "_mm_mask_fmadd_round_sd",
+  "_mm_mask_fmadd_round_sh",
+  "_mm_mask_fmadd_round_ss",
+  "_mm_mask_fmsub_round_sd",
+  "_mm_mask_fmsub_round_sh",
+  "_mm_mask_fmsub_round_ss",
+  "_mm_mask_fmul_round_sch",
+  "_mm_mask_fnmadd_round_sd",
+  "_mm_mask_fnmadd_round_sh",
+  "_mm_mask_fnmadd_round_ss",
+  "_mm_mask_fnmsub_round_sd",
+  "_mm_mask_fnmsub_round_sh",
+  "_mm_mask_fnmsub_round_ss",
+  "_mm_mask_fpclass_pbh_mask",
+  "_mm_mask_fpclass_pd_mask",
+  "_mm_mask_fpclass_ph_mask",
+  "_mm_mask_fpclass_ps_mask",
+  "_mm_mask_fpclass_sd_mask",
+  "_mm_mask_fpclass_sh_mask",
+  "_mm_mask_fpclass_ss_mask",
+  "_mm_mask_getexp_round_sd",
+  "_mm_mask_getexp_round_sh",
+  "_mm_mask_getexp_round_ss",
+  "_mm_mask_getmant_pbh",
+  "_mm_mask_getmant_pd",
+  "_mm_mask_getmant_ph",
+  "_mm_mask_getmant_ps",
+  "_mm_mask_getmant_round_sd",
+  "_mm_mask_getmant_round_sh",
+  "_mm_mask_getmant_round_ss",
+  "_mm_mask_getmant_sd",
+  "_mm_mask_getmant_sh",
+  "_mm_mask_getmant_ss",
+  "_mm_mask_gf2p8affine_epi64_epi8",
+  "_mm_mask_gf2p8affineinv_epi64_epi8",
+  "_mm_mask_i32gather_epi32",
+  "_mm_mask_i32gather_epi64",
+  "_mm_mask_i32gather_pd",
+  "_mm_mask_i32gather_ps",
+  "_mm_mask_i32scatter_epi32",
+  "_mm_mask_i32scatter_epi64",
+  "_mm_mask_i32scatter_pd",
+  "_mm_mask_i32scatter_ps",
+  "_mm_mask_i64gather_epi32",
+  "_mm_mask_i64gather_epi64",
+  "_mm_mask_i64gather_pd",
+  "_mm_mask_i64gather_ps",
+  "_mm_mask_i64scatter_epi32",
+  "_mm_mask_i64scatter_epi64",
+  "_mm_mask_i64scatter_pd",
+  "_mm_mask_i64scatter_ps",
+  "_mm_mask_ipcvts_bf16_epi8",
+  "_mm_mask_ipcvts_bf16_epu8",
+  "_mm_mask_ipcvts_ph_epi8",
+  "_mm_mask_ipcvts_ph_epu8",
+  "_mm_mask_ipcvts_ps_epi8",
+  "_mm_mask_ipcvts_ps_epu8",
+  "_mm_mask_ipcvtts_bf16_epi8",
+  "_mm_mask_ipcvtts_bf16_epu8",
+  "_mm_mask_ipcvtts_ph_epi8",
+  "_mm_mask_ipcvtts_ph_epu8",
+  "_mm_mask_ipcvtts_ps_epi8",
+  "_mm_mask_ipcvtts_ps_epu8",
+  "_mm_mask_max_round_sd",
+  "_mm_mask_max_round_sh",
+  "_mm_mask_max_round_ss",
+  "_mm_mask_min_round_sd",
+  "_mm_mask_min_round_sh",
+  "_mm_mask_min_round_ss",
+  "_mm_mask_minmax_pbh",
+  "_mm_mask_minmax_pd",
+  "_mm_mask_minmax_ph",
+  "_mm_mask_minmax_ps",
+  "_mm_mask_minmax_round_sd",
+  "_mm_mask_minmax_round_sh",
+  "_mm_mask_minmax_round_ss",
+  "_mm_mask_minmax_sd",
+  "_mm_mask_minmax_sh",
+  "_mm_mask_minmax_ss",
+  "_mm_mask_mpsadbw_epu8",
+  "_mm_mask_mul_pch",
+  "_mm_mask_mul_round_sch",
+  "_mm_mask_mul_round_sd",
+  "_mm_mask_mul_round_sh",
+  "_mm_mask_mul_round_ss",
+  "_mm_mask_mul_sch",
+  "_mm_mask_permute_pd",
+  "_mm_mask_permute_ps",
+  "_mm_mask_range_pd",
+  "_mm_mask_range_ps",
+  "_mm_mask_range_round_sd",
+  "_mm_mask_range_round_ss",
+  "_mm_mask_range_sd",
+  "_mm_mask_range_ss",
+  "_mm_mask_reduce_pbh",
+  "_mm_mask_reduce_pd",
+  "_mm_mask_reduce_ph",
+  "_mm_mask_reduce_ps",
+  "_mm_mask_reduce_round_sd",
+  "_mm_mask_reduce_round_sh",
+  "_mm_mask_reduce_round_ss",
+  "_mm_mask_reduce_sd",
+  "_mm_mask_reduce_sh",
+  "_mm_mask_reduce_ss",
+  "_mm_mask_rol_epi32",
+  "_mm_mask_rol_epi64",
+  "_mm_mask_ror_epi32",
+  "_mm_mask_ror_epi64",
+  "_mm_mask_roundscale_pbh",
+  "_mm_mask_roundscale_pd",
+  "_mm_mask_roundscale_ph",
+  "_mm_mask_roundscale_ps",
+  "_mm_mask_roundscale_round_sd",
+  "_mm_mask_roundscale_round_sh",
+  "_mm_mask_roundscale_round_ss",
+  "_mm_mask_roundscale_sd",
+  "_mm_mask_roundscale_sh",
+  "_mm_mask_roundscale_ss",
+  "_mm_mask_scalef_round_sd",
+  "_mm_mask_scalef_round_sh",
+  "_mm_mask_scalef_round_ss",
+  "_mm_mask_shldi_epi16",
+  "_mm_mask_shldi_epi32",
+  "_mm_mask_shldi_epi64",
+  "_mm_mask_shrdi_epi16",
+  "_mm_mask_shrdi_epi32",
+  "_mm_mask_shrdi_epi64",
+  "_mm_mask_shuffle_epi32",
+  "_mm_mask_shuffle_pd",
+  "_mm_mask_shuffle_ps",
+  "_mm_mask_shufflehi_epi16",
+  "_mm_mask_shufflelo_epi16",
+  "_mm_mask_sqrt_round_sd",
+  "_mm_mask_sqrt_round_sh",
+  "_mm_mask_sqrt_round_ss",
+  "_mm_mask_sub_round_sd",
+  "_mm_mask_sub_round_sh",
+  "_mm_mask_sub_round_ss",
+  "_mm_mask_ternarylogic_epi32",
+  "_mm_mask_ternarylogic_epi64",
+  "_mm_maskz_add_round_sd",
+  "_mm_maskz_add_round_sh",
+  "_mm_maskz_add_round_ss",
+  "_mm_maskz_alignr_epi32",
+  "_mm_maskz_alignr_epi64",
+  "_mm_maskz_alignr_epi8",
+  "_mm_maskz_cmul_pch",
+  "_mm_maskz_cmul_round_sch",
+  "_mm_maskz_cmul_sch",
+  "_mm_maskz_cvt_roundps_ph",
+  "_mm_maskz_cvt_roundsd_sh",
+  "_mm_maskz_cvt_roundsd_ss",
+  "_mm_maskz_cvt_roundsh_sd",
+  "_mm_maskz_cvt_roundsh_ss",
+  "_mm_maskz_cvt_roundss_sd",
+  "_mm_maskz_cvt_roundss_sh",
+  "_mm_maskz_dbsad_epu8",
+  "_mm_maskz_div_round_sd",
+  "_mm_maskz_div_round_sh",
+  "_mm_maskz_div_round_ss",
+  "_mm_maskz_fcmadd_round_sch",
+  "_mm_maskz_fcmul_round_sch",
+  "_mm_maskz_fixupimm_pd",
+  "_mm_maskz_fixupimm_ps",
+  "_mm_maskz_fixupimm_round_sd",
+  "_mm_maskz_fixupimm_round_ss",
+  "_mm_maskz_fixupimm_sd",
+  "_mm_maskz_fixupimm_ss",
+  "_mm_maskz_fmadd_round_sch",
+  "_mm_maskz_fmadd_round_sd",
+  "_mm_maskz_fmadd_round_sh",
+  "_mm_maskz_fmadd_round_ss",
+  "_mm_maskz_fmsub_round_sd",
+  "_mm_maskz_fmsub_round_sh",
+  "_mm_maskz_fmsub_round_ss",
+  "_mm_maskz_fmul_round_sch",
+  "_mm_maskz_fnmadd_round_sd",
+  "_mm_maskz_fnmadd_round_sh",
+  "_mm_maskz_fnmadd_round_ss",
+  "_mm_maskz_fnmsub_round_sd",
+  "_mm_maskz_fnmsub_round_sh",
+  "_mm_maskz_fnmsub_round_ss",
+  "_mm_maskz_getexp_round_sd",
+  "_mm_maskz_getexp_round_sh",
+  "_mm_maskz_getexp_round_ss",
+  "_mm_maskz_getmant_pbh",
+  "_mm_maskz_getmant_pd",
+  "_mm_maskz_getmant_ph",
+  "_mm_maskz_getmant_ps",
+  "_mm_maskz_getmant_round_sd",
+  "_mm_maskz_getmant_round_sh",
+  "_mm_maskz_getmant_round_ss",
+  "_mm_maskz_getmant_sd",
+  "_mm_maskz_getmant_sh",
+  "_mm_maskz_getmant_ss",
+  "_mm_maskz_gf2p8affine_epi64_epi8",
+  "_mm_maskz_gf2p8affineinv_epi64_epi8",
+  "_mm_maskz_ipcvts_bf16_epi8",
+  "_mm_maskz_ipcvts_bf16_epu8",
+  "_mm_maskz_ipcvts_ph_epi8",
+  "_mm_maskz_ipcvts_ph_epu8",
+  "_mm_maskz_ipcvts_ps_epi8",
+  "_mm_maskz_ipcvts_ps_epu8",
+  "_mm_maskz_ipcvtts_bf16_epi8",
+  "_mm_maskz_ipcvtts_bf16_epu8",
+  "_mm_maskz_ipcvtts_ph_epi8",
+  "_mm_maskz_ipcvtts_ph_epu8",
+  "_mm_maskz_ipcvtts_ps_epi8",
+  "_mm_maskz_ipcvtts_ps_epu8",
+  "_mm_maskz_max_round_sd",
+  "_mm_maskz_max_round_sh",
+  "_mm_maskz_max_round_ss",
+  "_mm_maskz_min_round_sd",
+  "_mm_maskz_min_round_sh",
+  "_mm_maskz_min_round_ss",
+  "_mm_maskz_minmax_pbh",
+  "_mm_maskz_minmax_pd",
+  "_mm_maskz_minmax_ph",
+  "_mm_maskz_minmax_ps",
+  "_mm_maskz_minmax_round_sd",
+  "_mm_maskz_minmax_round_sh",
+  "_mm_maskz_minmax_round_ss",
+  "_mm_maskz_minmax_sd",
+  "_mm_maskz_minmax_sh",
+  "_mm_maskz_minmax_ss",
+  "_mm_maskz_mpsadbw_epu8",
+  "_mm_maskz_mul_pch",
+  "_mm_maskz_mul_round_sch",
+  "_mm_maskz_mul_round_sd",
+  "_mm_maskz_mul_round_sh",
+  "_mm_maskz_mul_round_ss",
+  "_mm_maskz_mul_sch",
+  "_mm_maskz_permute_pd",
+  "_mm_maskz_permute_ps",
+  "_mm_maskz_range_pd",
+  "_mm_maskz_range_ps",
+  "_mm_maskz_range_round_sd",
+  "_mm_maskz_range_round_ss",
+  "_mm_maskz_range_sd",
+  "_mm_maskz_range_ss",
+  "_mm_maskz_reduce_pbh",
+  "_mm_maskz_reduce_pd",
+  "_mm_maskz_reduce_ph",
+  "_mm_maskz_reduce_ps",
+  "_mm_maskz_reduce_round_sd",
+  "_mm_maskz_reduce_round_sh",
+  "_mm_maskz_reduce_round_ss",
+  "_mm_maskz_reduce_sd",
+  "_mm_maskz_reduce_sh",
+  "_mm_maskz_reduce_ss",
+  "_mm_maskz_rol_epi32",
+  "_mm_maskz_rol_epi64",
+  "_mm_maskz_ror_epi32",
+  "_mm_maskz_ror_epi64",
+  "_mm_maskz_roundscale_pbh",
+  "_mm_maskz_roundscale_pd",
+  "_mm_maskz_roundscale_ph",
+  "_mm_maskz_roundscale_ps",
+  "_mm_maskz_roundscale_round_sd",
+  "_mm_maskz_roundscale_round_sh",
+  "_mm_maskz_roundscale_round_ss",
+  "_mm_maskz_roundscale_sd",
+  "_mm_maskz_roundscale_sh",
+  "_mm_maskz_roundscale_ss",
+  "_mm_maskz_scalef_round_sd",
+  "_mm_maskz_scalef_round_sh",
+  "_mm_maskz_scalef_round_ss",
+  "_mm_maskz_shldi_epi16",
+  "_mm_maskz_shldi_epi32",
+  "_mm_maskz_shldi_epi64",
+  "_mm_maskz_shrdi_epi16",
+  "_mm_maskz_shrdi_epi32",
+  "_mm_maskz_shrdi_epi64",
+  "_mm_maskz_shuffle_epi32",
+  "_mm_maskz_shuffle_pd",
+  "_mm_maskz_shuffle_ps",
+  "_mm_maskz_shufflehi_epi16",
+  "_mm_maskz_shufflelo_epi16",
+  "_mm_maskz_sqrt_round_sd",
+  "_mm_maskz_sqrt_round_sh",
+  "_mm_maskz_sqrt_round_ss",
+  "_mm_maskz_sub_round_sd",
+  "_mm_maskz_sub_round_sh",
+  "_mm_maskz_sub_round_ss",
+  "_mm_maskz_ternarylogic_epi32",
+  "_mm_maskz_ternarylogic_epi64",
+  "_mm_max_round_sd",
+  "_mm_max_round_sh",
+  "_mm_max_round_ss",
+  "_mm_min_round_sd",
+  "_mm_min_round_sh",
+  "_mm_min_round_ss",
+  "_mm_minmax_pbh",
+  "_mm_minmax_pd",
+  "_mm_minmax_ph",
+  "_mm_minmax_ps",
+  "_mm_minmax_round_sd",
+  "_mm_minmax_round_sh",
+  "_mm_minmax_round_ss",
+  "_mm_minmax_sd",
+  "_mm_minmax_sh",
+  "_mm_minmax_ss",
+  "_mm_mmask_i32gather_epi32",
+  "_mm_mmask_i32gather_epi64",
+  "_mm_mmask_i32gather_pd",
+  "_mm_mmask_i32gather_ps",
+  "_mm_mmask_i64gather_epi32",
+  "_mm_mmask_i64gather_epi64",
+  "_mm_mmask_i64gather_pd",
+  "_mm_mmask_i64gather_ps",
+  "_mm_mpsadbw_epu8",
+  "_mm_mul_pch",
+  "_mm_mul_round_sch",
+  "_mm_mul_round_sd",
+  "_mm_mul_round_sh",
+  "_mm_mul_round_ss",
+  "_mm_mul_sch",
+  "_mm_permute_pd",
+  "_mm_permute_ps",
+  "_mm_prefetch",
+  "_mm_range_pd",
+  "_mm_range_ps",
+  "_mm_range_round_sd",
+  "_mm_range_round_ss",
+  "_mm_range_sd",
+  "_mm_range_ss",
+  "_mm_reduce_pbh",
+  "_mm_reduce_pd",
+  "_mm_reduce_ph",
+  "_mm_reduce_ps",
+  "_mm_reduce_round_sd",
+  "_mm_reduce_round_sh",
+  "_mm_reduce_round_ss",
+  "_mm_reduce_sd",
+  "_mm_reduce_sh",
+  "_mm_reduce_ss",
+  "_mm_rol_epi32",
+  "_mm_rol_epi64",
+  "_mm_ror_epi32",
+  "_mm_ror_epi64",
+  "_mm_round_pd",
+  "_mm_round_ps",
+  "_mm_round_sd",
+  "_mm_round_ss",
+  "_mm_roundscale_pbh",
+  "_mm_roundscale_pd",
+  "_mm_roundscale_ph",
+  "_mm_roundscale_ps",
+  "_mm_roundscale_round_sd",
+  "_mm_roundscale_round_sh",
+  "_mm_roundscale_round_ss",
+  "_mm_roundscale_sd",
+  "_mm_roundscale_sh",
+  "_mm_roundscale_ss",
+  "_mm_scalef_round_sd",
+  "_mm_scalef_round_sh",
+  "_mm_scalef_round_ss",
+  "_mm_setr_pbh",
+  "_mm_sha1rnds4_epu32",
+  "_mm_shldi_epi16",
+  "_mm_shldi_epi32",
+  "_mm_shldi_epi64",
+  "_mm_shrdi_epi16",
+  "_mm_shrdi_epi32",
+  "_mm_shrdi_epi64",
+  "_mm_shuffle_epi32",
+  "_mm_shuffle_pd",
+  "_mm_shuffle_pi16",
+  "_mm_shuffle_ps",
+  "_mm_shufflehi_epi16",
+  "_mm_shufflelo_epi16",
+  "_mm_slli_si128",
+  "_mm_sm3rnds2_epi32",
+  "_mm_sm4key4_epi32",
+  "_mm_sm4rnds4_epi32",
+  "_mm_sqrt_round_sd",
+  "_mm_sqrt_round_sh",
+  "_mm_sqrt_round_ss",
+  "_mm_srli_si128",
+  "_mm_sub_round_sd",
+  "_mm_sub_round_sh",
+  "_mm_sub_round_ss",
+  "_mm_ternarylogic_epi32",
+  "_mm_ternarylogic_epi64",
+  "_mm_test_all_ones",
+  "_mm_test_all_zeros",
+  "_mm_test_mix_ones_zeros",
+  "_nan",
+  "_nanf",
+  "_nanl",
+  "_tile_cmmimfp16ps",
+  "_tile_cmmrlfp16ps",
+  "_tile_cvtrowd2ps",
+  "_tile_cvtrowd2psi",
+  "_tile_cvtrowps2bf16h",
+  "_tile_cvtrowps2bf16hi",
+  "_tile_cvtrowps2bf16l",
+  "_tile_cvtrowps2bf16li",
+  "_tile_cvtrowps2phh",
+  "_tile_cvtrowps2phhi",
+  "_tile_cvtrowps2phl",
+  "_tile_cvtrowps2phli",
+  "_tile_dpbf16ps",
+  "_tile_dpbf8ps",
+  "_tile_dpbhf8ps",
+  "_tile_dpbssd",
+  "_tile_dpbsud",
+  "_tile_dpbusd",
+  "_tile_dpbuud",
+  "_tile_dpfp16ps",
+  "_tile_dphbf8ps",
+  "_tile_dphf8ps",
+  "_tile_loadd",
+  "_tile_loaddrs",
+  "_tile_movrow",
+  "_tile_movrowi",
+  "_tile_stored",
+  "_tile_stream_loadd",
+  "_tile_stream_loaddrs",
+  "_tile_zero",
+  "_xabort",
+  "_xgetbv",
+  "_xsetbv",
+  "alloca",
+  "fpclassify",
+  "isfinite",
+  "isgreater",
+  "isgreaterequal",
+  "isinf",
+  "isless",
+  "islessequal",
+  "islessgreater",
+  "isnan",
+  "isnormal",
+  "isunordered",
+  "offsetof",
+  "signbit"
+ ]
+}

@@ -484,11 +484,15 @@ def ninja_file(gen, out, mods, pool_depth, skip=(), prebuilt=False, runtime_lib=
     # the cached objects save the compile step on the next build.
     cache = f'{cmd_arg(os.environ["SCCACHE"])} ' if os.environ.get('SCCACHE') else ''
     ir = any(f.suffix == '.ll' for files in mods.values() for f in files)
+    if ir:
+        wsrc = gen / 'irwrappers.c'
+        if wsrc.exists():
+            mods = dict(mods)
+            mods['main'] = list(mods.get('main', [])) + [wsrc]
     ll_genflags = ' '.join(f for f in GEN_FLAGS
                            if not f.startswith(('-W', '-ffp-contract', '-fno-strict-aliasing', '-fvisibility'))
                            ) + ' -flto -Qunused-arguments' if ir else ''
-    if ir:
-        LINK_FLAGS = LINK_FLAGS + ['-flto']
+    link_flags = LINK_FLAGS + (['-flto'] if ir else [])
     lines = [
         '# Written by tools/build_game.py; do not edit.',
         'ninja_required_version = 1.10',
@@ -496,7 +500,7 @@ def ninja_file(gen, out, mods, pool_depth, skip=(), prebuilt=False, runtime_lib=
         f'cc = {cache}{cmd_arg(CLANG.as_posix())}',
         f'genflags = {" ".join(GEN_FLAGS)}{" -flto" if ir else ""} {inc}',
         f'rtflags = {" ".join(RT_FLAGS)} {rt_inc}',
-        f'ldflags = {" ".join(LINK_FLAGS)}',
+        f'ldflags = {" ".join(link_flags)}',
         f'libs = {" ".join(libs)}',
         '',
         'pool gen',
