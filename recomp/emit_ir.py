@@ -52,7 +52,7 @@ class VecElem:
 class CpuField:
     def __init__(self, name, idx=None): self.name, self.idx = name, idx
 class Cast:
-    def __init__(self, ty, e): self.ty, self.e = ty, e
+    def __init__(self, ty, e, signed=False): self.ty, self.e, self.signed = ty, e, signed
 class Bin:
     def __init__(self, op, a, b): self.op, self.a, self.b = op, a, b
 class Un:
@@ -120,8 +120,8 @@ class Parser:
             self.take(); self.take(); self.take(); self.take()
             return Cast('i128', self.unary())
         if t == '(' and self.peek(1) in CASTS and self.peek(2) == ')':
-            self.take(); ty = CASTS[self.take()]; self.take()
-            return Cast(ty, self.unary())
+            self.take(); cty = self.take(); self.take()
+            return Cast(CASTS[cty], self.unary(), cty in SIGNED)
         if t in ('-', '~', '!', '&'):
             return Un(self.take(), self.unary())
         return self.atom()
@@ -174,6 +174,18 @@ LD_SIZES = {'LD8': 'i8', 'LD16': 'i16', 'LD32': 'i32', 'LD64': 'i64', 'LD128': '
 BIN_IR = {'+': 'add', '-': 'sub', '&': 'and', '|': 'or', '^': 'xor',
           '*': 'mul', '/': 'udiv', '%': 'urem'}
 CMP_IR = {'==': 'eq', '!=': 'ne', '<': 'ult', '>': 'ugt', '<=': 'ule', '>=': 'uge'}
+SIGNED = {'int64_t', 'int32_t', 'int16_t', 'int8_t'}   # C type names, kept on the Cast node
+
+
+def is_signed(e):
+    """Whether a C expression's value is signed, as far as a widening conversion needs to know: an explicit cast to a
+    signed type, or an arithmetic result with such an operand. The lifter writes every signed value as a cast over the
+    unsigned register image, so this is where the sign lives."""
+    if isinstance(e, Cast):
+        return e.signed
+    if isinstance(e, Bin):
+        return is_signed(e.a) or is_signed(e.b)
+    return False
 
 class Emitter:
     def __init__(self, name):
@@ -218,12 +230,14 @@ class Emitter:
             self.emit(f'store {ty} {init}, ptr %v.{an}, {al}')
         return an
 
-    def cvt(self, v, src, want):
+    def cvt(self, v, src, want, signed_src=False):
         if src == want:
             return v
         r = self.t()
         if INT_W[src] < INT_W[want]:
-            self.emit(f'{r} = zext {src} {v} to {want}')
+            # C converts a narrow value by its own signedness: (int64_t)(int32_t)x sign-extends, (uint64_t)(uint32_t)x
+            # does not. The C build gets this from the compiler; the IR has to say it.
+            self.emit(f'{r} = {"sext" if signed_src else "zext"} {src} {v} to {want}')
         else:
             self.emit(f'{r} = trunc {src} {v} to {want}')
         return r
@@ -287,7 +301,7 @@ class Emitter:
             st, v = self.eval(e.e, want)
             if st not in INT_W or want not in INT_W:
                 return want, v
-            return want, self.cvt(v, st, want)
+            return want, self.cvt(v, st, want, is_signed(e.e))
         if isinstance(e, Un):
             if e.op == '-':
                 t, v = self.eval(e.e, ty or 'i64')
@@ -373,12 +387,18 @@ class Emitter:
 
     def bin(self, e, ty):
         if e.op in ('<<', '>>'):
+            # The lifter writes an arithmetic shift as (int64_t)x >> n, which LLVM only keeps signed as ashr. Both
+            # AArch64 and x86 mask a variable count to the width; LLVM's shift is poison past it, and the C macro
+            # relied on the host's implicit masking, so a count of 64 or more never showed in the C build.
+            signed = is_signed(e.a)
             t, a = self.eval(e.a, ty or 'i64')
             _, sh = self.eval(e.b, t)
             if INT_W.get(t, 0) > 64:
                 sh = self.cvt(sh, 'i64', t)   # shift counts promote to the value's width
+            m = self.t()
+            self.emit(f'{m} = and {t} {sh}, {INT_W[t] - 1}')
             r = self.t()
-            self.emit(f'{r} = {"shl" if e.op == "<<" else "lshr"} {t} {a}, {sh}')
+            self.emit(f'{r} = {"shl" if e.op == "<<" else ("ashr" if signed else "lshr")} {t} {a}, {m}')
             return t, r
         if e.op in CMP_IR:
             t, a = self.eval(e.a)
@@ -391,9 +411,10 @@ class Emitter:
         if e.op in BIN_IR:
             t, a = self.eval(e.a, ty)
             bt, bv = self.eval(e.b, t)
+            b = bv
             if bt != t:
                 if INT_W.get(t, 0) >= INT_W.get(bt, 0):
-                    b = self.cvt(bv, bt, t)
+                    b = self.cvt(bv, bt, t, is_signed(e.b))
                 else:
                     a = self.cvt(a, t, bt)
                     t = bt
@@ -422,8 +443,10 @@ class Emitter:
             self.emit(f'{shr} = lshr {t} {v}, {masked}')
             remain = self.t()
             self.emit(f'{remain} = sub {t} {bits}, {masked}')
+            rot = self.t()
+            self.emit(f'{rot} = and {t} {remain}, {mask}')   # (64 - 0) & 63: a count of 64 would be poison
             shifted = self.t()
-            self.emit(f'{shifted} = shl {t} {v}, {remain}')
+            self.emit(f'{shifted} = shl {t} {v}, {rot}')
             res = self.t()
             self.emit(f'{res} = or {t} {shr}, {shifted}')
             return t, res
