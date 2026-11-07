@@ -443,9 +443,11 @@ class Emitter:
             want = ty or 'i64'
             return want, self.cvt(rv, LD_SIZES[name], want)
         if name in ('__builtin_bswap32', '__builtin_bswap64'):
-            t, v = self.eval(e.args[0], 'i64' if name.endswith('64') else 'i32')
+            t = 'i64' if name.endswith('64') else 'i32'
+            _, v = self.eval(e.args[0], t)
             r = self.t()
-            self.emit(f'{r} = bswap {t} {v}')
+            self.emit(f'{r} = call {t} @llvm.bswap.{t}({t} {v})')
+            self.used_calls.add(f'llvm.bswap.{t}')
             return t, r
         if name == '__atomic_thread_fence':
             self.eval(e.args[0])
@@ -1011,6 +1013,10 @@ def emit_chunk_partial(chunk_text):
         preamble.append(f'declare {ret} @{rt_name}({", ".join(atys)})')
     for g in sorted(calls - ir_defined):
         preamble.append(f'declare void @{g}(ptr)')
+    all_ll = '\n'.join(ll for name, (ll, _) in translated.items())
+    for w in ('i32', 'i64'):
+        if f'@llvm.bswap.{w}(' in all_ll:
+            preamble.append(f'declare {w} @llvm.bswap.{w}({w})')
     for h in sorted(helpers):
         sig = _tbl['functions'][h[:-2]]
         params = ', '.join(LLVM_TYPE.get(t_, t_) for t_ in sig['params'])
