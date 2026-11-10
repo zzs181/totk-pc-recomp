@@ -221,6 +221,26 @@ KEYCAP_ADVANCE = {0xE040: 640, 0xE041: 640, 0xE042: 640, 0xE043: 640, 0xE044: 72
                   0xE047: 720, 0xE049: 720, 0xE04B: 600, 0xE04C: 600,
                   **{cp: 720 for cp in range(0xE060, 0xE066)}}
 
+# What a key shows: its letter, a symbol or a short name (key names as in totk.ini; the rest show their name).
+PC_LABELS = {
+    'lshift': 'SHIFT', 'rshift': 'SHIFT', 'lctrl': 'CTRL', 'rctrl': 'CTRL', 'lalt': 'ALT', 'tab': 'TAB',
+    'enter': 'ENT', 'backspace': 'BKSP', 'capslock': 'CAPS', 'insert': 'INS', 'delete': 'DEL', 'home': 'HOME',
+    'end': 'END', 'pageup': 'PGUP', 'pagedown': 'PGDN', 'up': '↑', 'down': '↓', 'left': '←',
+    'right': '→', 'num_add': '+', 'num_sub': '-', 'num_mul': '*', 'num_div': '/', 'num_decimal': '.',
+    'minus': '-', 'equals': '=', 'lbracket': '[', 'rbracket': ']', 'semicolon': ';', 'apostrophe': "'", 'comma': ',',
+    'period': '.', 'slash': '/', 'backslash': '\\', 'grave': '`', 'mouse_x1': 'M4', 'mouse_x2': 'M5',
+}
+# The one-letter panes around the action prompt (T_A_00 ...) are in the Normal font (Rodin B and Symbol): one character
+# of it per key.
+PC_LETTER_LABELS = {'lshift': '↑', 'rshift': '↑', 'space': '▬', 'mouse_l': 'L', 'mouse_r': 'R',
+                    'mouse_m': 'M', 'lctrl': 'C', 'rctrl': 'C', 'tab': 'T'}
+# The button guide's images in the pc style: every symbol mask of the action prompt. In the 1.4.3 Common archive
+# LSt_00 shows the left stick tilted up (as U+E052) and LSt_01 the left stick (as U+E05E).
+PC_HUD_TEXTURES = {'Nt_KeyTexA_00': 0xE040, 'Nt_KeyTexB_00': 0xE041, 'Nt_KeyTexX_00': 0xE042, 'Nt_KeyTexY_00': 0xE043,
+                   'Nt_KeyTexL_00': 0xE044, 'Nt_KeyTexZL_00': 0xE046, 'Nt_KeyTexLSt_00': 0xE052,
+                   'Nt_KeyTexLSt_01': 0xE05E}
+PC_MOUSE = ('mouse_l', 'mouse_r', 'mouse_m')
+
 
 def keycap_outline(name):
     """The icon's contours in font coordinates (y up) as a RecordingPen: every path of its SVG, flipped."""
@@ -253,6 +273,13 @@ def keyboard_icons():
             rec.replay(TransformPen(pen, (s, 0, 0, s, dx, dy)))
         icons[cp] = (advance, draw)
     return icons
+
+
+def pc_letter(key):
+    """The one character the panes around the action prompt show for key."""
+    if key in PC_LETTER_LABELS:
+        return PC_LETTER_LABELS[key]
+    return PC_LABELS.get(key, key.upper())[0]
 
 
 def redraw_font(otf, icons, swaps=()):

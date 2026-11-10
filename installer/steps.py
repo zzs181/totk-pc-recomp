@@ -7,7 +7,8 @@ recomp/gen.py, tools/build_game.py, tools/make_romfs_patches.py and tools/prepar
 with the bundled clang (hostcheck.c).
 
 Install folder: exefs/, romfs/ (romfs.bin, index.json), profile/, shared-fonts/ (Chinese and Korean text), totk.exe
-and its DLLs, romfs-index.bin, romfs-patches/, romfs-patches-xbox/, romfs-patches-xbox-label/, romfs-patches-keyboard/, totk_xlate.exe, the
+and its DLLs, nvngx_dlss.dll (with --dlss), romfs-index.bin, romfs-patches/, romfs-patches-xbox/,
+romfs-patches-xbox-label/, romfs-patches-keyboard/, romfs-patches-pc/, romfs-patches-pc-<w>x<h>/, totk_xlate.exe, the
 shader state of totk.exe --prepare-shaders, totk.ini, totk-install.json.
 Temp folder (<temp>/<dest name>-<hash>): check/ (ExeFS of both inputs, the host check), unpacked/ (the NSP of an NSZ
 or XCZ input until the extraction is done), gen/ (C), build/ (objects), logs/. The cleanup keeps gen/, build/ and
@@ -1101,6 +1102,24 @@ class Prepare(Step):
             if code:
                 remove(out)
                 failed = failed or (shown, code, log)
+        # The PC prompts once more for each shape of ASPECT_SIZES, romfs-patches-pc-<w>x<h> with that shape's UI layout
+        # (--prompts pc --aspect), which runtime/romfs.c overlay_init loads in place of romfs-patches-<w>x<h>: without
+        # it a player with prompts = pc on a screen that is not 16:9 chose between the prompts and the screen's shape.
+        # Only the Common archive differs from romfs-patches-pc; --reuse links the fonts, messages and size table from
+        # there instead of compressing them again, so the fifteen folders take seconds and a few MiB each. Optional
+        # like romfs-patches-pc, and skipped without it.
+        pc = dest / 'romfs-patches-pc'
+        for size in ASPECT_SIZES:
+            out = dest / f'romfs-patches-pc-{size}'
+            remove(out)
+            if not (pc / 'manifest.tsv').is_file():
+                continue
+            code, log = run_tool(ctx, f'prepare-pc-{size}', layout.tools / 'make_romfs_patches.py',
+                                 ['--version', version_tag(game_version(ctx)), '--romfs', dest / 'romfs', '--out', out,
+                                  '--prompts', 'pc', '--aspect', size, '--reuse', pc])
+            if code:
+                remove(out)
+                failed = failed or ('pc', code, log)
         if failed:
             rep.warning('warn.prompts_failed', style=failed[0], code=failed[1], log=str(failed[2]))
 
